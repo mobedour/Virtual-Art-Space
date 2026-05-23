@@ -33,9 +33,20 @@ function serializeArtwork(a: typeof artworksTable.$inferSelect) {
 }
 
 router.get("/artworks/gallery/:galleryId", requireAuth, async (req, res): Promise<void> => {
+  const userId = req.user!.userId;
   const params = ListArtworksParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const [gallery] = await db
+    .select()
+    .from(galleriesTable)
+    .where(and(eq(galleriesTable.id, params.data.galleryId), eq(galleriesTable.userId, userId)));
+
+  if (!gallery) {
+    res.status(404).json({ error: "Gallery not found" });
     return;
   }
 
@@ -73,6 +84,9 @@ router.post("/artworks", requireAuth, async (req, res): Promise<void> => {
       description: parsed.data.description ?? null,
       imageUrl: parsed.data.imageUrl,
       artistName: parsed.data.artistName ?? null,
+      year: parsed.data.year ?? null,
+      medium: parsed.data.medium ?? null,
+      dimensions: parsed.data.dimensions ?? null,
       xPosition: parsed.data.xPosition ?? 0,
       yPosition: parsed.data.yPosition ?? 1.5,
       zPosition: parsed.data.zPosition ?? -3,
@@ -85,6 +99,7 @@ router.post("/artworks", requireAuth, async (req, res): Promise<void> => {
 });
 
 router.put("/artworks/:id", requireAuth, async (req, res): Promise<void> => {
+  const userId = req.user!.userId;
   const params = UpdateArtworkParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -96,36 +111,46 @@ router.put("/artworks/:id", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
+  const [existing] = await db
+    .select({ id: artworksTable.id })
+    .from(artworksTable)
+    .innerJoin(galleriesTable, eq(artworksTable.galleryId, galleriesTable.id))
+    .where(and(eq(artworksTable.id, params.data.id), eq(galleriesTable.userId, userId)));
+
+  if (!existing) {
+    res.status(404).json({ error: "Artwork not found" });
+    return;
+  }
+
   const [artwork] = await db
     .update(artworksTable)
     .set(parsed.data)
     .where(eq(artworksTable.id, params.data.id))
     .returning();
 
-  if (!artwork) {
-    res.status(404).json({ error: "Artwork not found" });
-    return;
-  }
-
   res.json(serializeArtwork(artwork));
 });
 
 router.delete("/artworks/:id", requireAuth, async (req, res): Promise<void> => {
+  const userId = req.user!.userId;
   const params = DeleteArtworkParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
     return;
   }
 
-  const [artwork] = await db
-    .delete(artworksTable)
-    .where(eq(artworksTable.id, params.data.id))
-    .returning();
+  const [existing] = await db
+    .select({ id: artworksTable.id })
+    .from(artworksTable)
+    .innerJoin(galleriesTable, eq(artworksTable.galleryId, galleriesTable.id))
+    .where(and(eq(artworksTable.id, params.data.id), eq(galleriesTable.userId, userId)));
 
-  if (!artwork) {
+  if (!existing) {
     res.status(404).json({ error: "Artwork not found" });
     return;
   }
+
+  await db.delete(artworksTable).where(eq(artworksTable.id, params.data.id));
 
   res.sendStatus(204);
 });

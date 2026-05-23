@@ -207,7 +207,7 @@ function ArtworkFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="bg-card border-border/50 rounded-none max-w-xl w-full">
+      <DialogContent className="bg-card border-border/50 rounded-none max-w-xl w-full max-h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle className="font-display font-bold text-xl text-white tracking-widest uppercase">
             {isEdit ? "Edit Artwork" : "Add Artwork"}
@@ -215,7 +215,8 @@ function ArtworkFormDialog({
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col min-h-0 flex-1">
+          <div className="overflow-y-auto flex-1 space-y-5 pr-1">
             <FormField
               control={form.control}
               name="title"
@@ -401,7 +402,8 @@ function ArtworkFormDialog({
               )}
             />
 
-            <DialogFooter className="pt-2 border-t border-border/30 flex gap-3 justify-end">
+            </div>
+            <DialogFooter className="pt-4 pb-1 border-t border-border/30 flex gap-3 justify-end shrink-0">
               <Button
                 type="button"
                 variant="outline"
