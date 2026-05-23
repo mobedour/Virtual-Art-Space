@@ -16,7 +16,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 
@@ -48,11 +48,11 @@ export default function Register() {
     registerMutation.mutate({ data: values }, {
       onSuccess: (data) => {
         setAuth(data.token, data.user);
-        toast({ title: "NODE ESTABLISHED", description: "Your artist account has been created." });
+        toast({ title: "Gallery created", description: "Welcome to Virtual Art Space." });
         setLocation("/dashboard");
       },
       onError: (error) => {
-        setErrorMsg(error.message || "Registration failed. Try a different username/email.");
+        setErrorMsg(error.message || "Registration failed. Try a different username or email.");
       }
     });
   }
@@ -61,29 +61,25 @@ export default function Register() {
     <PublicLayout>
       <div className="container mx-auto px-6 py-20 flex justify-center items-center min-h-[70vh]">
         <div className="w-full max-w-md animate-in fade-in zoom-in duration-500">
-          <Card className="bg-card/50 border-border/50 backdrop-blur-md rounded-none shadow-[0_0_20px_rgba(124,58,237,0.15)] relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-1 bg-primary" />
-            <CardHeader className="space-y-2 pb-8">
-              <CardTitle className="text-3xl font-display font-bold tracking-widest text-center">
-                ESTABLISH_NODE
-              </CardTitle>
-              <p className="text-muted-foreground font-mono text-center text-sm tracking-wider">
-                JOIN THE OUTCAST NETWORK
-              </p>
-            </CardHeader>
-            <CardContent>
+          <div className="text-center mb-8">
+            <h1 className="font-display text-3xl font-bold text-foreground mb-2">Join Virtual Art Space</h1>
+            <p className="text-muted-foreground font-sans text-sm">Create your free artist account</p>
+          </div>
+          <Card className="bg-card/50 border-border/50 backdrop-blur-md rounded-sm shadow-[0_0_30px_rgba(217,119,6,0.08)] relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-0.5 bg-primary" />
+            <CardContent className="pt-8">
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
                   <FormField
                     control={form.control}
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="font-mono text-xs tracking-wider text-muted-foreground">EMAIL</FormLabel>
+                        <FormLabel className="font-sans text-sm text-muted-foreground">Email</FormLabel>
                         <FormControl>
-                          <Input placeholder="artist@void.net" className="font-mono bg-background/50 border-border/50 focus-visible:ring-primary rounded-none" {...field} />
+                          <Input placeholder="you@example.com" className="font-sans bg-background/50 border-border/50 focus-visible:ring-primary rounded-sm" {...field} />
                         </FormControl>
-                        <FormMessage className="font-mono text-xs" />
+                        <FormMessage className="font-sans text-xs" />
                       </FormItem>
                     )}
                   />
@@ -92,11 +88,11 @@ export default function Register() {
                     name="username"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="font-mono text-xs tracking-wider text-muted-foreground">IDENTIFIER (USERNAME)</FormLabel>
+                        <FormLabel className="font-sans text-sm text-muted-foreground">Username</FormLabel>
                         <FormControl>
-                          <Input placeholder="cyber_punk_404" className="font-mono bg-background/50 border-border/50 focus-visible:ring-primary rounded-none" {...field} />
+                          <Input placeholder="your_artist_name" className="font-sans bg-background/50 border-border/50 focus-visible:ring-primary rounded-sm" {...field} />
                         </FormControl>
-                        <FormMessage className="font-mono text-xs" />
+                        <FormMessage className="font-sans text-xs" />
                       </FormItem>
                     )}
                   />
@@ -105,37 +101,37 @@ export default function Register() {
                     name="password"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="font-mono text-xs tracking-wider text-muted-foreground">SECURITY_KEY (PASSWORD)</FormLabel>
+                        <FormLabel className="font-sans text-sm text-muted-foreground">Password</FormLabel>
                         <FormControl>
-                          <Input type="password" placeholder="••••••••" className="font-mono bg-background/50 border-border/50 focus-visible:ring-primary rounded-none" {...field} />
+                          <Input type="password" placeholder="••••••••" className="font-sans bg-background/50 border-border/50 focus-visible:ring-primary rounded-sm" {...field} />
                         </FormControl>
-                        <FormMessage className="font-mono text-xs" />
+                        <FormMessage className="font-sans text-xs" />
                       </FormItem>
                     )}
                   />
 
                   {errorMsg && (
-                    <div className="p-3 border border-destructive/50 bg-destructive/10 text-destructive font-mono text-sm">
-                      [ERROR] {errorMsg}
+                    <div className="p-3 border border-destructive/50 bg-destructive/10 text-destructive font-sans text-sm rounded-sm">
+                      {errorMsg}
                     </div>
                   )}
 
-                  <Button 
-                    type="submit" 
-                    className="w-full h-12 rounded-none font-mono tracking-widest bg-primary text-white hover:bg-primary/90"
+                  <Button
+                    type="submit"
+                    className="w-full h-11 rounded-sm font-sans font-medium bg-primary text-primary-foreground hover:bg-primary/90"
                     disabled={registerMutation.isPending}
                   >
-                    {registerMutation.isPending ? <Loader2 className="animate-spin w-5 h-5" /> : "DEPLOY"}
+                    {registerMutation.isPending ? <Loader2 className="animate-spin w-5 h-5" /> : "Create Account"}
                   </Button>
                 </form>
               </Form>
 
-              <div className="mt-8 text-center">
-                <p className="text-muted-foreground font-mono text-sm">
-                  ALREADY DEPLOYED?{" "}
+              <div className="mt-6 text-center">
+                <p className="text-muted-foreground font-sans text-sm">
+                  Already have an account?{" "}
                   <Link href="/login">
                     <span className="text-primary hover:text-primary/80 hover:underline cursor-pointer">
-                      AUTHENTICATE
+                      Sign in
                     </span>
                   </Link>
                 </p>

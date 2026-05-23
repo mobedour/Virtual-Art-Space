@@ -29,7 +29,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
               }`}
             >
               <item.icon className="w-5 h-5" />
-              <span className="font-medium font-mono text-sm tracking-wider">{item.name}</span>
+              <span className="font-medium font-sans text-sm">{item.name}</span>
             </span>
           </Link>
         );
@@ -42,8 +42,8 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
       {/* Mobile header */}
       <header className="md:hidden flex items-center justify-between p-4 border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <Link href="/">
-          <span className="font-display font-bold text-xl tracking-widest text-primary cursor-pointer drop-shadow-[0_0_8px_rgba(124,58,237,0.5)]">
-            OVERFLOW
+          <span className="font-display font-bold text-lg text-primary cursor-pointer">
+            VAS
           </span>
         </Link>
         <Sheet>
@@ -55,8 +55,8 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
           <SheetContent side="left" className="bg-card border-r-border p-6 w-72 flex flex-col">
             <div className="mb-8">
               <Link href="/">
-                <span className="font-display font-bold text-xl tracking-widest text-primary cursor-pointer">
-                  OVERFLOW
+                <span className="font-display font-bold text-lg text-primary cursor-pointer">
+                  Virtual Art Space
                 </span>
               </Link>
             </div>
@@ -66,7 +66,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
             <div className="mt-auto">
               <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={logout}>
                 <LogOut className="w-5 h-5 mr-3" />
-                <span className="font-mono text-sm">DISCONNECT</span>
+                <span className="font-sans text-sm">Sign Out</span>
               </Button>
             </div>
           </SheetContent>
@@ -77,8 +77,8 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
       <aside className="hidden md:flex flex-col w-64 border-r border-border bg-card/50 backdrop-blur-md p-6 sticky top-0 h-screen">
         <div className="mb-10">
           <Link href="/">
-            <span className="font-display font-bold text-2xl tracking-widest text-primary cursor-pointer drop-shadow-[0_0_12px_rgba(124,58,237,0.5)] block">
-              OVERFLOW<br/>OUTCAST
+            <span className="font-display font-bold text-xl text-primary cursor-pointer leading-tight block">
+              Virtual<br/>Art Space
             </span>
           </Link>
         </div>
@@ -88,17 +88,16 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
         <div className="mt-auto pt-6 border-t border-border">
           <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" onClick={logout}>
             <LogOut className="w-5 h-5 mr-3" />
-            <span className="font-mono text-sm tracking-widest">DISCONNECT</span>
+            <span className="font-sans text-sm">Sign Out</span>
           </Button>
         </div>
       </aside>
 
       {/* Main content */}
       <main className="flex-1 p-6 md:p-10 lg:p-12 overflow-x-hidden relative">
-        {/* Decorative background elements */}
         <div className="fixed inset-0 pointer-events-none -z-10">
           <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px]" />
-          <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary/10 rounded-full blur-[120px]" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary/8 rounded-full blur-[120px]" />
         </div>
         
         <div className="max-w-6xl mx-auto w-full animate-in fade-in slide-in-from-bottom-4 duration-500">

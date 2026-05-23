@@ -52,9 +52,11 @@ An immersive virtual reality art exhibition platform where artists create and sh
 
 ## User preferences
 
-- Project name: Overflow Outcast
-- Aesthetic: dark/futuristic, black + electric purple, cyber-gallery underground feel
-- Font: Orbitron for headings, Space Grotesk / Space Mono for body
+- Platform name: Virtual Art Space (user alias "Overflow Outcast" is NOT the app name)
+- Target scene: Amman art scene, Jordan — contemporary Arab art, warm cultural vibe
+- Aesthetic: dark warm background (charcoal, not cold black) + amber/gold accent, editorial gallery feel
+- Font: Playfair Display for headings (italic emphasis), Plus Jakarta Sans for body, DM Mono for mono
+- Color primary: HSL 38 92% 50% (warm amber/gold — Amman limestone feel)
 - Build stage by stage per the roadmap (Stage 1 → 2 → 3...)
 
 ## Gotchas

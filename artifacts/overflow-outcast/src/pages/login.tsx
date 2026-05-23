@@ -46,11 +46,11 @@ export default function Login() {
     loginMutation.mutate({ data: values }, {
       onSuccess: (data) => {
         setAuth(data.token, data.user);
-        toast({ title: "ACCESS GRANTED", description: "Welcome to Overflow Outcast." });
+        toast({ title: "Welcome back", description: "You're signed in to Virtual Art Space." });
         setLocation("/dashboard");
       },
       onError: (error) => {
-        setErrorMsg(error.message || "Failed to login. Check your credentials.");
+        setErrorMsg(error.message || "Failed to sign in. Check your credentials.");
       }
     });
   }
@@ -59,29 +59,25 @@ export default function Login() {
     <PublicLayout>
       <div className="container mx-auto px-6 py-20 flex justify-center items-center min-h-[70vh]">
         <div className="w-full max-w-md animate-in fade-in zoom-in duration-500">
-          <Card className="bg-card/50 border-border/50 backdrop-blur-md rounded-none shadow-[0_0_20px_rgba(124,58,237,0.15)] relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-1 bg-primary" />
-            <CardHeader className="space-y-2 pb-8">
-              <CardTitle className="text-3xl font-display font-bold tracking-widest text-center">
-                INITIALIZE
-              </CardTitle>
-              <p className="text-muted-foreground font-mono text-center text-sm tracking-wider">
-                ENTER YOUR CREDENTIALS
-              </p>
-            </CardHeader>
-            <CardContent>
+          <div className="text-center mb-8">
+            <h1 className="font-display text-3xl font-bold text-foreground mb-2">Welcome back</h1>
+            <p className="text-muted-foreground font-sans text-sm">Sign in to your artist account</p>
+          </div>
+          <Card className="bg-card/50 border-border/50 backdrop-blur-md rounded-sm shadow-[0_0_30px_rgba(217,119,6,0.08)] relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-0.5 bg-primary" />
+            <CardContent className="pt-8">
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
                   <FormField
                     control={form.control}
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="font-mono text-xs tracking-wider text-muted-foreground">EMAIL</FormLabel>
+                        <FormLabel className="font-sans text-sm text-muted-foreground">Email</FormLabel>
                         <FormControl>
-                          <Input placeholder="artist@void.net" className="font-mono bg-background/50 border-border/50 focus-visible:ring-primary rounded-none" {...field} />
+                          <Input placeholder="you@example.com" className="font-sans bg-background/50 border-border/50 focus-visible:ring-primary rounded-sm" {...field} />
                         </FormControl>
-                        <FormMessage className="font-mono text-xs" />
+                        <FormMessage className="font-sans text-xs" />
                       </FormItem>
                     )}
                   />
@@ -90,37 +86,37 @@ export default function Login() {
                     name="password"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="font-mono text-xs tracking-wider text-muted-foreground">PASSWORD</FormLabel>
+                        <FormLabel className="font-sans text-sm text-muted-foreground">Password</FormLabel>
                         <FormControl>
-                          <Input type="password" placeholder="••••••••" className="font-mono bg-background/50 border-border/50 focus-visible:ring-primary rounded-none" {...field} />
+                          <Input type="password" placeholder="••••••••" className="font-sans bg-background/50 border-border/50 focus-visible:ring-primary rounded-sm" {...field} />
                         </FormControl>
-                        <FormMessage className="font-mono text-xs" />
+                        <FormMessage className="font-sans text-xs" />
                       </FormItem>
                     )}
                   />
 
                   {errorMsg && (
-                    <div className="p-3 border border-destructive/50 bg-destructive/10 text-destructive font-mono text-sm">
-                      [ERROR] {errorMsg}
+                    <div className="p-3 border border-destructive/50 bg-destructive/10 text-destructive font-sans text-sm rounded-sm">
+                      {errorMsg}
                     </div>
                   )}
 
-                  <Button 
-                    type="submit" 
-                    className="w-full h-12 rounded-none font-mono tracking-widest bg-primary text-white hover:bg-primary/90"
+                  <Button
+                    type="submit"
+                    className="w-full h-11 rounded-sm font-sans font-medium bg-primary text-primary-foreground hover:bg-primary/90"
                     disabled={loginMutation.isPending}
                   >
-                    {loginMutation.isPending ? <Loader2 className="animate-spin w-5 h-5" /> : "AUTHENTICATE"}
+                    {loginMutation.isPending ? <Loader2 className="animate-spin w-5 h-5" /> : "Sign In"}
                   </Button>
                 </form>
               </Form>
 
-              <div className="mt-8 text-center">
-                <p className="text-muted-foreground font-mono text-sm">
-                  NO NODE IDENTIFIER?{" "}
+              <div className="mt-6 text-center">
+                <p className="text-muted-foreground font-sans text-sm">
+                  Don't have an account?{" "}
                   <Link href="/register">
                     <span className="text-primary hover:text-primary/80 hover:underline cursor-pointer">
-                      REGISTER
+                      Create one
                     </span>
                   </Link>
                 </p>
