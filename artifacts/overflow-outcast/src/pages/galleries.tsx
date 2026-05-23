@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Plus, Settings, Trash2, ExternalLink } from "lucide-react";
+import { Loader2, Plus, Settings, Trash2, ExternalLink, Image as ImageIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Galleries() {
@@ -157,6 +157,11 @@ export default function Galleries() {
                             </Link>
                           </Button>
                         )}
+                        <Button asChild variant="outline" size="sm" className="rounded-none border-primary/40 text-primary font-mono text-xs hover:bg-primary/10 hover:text-primary">
+                          <Link href={`/dashboard/galleries/${gallery.id}/artworks`}>
+                            <ImageIcon className="w-3.5 h-3.5 mr-2" /> ARTWORKS
+                          </Link>
+                        </Button>
                         <Button asChild variant="outline" size="sm" className="rounded-none border-border/50 font-mono text-xs hover:text-white hover:border-primary/50">
                           <Link href={`/dashboard/galleries/${gallery.id}/edit`}>
                             <Settings className="w-3.5 h-3.5 mr-2" /> CONFIGURE

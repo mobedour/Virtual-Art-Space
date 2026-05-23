@@ -11,6 +11,7 @@ import Dashboard from "@/pages/dashboard";
 import Profile from "@/pages/profile";
 import Galleries from "@/pages/galleries";
 import GalleryForm from "@/pages/gallery-form";
+import DashboardGalleryArtworks from "@/pages/dashboard-gallery-artworks";
 import PublicGalleries from "@/pages/public-galleries";
 import PublicGalleryDetail from "@/pages/public-gallery-detail";
 import NotFound from "@/pages/not-found";
@@ -28,6 +29,7 @@ function Router() {
       <Route path="/dashboard/galleries" component={Galleries} />
       <Route path="/dashboard/galleries/new" component={GalleryForm} />
       <Route path="/dashboard/galleries/:id/edit" component={GalleryForm} />
+      <Route path="/dashboard/galleries/:id/artworks" component={DashboardGalleryArtworks} />
       <Route path="/galleries" component={PublicGalleries} />
       <Route path="/gallery/:slug" component={PublicGalleryDetail} />
       <Route component={NotFound} />
