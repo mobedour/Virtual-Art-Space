@@ -139,10 +139,10 @@ export default function GalleryForm() {
           </Button>
           <div>
             <h1 className="text-3xl font-display font-bold tracking-widest text-white uppercase">
-              {isEdit ? "CONFIGURE_NODE" : "INITIALIZE_NODE"}
+              {isEdit ? "Edit gallery" : "Create a new exhibition"}
             </h1>
             <p className="text-muted-foreground font-mono mt-1 text-sm tracking-wider">
-              {isEdit ? `EDITING: ${gallery?.title}` : "DEPLOY A NEW EXHIBITION SPACE"}
+              {isEdit ? `Editing: ${gallery?.title}` : "Set up your virtual gallery room"}
             </p>
           </div>
         </div>
