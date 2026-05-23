@@ -52,6 +52,9 @@ type Artwork = {
   description?: string | null;
   imageUrl: string;
   artistName?: string | null;
+  year?: string | null;
+  medium?: string | null;
+  dimensions?: string | null;
   xPosition: number;
   yPosition: number;
   zPosition: number;
@@ -64,6 +67,9 @@ const formSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
   artistName: z.string().optional(),
+  year: z.string().optional(),
+  medium: z.string().optional(),
+  dimensions: z.string().optional(),
   imageUrl: z.string().min(1, "An image is required"),
 });
 
@@ -94,6 +100,9 @@ function ArtworkFormDialog({
       title: "",
       description: "",
       artistName: "",
+      year: "",
+      medium: "",
+      dimensions: "",
       imageUrl: "",
     },
   });
@@ -105,11 +114,14 @@ function ArtworkFormDialog({
           title: artwork.title,
           description: artwork.description ?? "",
           artistName: artwork.artistName ?? "",
+          year: artwork.year ?? "",
+          medium: artwork.medium ?? "",
+          dimensions: artwork.dimensions ?? "",
           imageUrl: artwork.imageUrl,
         });
         setImagePreview(artwork.imageUrl);
       } else {
-        form.reset({ title: "", description: "", artistName: "", imageUrl: "" });
+        form.reset({ title: "", description: "", artistName: "", year: "", medium: "", dimensions: "", imageUrl: "" });
         setImagePreview("");
       }
     }
@@ -146,6 +158,9 @@ function ArtworkFormDialog({
             title: values.title,
             description: values.description || undefined,
             artistName: values.artistName || undefined,
+            year: values.year || undefined,
+            medium: values.medium || undefined,
+            dimensions: values.dimensions || undefined,
             imageUrl: values.imageUrl,
           },
         },
@@ -169,6 +184,9 @@ function ArtworkFormDialog({
             title: values.title,
             description: values.description || undefined,
             artistName: values.artistName || undefined,
+            year: values.year || undefined,
+            medium: values.medium || undefined,
+            dimensions: values.dimensions || undefined,
             imageUrl: values.imageUrl,
           },
         },
@@ -229,6 +247,67 @@ function ArtworkFormDialog({
                   <FormControl>
                     <Input
                       placeholder="E.g. Layla Al-Rashid"
+                      className="font-mono bg-background/50 border-border/50 focus-visible:ring-primary rounded-none"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage className="font-mono text-xs" />
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="year"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="font-mono text-xs tracking-wider text-muted-foreground">
+                      YEAR
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="E.g. 2024"
+                        className="font-mono bg-background/50 border-border/50 focus-visible:ring-primary rounded-none"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage className="font-mono text-xs" />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="medium"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="font-mono text-xs tracking-wider text-muted-foreground">
+                      MEDIUM
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="E.g. Oil on canvas"
+                        className="font-mono bg-background/50 border-border/50 focus-visible:ring-primary rounded-none"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage className="font-mono text-xs" />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="dimensions"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="font-mono text-xs tracking-wider text-muted-foreground">
+                    DIMENSIONS
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="E.g. 80 × 60 cm"
                       className="font-mono bg-background/50 border-border/50 focus-visible:ring-primary rounded-none"
                       {...field}
                     />
@@ -486,6 +565,12 @@ export default function DashboardGalleryArtworks() {
                   {artwork.artistName && (
                     <p className="font-mono text-xs text-primary truncate mb-1">
                       {artwork.artistName}
+                      {(artwork as Artwork).year ? `, ${(artwork as Artwork).year}` : ""}
+                    </p>
+                  )}
+                  {((artwork as Artwork).medium || (artwork as Artwork).dimensions) && (
+                    <p className="font-mono text-[10px] text-muted-foreground/70 truncate mt-0.5">
+                      {[(artwork as Artwork).medium, (artwork as Artwork).dimensions].filter(Boolean).join(" · ")}
                     </p>
                   )}
                   {artwork.description && (

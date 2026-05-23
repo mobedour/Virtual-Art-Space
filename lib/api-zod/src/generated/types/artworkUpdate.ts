@@ -11,6 +11,9 @@ export interface ArtworkUpdate {
   description?: string;
   imageUrl?: string;
   artistName?: string;
+  year?: string;
+  medium?: string;
+  dimensions?: string;
   xPosition?: number;
   yPosition?: number;
   zPosition?: number;

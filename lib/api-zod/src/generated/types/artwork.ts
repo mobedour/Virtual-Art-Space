@@ -15,6 +15,12 @@ export interface Artwork {
   imageUrl: string;
   /** @nullable */
   artistName?: string | null;
+  /** @nullable */
+  year?: string | null;
+  /** @nullable */
+  medium?: string | null;
+  /** @nullable */
+  dimensions?: string | null;
   xPosition: number;
   yPosition: number;
   zPosition: number;

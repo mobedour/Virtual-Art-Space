@@ -95,6 +95,12 @@ export interface Artwork {
   imageUrl: string;
   /** @nullable */
   artistName?: string | null;
+  /** @nullable */
+  year?: string | null;
+  /** @nullable */
+  medium?: string | null;
+  /** @nullable */
+  dimensions?: string | null;
   xPosition: number;
   yPosition: number;
   zPosition: number;
@@ -110,6 +116,9 @@ export interface ArtworkInput {
   description?: string;
   imageUrl: string;
   artistName?: string;
+  year?: string;
+  medium?: string;
+  dimensions?: string;
   xPosition?: number;
   yPosition?: number;
   zPosition?: number;
@@ -122,6 +131,9 @@ export interface ArtworkUpdate {
   description?: string;
   imageUrl?: string;
   artistName?: string;
+  year?: string;
+  medium?: string;
+  dimensions?: string;
   xPosition?: number;
   yPosition?: number;
   zPosition?: number;

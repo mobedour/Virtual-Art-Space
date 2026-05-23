@@ -676,6 +676,12 @@ components:
           type: string
         artistName:
           type: ["string", "null"]
+        year:
+          type: ["string", "null"]
+        medium:
+          type: ["string", "null"]
+        dimensions:
+          type: ["string", "null"]
         xPosition:
           type: number
         yPosition:
@@ -714,6 +720,12 @@ components:
           type: string
         artistName:
           type: string
+        year:
+          type: string
+        medium:
+          type: string
+        dimensions:
+          type: string
         xPosition:
           type: number
         yPosition:
@@ -739,6 +751,12 @@ components:
         imageUrl:
           type: string
         artistName:
+          type: string
+        year:
+          type: string
+        medium:
+          type: string
+        dimensions:
           type: string
         xPosition:
           type: number
