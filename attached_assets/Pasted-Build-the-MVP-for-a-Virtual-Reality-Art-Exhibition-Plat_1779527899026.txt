@@ -1,0 +1,211 @@
+Build the MVP for a Virtual Reality Art Exhibition Platform based on this roadmap.
+
+Use:
+
+Frontend: React + Vite + TailwindCSS + React Three Fiber + Three.js + React Router
+
+Backend: Node.js + Express
+
+Database/Auth/Storage: Supabase PostgreSQL + Supabase Storage + JWT auth
+
+Hosting/dev: Replit-compatible setup
+
+Goal:
+
+Artists can register/login, create a profile, create galleries, upload artworks, place artworks inside a 3D virtual gallery room, customize basic room appearance, and publish a public gallery link.
+
+Visitors can browse public galleries, enter a 3D room, walk around with keyboard/mouse controls, and click artwork to view details.
+
+Build MVP first, clean and scalable.
+
+Create this structure:
+
+root/
+
+├── client/
+
+│   └── src/
+
+│       ├── components/
+
+│       ├── pages/
+
+│       ├── layouts/
+
+│       ├── context/
+
+│       ├── services/
+
+│       ├── three/
+
+│       └── styles/
+
+├── server/
+
+│   ├── config/
+
+│   ├── controllers/
+
+│   ├── middleware/
+
+│   ├── routes/
+
+│   ├── services/
+
+│   └── utils/
+
+└── shared/
+
+MVP features:
+
+1. Authentication
+
+- Register
+
+- Login
+
+- JWT protected routes
+
+- Password hashing with bcrypt
+
+2. Artist Dashboard
+
+- View profile
+
+- Edit profile
+
+- View created galleries
+
+3. Galleries
+
+- Create gallery
+
+- Edit gallery
+
+- Delete gallery
+
+- Publish/unpublish gallery
+
+- Public gallery slug link
+
+4. Artworks
+
+- Upload artwork image
+
+- Store image in Supabase Storage
+
+- Save artwork metadata
+
+- Title, description, image URL
+
+- Position fields: x, y, z
+
+- Rotation and scale fields
+
+5. 3D Gallery
+
+- Render basic 3D room using React Three Fiber
+
+- Floor, walls, lighting
+
+- Display uploaded artworks as framed images on walls
+
+- Keyboard/mouse movement controls
+
+- Click artwork to open details modal
+
+6. Public Visitor Pages
+
+- Browse public galleries
+
+- Enter public 3D gallery by slug
+
+Database schema:
+
+users:
+
+id, email, password_hash, username unique, created_at
+
+profiles:
+
+id, user_id, display_name, bio, avatar_url
+
+galleries:
+
+id, user_id, title, description, room_theme, published, slug, created_at
+
+artworks:
+
+id, gallery_id, title, description, image_url, artist_name, x_position, y_position, z_position, rotation, scale, created_at
+
+Backend API routes:
+
+POST /api/auth/register
+
+POST /api/auth/login
+
+GET /api/profile
+
+PUT /api/profile
+
+POST /api/galleries
+
+GET /api/galleries
+
+GET /api/galleries/:id
+
+PUT /api/galleries/:id
+
+DELETE /api/galleries/:id
+
+GET /api/public/galleries
+
+GET /api/public/galleries/:slug
+
+POST /api/artworks/upload
+
+GET /api/artworks/gallery/:galleryId
+
+PUT /api/artworks/:id
+
+DELETE /api/artworks/:id
+
+Frontend pages:
+
+/
+
+/login
+
+/register
+
+/dashboard
+
+/dashboard/profile
+
+/dashboard/galleries
+
+/dashboard/galleries/new
+
+/dashboard/galleries/:id/edit
+
+/galleries
+
+/gallery/:slug
+
+Important:
+
+- Make the UI dark, futuristic, black/purple, matching the “Overflow Outcast” cyber gallery concept.
+
+- Use TailwindCSS.
+
+- Make reusable components.
+
+- Add loading states and error messages.
+
+- Use .env files for Supabase URL, Supabase key, JWT secret, and API URL.
+
+- Make the app runnable in Replit with clear start scripts.
+
+- Include setup instructions in README.md.
+
+- Generate complete working code, not just explanations.
