@@ -1,8 +1,10 @@
-import { Component, useCallback, useState, type ReactNode } from "react";
+import { Component, useCallback, useRef, useState, type ReactNode } from "react";
 import { Canvas } from "@react-three/fiber";
 import { GalleryScene } from "./GalleryScene";
 import { ArtworkDetailModal } from "./ArtworkDetailModal";
+import { VirtualJoystick, type JoystickState } from "./VirtualJoystick";
 import type { ArtworkData } from "./ArtworkFrame";
+import { useIsMobile } from "../../hooks/use-mobile";
 
 type GalleryRoomData = {
   artworks: ArtworkData[];
@@ -63,10 +65,16 @@ function WebGLUnsupportedFallback() {
 }
 
 export function GalleryRoom({ gallery }: GalleryRoomProps) {
+  const isMobile = useIsMobile();
+
+  // On mobile, controls are always "active" — no pointer lock required
   const [isLocked, setIsLocked] = useState(false);
   const [selectedArtwork, setSelectedArtwork] = useState<ArtworkData | null>(
     null
   );
+
+  // Shared joystick state: read by TouchControls inside Canvas
+  const joystickRef = useRef<JoystickState>({ dx: 0, dy: 0 });
 
   const handleLock = useCallback(() => setIsLocked(true), []);
   const handleUnlock = useCallback(() => setIsLocked(false), []);
@@ -74,9 +82,22 @@ export function GalleryRoom({ gallery }: GalleryRoomProps) {
     setSelectedArtwork(artwork);
     setIsLocked(false);
   }, []);
-  const handleModalClose = useCallback(() => setSelectedArtwork(null), []);
+  const handleModalClose = useCallback(() => {
+    setSelectedArtwork(null);
+    // On mobile, re-activate controls immediately after closing modal
+  }, []);
+
+  // On mobile, controls activate on first interaction (canvas touch)
+  const handleMobileActivate = useCallback(() => {
+    if (isMobile && !isLocked && !selectedArtwork) {
+      setIsLocked(true);
+    }
+  }, [isMobile, isLocked, selectedArtwork]);
 
   const webglSupported = checkWebGLSupport();
+
+  // Mobile: controls are active as soon as no modal is open
+  const mobileActive = isMobile && !selectedArtwork;
 
   return (
     <div className="absolute inset-0 bg-[#0d0b09]">
@@ -86,11 +107,14 @@ export function GalleryRoom({ gallery }: GalleryRoomProps) {
             shadows
             camera={{ position: [0, 0, 7.5], fov: 75, near: 0.1, far: 100 }}
             style={{ display: "block", width: "100%", height: "100%" }}
+            onTouchStart={handleMobileActivate}
           >
             <GalleryScene
               artworks={gallery.artworks}
               roomTheme={gallery.roomTheme}
-              isLocked={isLocked}
+              isLocked={isMobile ? mobileActive : isLocked}
+              isMobile={isMobile}
+              joystickRef={joystickRef}
               onLock={handleLock}
               onUnlock={handleUnlock}
               onArtworkSelect={handleArtworkSelect}
@@ -101,8 +125,8 @@ export function GalleryRoom({ gallery }: GalleryRoomProps) {
         <WebGLUnsupportedFallback />
       )}
 
-      {/* Click-to-enter overlay (shown when not locked and no modal) */}
-      {webglSupported && !isLocked && !selectedArtwork && (
+      {/* ── DESKTOP: Click-to-enter overlay (shown when not locked and no modal) ── */}
+      {webglSupported && !isMobile && !isLocked && !selectedArtwork && (
         <div className="absolute inset-0 pointer-events-none flex items-end justify-center pb-12">
           <div className="pointer-events-auto text-center px-8 py-5 bg-black/60 backdrop-blur-sm border border-white/15">
             <p className="font-mono text-xs tracking-[0.25em] text-white/50 mb-1">
@@ -118,8 +142,8 @@ export function GalleryRoom({ gallery }: GalleryRoomProps) {
         </div>
       )}
 
-      {/* HUD crosshair + hint (shown while pointer is locked) */}
-      {webglSupported && isLocked && (
+      {/* ── DESKTOP: HUD crosshair + hint (shown while pointer is locked) ── */}
+      {webglSupported && !isMobile && isLocked && (
         <>
           <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
             <div className="w-1.5 h-1.5 rounded-full bg-white/60 ring-1 ring-black/40" />
@@ -132,9 +156,52 @@ export function GalleryRoom({ gallery }: GalleryRoomProps) {
         </>
       )}
 
+      {/* ── MOBILE: hint shown before first touch ── */}
+      {webglSupported && isMobile && !mobileActive && !selectedArtwork && (
+        <div className="absolute inset-0 pointer-events-none flex items-end justify-center pb-12">
+          <div className="text-center px-8 py-5 bg-black/60 backdrop-blur-sm border border-white/15">
+            <p className="font-mono text-xs tracking-[0.25em] text-white/50 mb-1">
+              VIRTUAL ART SPACE
+            </p>
+            <p className="font-mono text-[11px] tracking-widest text-[#c8a45a]">
+              TAP TO START · DRAG TO LOOK
+            </p>
+            <p className="font-mono text-[10px] tracking-widest text-white/25 mt-1">
+              USE JOYSTICK TO MOVE · TAP CENTRE TO INSPECT
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ── MOBILE: crosshair + joystick (shown when active) ── */}
+      {webglSupported && isMobile && mobileActive && (
+        <>
+          {/* Crosshair */}
+          <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+            <div className="w-1.5 h-1.5 rounded-full bg-white/60 ring-1 ring-black/40" />
+          </div>
+
+          {/* Virtual joystick — bottom left */}
+          <div
+            className="absolute bottom-8 left-8"
+            data-joystick
+            style={{ zIndex: 10 }}
+          >
+            <VirtualJoystick stateRef={joystickRef} />
+          </div>
+
+          {/* Hint — bottom right */}
+          <div className="absolute bottom-9 right-6 pointer-events-none">
+            <p className="font-mono text-[10px] tracking-widest text-white/25">
+              TAP CENTRE TO INSPECT
+            </p>
+          </div>
+        </>
+      )}
+
       {/* Empty gallery notice */}
       {webglSupported &&
-        !isLocked &&
+        !(isMobile ? mobileActive : isLocked) &&
         !selectedArtwork &&
         gallery.artworks.length === 0 && (
           <div className="absolute inset-0 pointer-events-none flex items-center justify-center">

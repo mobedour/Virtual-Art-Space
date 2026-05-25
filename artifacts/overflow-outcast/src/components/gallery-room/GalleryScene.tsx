@@ -4,6 +4,8 @@ import { PointerLockControls } from "@react-three/drei";
 import * as THREE from "three";
 import { ArtworkFrame, type ArtworkData } from "./ArtworkFrame";
 import { getTheme } from "./theme-config";
+import { TouchControls } from "./TouchControls";
+import type { JoystickState } from "./VirtualJoystick";
 
 // Room half-dimensions (room spans -HALF to +HALF on each axis)
 const HALF_W = 9;
@@ -150,6 +152,8 @@ interface GallerySceneProps {
   artworks: ArtworkData[];
   roomTheme: string;
   isLocked: boolean;
+  isMobile: boolean;
+  joystickRef: React.RefObject<JoystickState>;
   onLock: () => void;
   onUnlock: () => void;
   onArtworkSelect: (artwork: ArtworkData) => void;
@@ -159,6 +163,8 @@ export function GalleryScene({
   artworks,
   roomTheme,
   isLocked,
+  isMobile,
+  joystickRef,
   onLock,
   onUnlock,
   onArtworkSelect,
@@ -184,8 +190,9 @@ export function GalleryScene({
     camera.position.set(0, EYE_Y, HALF_D - 1.5);
   }, [camera]);
 
-  // Attach lock/unlock events to PointerLockControls
+  // Attach lock/unlock events to PointerLockControls (desktop only)
   useEffect(() => {
+    if (isMobile) return;
     const controls = controlsRef.current;
     if (!controls) return;
     const handleLock = () => onLockRef.current();
@@ -196,11 +203,10 @@ export function GalleryScene({
       controls.removeEventListener("lock", handleLock);
       controls.removeEventListener("unlock", handleUnlock);
     };
-  }, []);
+  }, [isMobile]);
 
-  // Center-raycast click: fire when pointer is locked
-  const handleCanvasClick = useCallback(() => {
-    if (!document.pointerLockElement) return;
+  // Center-raycast: fires on desktop click (when pointer locked) or mobile tap
+  const fireCenterRaycast = useCallback(() => {
     const raycaster = new THREE.Raycaster();
     raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
     const intersects = raycaster.intersectObjects(scene.children, true);
@@ -212,7 +218,7 @@ export function GalleryScene({
             (a) => a.id === obj!.userData.artworkId
           );
           if (artwork) {
-            controlsRef.current?.unlock();
+            if (!isMobile) controlsRef.current?.unlock();
             onSelectRef.current(artwork);
           }
           return;
@@ -220,13 +226,19 @@ export function GalleryScene({
         obj = obj.parent;
       }
     }
-  }, [camera, scene]);
+  }, [camera, scene, isMobile]);
 
+  // Desktop: canvas click fires center raycast when pointer is locked
   useEffect(() => {
+    if (isMobile) return;
     const canvas = gl.domElement;
-    canvas.addEventListener("click", handleCanvasClick);
-    return () => canvas.removeEventListener("click", handleCanvasClick);
-  }, [gl, handleCanvasClick]);
+    const handleClick = () => {
+      if (!document.pointerLockElement) return;
+      fireCenterRaycast();
+    };
+    canvas.addEventListener("click", handleClick);
+    return () => canvas.removeEventListener("click", handleClick);
+  }, [gl, isMobile, fireCenterRaycast]);
 
   const fogColor = new THREE.Color(theme.fogColor);
 
@@ -336,14 +348,24 @@ export function GalleryScene({
           frameColor={theme.frameColor}
           labelColor={theme.labelColor}
           onSelect={(a) => {
-            controlsRef.current?.unlock();
+            if (!isMobile) controlsRef.current?.unlock();
             onSelectRef.current(a);
           }}
         />
       ))}
 
-      <PointerLockControls ref={controlsRef} makeDefault />
-      <MovementController enabled={isLocked} />
+      {/* Desktop controls */}
+      {!isMobile && <PointerLockControls ref={controlsRef} makeDefault />}
+      {!isMobile && <MovementController enabled={isLocked} />}
+
+      {/* Mobile controls */}
+      {isMobile && (
+        <TouchControls
+          enabled={isLocked}
+          joystickRef={joystickRef}
+          onArtworkTap={fireCenterRaycast}
+        />
+      )}
     </>
   );
 }
