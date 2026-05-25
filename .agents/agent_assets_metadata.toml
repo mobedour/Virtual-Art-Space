@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "StT9DJomcx_2wNxhuCRJ2"
+uri = "file://artifacts/overflow-outcast/PROJECT_DELIVERABLES.md"
+type = "text"
+title = "Project Deliverables & Cost Breakdown"
