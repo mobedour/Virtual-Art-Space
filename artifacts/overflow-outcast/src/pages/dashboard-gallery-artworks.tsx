@@ -75,19 +75,39 @@ const SLOT_POSITIONS = [-6, -3, 0, 3, 6];
 const WALL_NAMES = ["Back", "Right", "Front", "Left"] as const;
 const SLOT_LABELS = ["Far Left", "Left", "Center", "Right", "Far Right"] as const;
 
-function computeArtworkPosition(wallId: number, wallSlot: number) {
+const HANG_HEIGHT_OPTIONS = [
+  { label: "Low", value: 0.2 },
+  { label: "Eye Level", value: 0.8 },
+  { label: "High", value: 1.4 },
+  { label: "Very High", value: 2.0 },
+] as const;
+
+function detectHeightFromY(y: number): number {
+  let closest = 0;
+  let minDist = Infinity;
+  HANG_HEIGHT_OPTIONS.forEach((opt, i) => {
+    const dist = Math.abs(y - opt.value);
+    if (dist < minDist) {
+      minDist = dist;
+      closest = i;
+    }
+  });
+  return closest;
+}
+
+function computeArtworkPosition(wallId: number, wallSlot: number, hangY: number) {
   const along = SLOT_POSITIONS[wallSlot - 1];
   switch (wallId) {
     case 0:
-      return { x: along, y: HANG_Y, z: -(HALF_D - WALL_INSET), rotation: 0 };
+      return { x: along, y: hangY, z: -(HALF_D - WALL_INSET), rotation: 0 };
     case 1:
-      return { x: HALF_W - WALL_INSET, y: HANG_Y, z: along, rotation: -Math.PI / 2 };
+      return { x: HALF_W - WALL_INSET, y: hangY, z: along, rotation: -Math.PI / 2 };
     case 2:
-      return { x: along, y: HANG_Y, z: HALF_D - WALL_INSET, rotation: Math.PI };
+      return { x: along, y: hangY, z: HALF_D - WALL_INSET, rotation: Math.PI };
     case 3:
-      return { x: -(HALF_W - WALL_INSET), y: HANG_Y, z: along, rotation: Math.PI / 2 };
+      return { x: -(HALF_W - WALL_INSET), y: hangY, z: along, rotation: Math.PI / 2 };
     default:
-      return { x: 0, y: HANG_Y, z: -(HALF_D - WALL_INSET), rotation: 0 };
+      return { x: 0, y: hangY, z: -(HALF_D - WALL_INSET), rotation: 0 };
   }
 }
 
@@ -256,6 +276,7 @@ const formSchema = z.object({
   placementEnabled: z.boolean().default(false),
   wallId: z.number().int().min(0).max(3).default(0),
   wallSlot: z.number().int().min(1).max(5).default(3),
+  hangHeightIndex: z.number().int().min(0).max(3).default(1),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -294,21 +315,25 @@ function ArtworkFormDialog({
       placementEnabled: false,
       wallId: 0,
       wallSlot: 3,
+      hangHeightIndex: 1,
     },
   });
 
   const watchPlacementEnabled = form.watch("placementEnabled");
   const watchWallId = form.watch("wallId");
   const watchWallSlot = form.watch("wallSlot");
+  const watchHangHeightIndex = form.watch("hangHeightIndex");
 
   useEffect(() => {
     if (open) {
       if (artwork) {
         let wallId = 0;
         let wallSlot = 3;
+        let hangHeightIndex = 1;
         if (artwork.isManuallyPlaced) {
           wallId = detectWallFromRotation(artwork.rotation);
           wallSlot = detectSlotFromPosition(wallId, artwork.xPosition, artwork.zPosition);
+          hangHeightIndex = detectHeightFromY(artwork.yPosition);
         }
         form.reset({
           title: artwork.title,
@@ -321,6 +346,7 @@ function ArtworkFormDialog({
           placementEnabled: artwork.isManuallyPlaced,
           wallId,
           wallSlot,
+          hangHeightIndex,
         });
         setImagePreview(artwork.imageUrl);
       } else {
@@ -335,6 +361,7 @@ function ArtworkFormDialog({
           placementEnabled: false,
           wallId: 0,
           wallSlot: 3,
+          hangHeightIndex: 1,
         });
         setImagePreview("");
       }
@@ -361,7 +388,8 @@ function ArtworkFormDialog({
 
     const placementData = values.placementEnabled
       ? (() => {
-          const pos = computeArtworkPosition(values.wallId, values.wallSlot);
+          const hangY = HANG_HEIGHT_OPTIONS[values.hangHeightIndex].value;
+          const pos = computeArtworkPosition(values.wallId, values.wallSlot, hangY);
           return {
             xPosition: pos.x,
             yPosition: pos.y,
@@ -663,7 +691,7 @@ function ArtworkFormDialog({
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-[10px] text-muted-foreground tracking-widest">
                       {watchPlacementEnabled
-                        ? `${WALL_NAMES[watchWallId]} · ${SLOT_LABELS[watchWallSlot - 1]}`
+                        ? `${WALL_NAMES[watchWallId]} · ${SLOT_LABELS[watchWallSlot - 1]} · ${HANG_HEIGHT_OPTIONS[watchHangHeightIndex].label}`
                         : "AUTO"}
                     </span>
                     <div
@@ -734,6 +762,26 @@ function ArtworkFormDialog({
                           <span className="font-mono text-[9px] text-muted-foreground/60">
                             Right
                           </span>
+                        </div>
+
+                        <p className="font-mono text-[10px] tracking-widest text-muted-foreground pt-1">
+                          HEIGHT
+                        </p>
+                        <div className="grid grid-cols-4 gap-1">
+                          {HANG_HEIGHT_OPTIONS.map((opt, i) => (
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={() => form.setValue("hangHeightIndex", i)}
+                              className={`px-1 py-1.5 font-mono text-[10px] tracking-widest border transition-colors ${
+                                watchHangHeightIndex === i
+                                  ? "border-primary bg-primary/10 text-primary"
+                                  : "border-border/50 text-muted-foreground hover:border-primary/40 hover:text-white"
+                              }`}
+                            >
+                              {opt.label}
+                            </button>
+                          ))}
                         </div>
                       </div>
 
