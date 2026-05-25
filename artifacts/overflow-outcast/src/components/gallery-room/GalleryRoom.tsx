@@ -1,4 +1,4 @@
-import { Component, useCallback, useRef, useState, type ReactNode } from "react";
+import { Component, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Canvas } from "@react-three/fiber";
 import * as THREE from "three";
 import { GalleryScene } from "./GalleryScene";
@@ -67,6 +67,30 @@ function WebGLUnsupportedFallback() {
 
 export function GalleryRoom({ gallery }: GalleryRoomProps) {
   const isMobile = useIsMobile();
+
+  // Suppress the "Pointer lock target must be in an active document" error
+  // that fires when the 3D room runs inside an iframe (e.g. Replit preview).
+  // It is harmless — pointer lock simply doesn't work in iframes by design.
+  useEffect(() => {
+    const handleError = (e: ErrorEvent) => {
+      if (e.message?.toLowerCase().includes("pointer lock")) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+      }
+    };
+    const handleRejection = (e: PromiseRejectionEvent) => {
+      const msg = String(e.reason?.message ?? e.reason ?? "");
+      if (msg.toLowerCase().includes("pointer lock")) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener("error", handleError, true);
+    window.addEventListener("unhandledrejection", handleRejection);
+    return () => {
+      window.removeEventListener("error", handleError, true);
+      window.removeEventListener("unhandledrejection", handleRejection);
+    };
+  }, []);
 
   // On mobile, controls are always "active" — no pointer lock required
   const [isLocked, setIsLocked] = useState(false);
