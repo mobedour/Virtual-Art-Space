@@ -9,6 +9,7 @@ import {
   useUpdateArtwork,
   useDeleteArtwork,
   useGetGallery,
+  getGetGalleryQueryKey,
   getListArtworksQueryKey,
   getGetDashboardStatsQueryKey,
 } from "@workspace/api-client-react";
@@ -447,11 +448,11 @@ export default function DashboardGalleryArtworks() {
   }, [user, isAuthLoading, setLocation]);
 
   const { data: gallery, isLoading: isGalleryLoading } = useGetGallery(galleryId, {
-    query: { enabled: !!user && galleryId > 0 },
+    query: { queryKey: getGetGalleryQueryKey(galleryId), enabled: !!user && galleryId > 0 },
   });
 
   const { data: artworks, isLoading: isArtworksLoading } = useListArtworks(galleryId, {
-    query: { enabled: !!user && galleryId > 0 },
+    query: { queryKey: getListArtworksQueryKey(galleryId), enabled: !!user && galleryId > 0 },
   });
 
   const deleteMutation = useDeleteArtwork();

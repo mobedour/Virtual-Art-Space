@@ -24,7 +24,7 @@ export default function Galleries() {
   }, [user, isAuthLoading, setLocation]);
 
   const { data: galleries, isLoading: isGalleriesLoading } = useListGalleries({
-    query: { enabled: !!user }
+    query: { queryKey: getListGalleriesQueryKey(), enabled: !!user }
   });
 
   const togglePublish = useToggleGalleryPublish();

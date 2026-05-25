@@ -1,5 +1,5 @@
 import { Link, useParams } from "wouter";
-import { useGetPublicGallery } from "@workspace/api-client-react";
+import { useGetPublicGallery, getGetPublicGalleryQueryKey } from "@workspace/api-client-react";
 import { PublicLayout } from "@/components/public-layout";
 import { Button } from "@/components/ui/button";
 import { Loader2, ArrowLeft } from "lucide-react";
@@ -13,7 +13,7 @@ export default function PublicGalleryDetail() {
     isLoading,
     error,
   } = useGetPublicGallery(slug || "", {
-    query: { enabled: !!slug },
+    query: { queryKey: getGetPublicGalleryQueryKey(slug || ""), enabled: !!slug },
   });
 
   if (isLoading) {

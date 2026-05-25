@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { useGetDashboardStats } from "@workspace/api-client-react";
+import { useGetDashboardStats, getGetDashboardStatsQueryKey } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
 import { DashboardLayout } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,6 +19,7 @@ export default function Dashboard() {
 
   const { data: stats, isLoading: isStatsLoading } = useGetDashboardStats({
     query: {
+      queryKey: getGetDashboardStatsQueryKey(),
       enabled: !!user,
     }
   });

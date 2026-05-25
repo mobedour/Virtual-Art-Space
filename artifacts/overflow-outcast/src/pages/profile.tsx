@@ -44,6 +44,7 @@ export default function Profile() {
 
   const { data: profile, isLoading: isProfileLoading } = useGetProfile({
     query: {
+      queryKey: getGetProfileQueryKey(),
       enabled: !!user,
     }
   });

@@ -57,6 +57,7 @@ export default function GalleryForm() {
 
   const { data: gallery, isLoading: isGalleryLoading } = useGetGallery(galleryId, {
     query: {
+      queryKey: getGetGalleryQueryKey(galleryId),
       enabled: isEdit && !!user,
     }
   });
