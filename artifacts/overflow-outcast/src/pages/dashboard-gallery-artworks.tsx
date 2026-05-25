@@ -199,6 +199,7 @@ function InteractiveFloorPlan({
   activeWallId,
   activeSlot,
   placementEnabled,
+  hasConflict,
   imageUrl,
   onPlace,
 }: {
@@ -206,6 +207,7 @@ function InteractiveFloorPlan({
   activeWallId: number;
   activeSlot: number;
   placementEnabled: boolean;
+  hasConflict: boolean;
   imageUrl?: string;
   onPlace: (wallId: number, slot: number) => void;
 }) {
@@ -365,11 +367,24 @@ function InteractiveFloorPlan({
 
         {dots.map((dot, i) => {
           const { cx, cy } = slotSvgPos(dot.wallId, dot.slotIndex);
-          return <circle key={i} cx={cx} cy={cy} r={4} fill={dot.isManual ? "#92400e" : "#44403c"} stroke="#78716c" strokeWidth={1} />;
+          const isConflicting = placementEnabled && dot.wallId === activeWallId && dot.slotIndex === activeSlot - 1;
+          return (
+            <circle
+              key={i} cx={cx} cy={cy} r={4}
+              fill={isConflicting ? "#7f1d1d" : dot.isManual ? "#92400e" : "#44403c"}
+              stroke={isConflicting ? "#ef4444" : "#78716c"}
+              strokeWidth={isConflicting ? 1.5 : 1}
+            />
+          );
         })}
 
         {activeDot && (
-          <circle cx={activeDot.cx} cy={activeDot.cy} r={5} fill="#d97706" stroke="#fbbf24" strokeWidth={1.5} />
+          <circle
+            cx={activeDot.cx} cy={activeDot.cy} r={5}
+            fill={hasConflict ? "#dc2626" : "#d97706"}
+            stroke={hasConflict ? "#fca5a5" : "#fbbf24"}
+            strokeWidth={1.5}
+          />
         )}
 
         <text x={FLOOR_SVG_SIZE / 2} y={FLOOR_PAD - 10} textAnchor="middle" fontSize="8" fill="#7a6a4a" fontFamily="monospace">BACK</text>
@@ -618,6 +633,12 @@ function ArtworkFormDialog({
     })
     .filter((d): d is PlacedArtworkDot => d !== null);
 
+  const hasSlotConflict =
+    watchPlacementEnabled &&
+    floorPlanDots.some(
+      (d) => d.wallId === watchWallId && d.slotIndex === watchWallSlot - 1
+    );
+
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="bg-card border-border/50 rounded-none max-w-xl w-full max-h-[90vh] flex flex-col overflow-hidden">
@@ -860,6 +881,7 @@ function ArtworkFormDialog({
                         activeWallId={watchWallId}
                         activeSlot={watchWallSlot}
                         placementEnabled={watchPlacementEnabled}
+                        hasConflict={hasSlotConflict}
                         imageUrl={imagePreview || undefined}
                         onPlace={(wallId, slot) => {
                           form.setValue("wallId", wallId);
@@ -943,6 +965,14 @@ function ArtworkFormDialog({
                         <span className="font-mono text-[9px] text-muted-foreground/60">Center</span>
                         <span className="font-mono text-[9px] text-muted-foreground/60">Right</span>
                       </div>
+                      {hasSlotConflict && (
+                        <div className="flex items-center gap-1.5 mt-1 px-2 py-1.5 bg-red-950/50 border border-red-800/60">
+                          <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
+                          <span className="font-mono text-[10px] text-red-400 tracking-wide">
+                            Another artwork is already here
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
