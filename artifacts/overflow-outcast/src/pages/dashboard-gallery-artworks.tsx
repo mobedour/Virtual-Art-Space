@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useParams } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -141,127 +141,271 @@ type PlacedArtworkDot = {
   isManual: boolean;
 };
 
-function FloorPlanPreview({
+const FLOOR_PAD = 32;
+const FLOOR_SVG_SIZE = 220;
+const FLOOR_INNER = FLOOR_SVG_SIZE - FLOOR_PAD * 2;
+const WALL_HIT = 16;
+
+function slotSvgPos(wallId: number, slotIdx: number): { cx: number; cy: number } {
+  const t = (SLOT_POSITIONS[slotIdx] + 9) / 18;
+  const pos = FLOOR_PAD + t * FLOOR_INNER;
+  switch (wallId) {
+    case 0: return { cx: pos, cy: FLOOR_PAD };
+    case 1: return { cx: FLOOR_PAD + FLOOR_INNER, cy: pos };
+    case 2: return { cx: pos, cy: FLOOR_PAD + FLOOR_INNER };
+    case 3: return { cx: FLOOR_PAD, cy: pos };
+    default: return { cx: FLOOR_SVG_SIZE / 2, cy: FLOOR_SVG_SIZE / 2 };
+  }
+}
+
+function svgPointToPlacement(svgX: number, svgY: number): { wallId: number; slot: number } | null {
+  const L = FLOOR_PAD;
+  const R = FLOOR_PAD + FLOOR_INNER;
+  const T = FLOOR_PAD;
+  const B = FLOOR_PAD + FLOOR_INNER;
+
+  const dTop = Math.abs(svgY - T);
+  const dBottom = Math.abs(svgY - B);
+  const dLeft = Math.abs(svgX - L);
+  const dRight = Math.abs(svgX - R);
+
+  let wallId: number | null = null;
+  let t = 0;
+
+  if (svgX >= L && svgX <= R && dTop <= WALL_HIT && dTop <= dBottom) {
+    wallId = 0; t = (svgX - L) / FLOOR_INNER;
+  } else if (svgY >= T && svgY <= B && dRight <= WALL_HIT && dRight <= dLeft) {
+    wallId = 1; t = (svgY - T) / FLOOR_INNER;
+  } else if (svgX >= L && svgX <= R && dBottom <= WALL_HIT && dBottom <= dTop) {
+    wallId = 2; t = (svgX - L) / FLOOR_INNER;
+  } else if (svgY >= T && svgY <= B && dLeft <= WALL_HIT && dLeft <= dRight) {
+    wallId = 3; t = (svgY - T) / FLOOR_INNER;
+  } else {
+    return null;
+  }
+
+  const along = (t - 0.5) * 18;
+  let slot = 3;
+  let minDist = Infinity;
+  SLOT_POSITIONS.forEach((pos, i) => {
+    const dist = Math.abs(along - pos);
+    if (dist < minDist) { minDist = dist; slot = i + 1; }
+  });
+  return { wallId, slot };
+}
+
+function InteractiveFloorPlan({
   dots,
   activeWallId,
   activeSlot,
+  placementEnabled,
+  imageUrl,
+  onPlace,
 }: {
   dots: PlacedArtworkDot[];
   activeWallId: number;
   activeSlot: number;
+  placementEnabled: boolean;
+  imageUrl?: string;
+  onPlace: (wallId: number, slot: number) => void;
 }) {
-  const PAD = 28;
-  const SVG_SIZE = 200;
-  const INNER = SVG_SIZE - PAD * 2;
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [hoverWall, setHoverWall] = useState<number | null>(null);
+  const [hoverSlot, setHoverSlot] = useState<number | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragPos, setDragPos] = useState({ x: 0, y: 0 });
+  const dragActiveRef = useRef(false);
 
-  const toSvgAlongBack = (slotIdx: number) =>
-    PAD + ((SLOT_POSITIONS[slotIdx] + 9) / 18) * INNER;
-  const toSvgAlongSide = (slotIdx: number) =>
-    PAD + ((SLOT_POSITIONS[slotIdx] + 9) / 18) * INNER;
+  function screenToSvg(clientX: number, clientY: number): { x: number; y: number } | null {
+    if (!svgRef.current) return null;
+    const rect = svgRef.current.getBoundingClientRect();
+    const scaleX = FLOOR_SVG_SIZE / rect.width;
+    const scaleY = FLOOR_SVG_SIZE / rect.height;
+    return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
+  }
 
-  const getDotCoords = (wallId: number, slotIdx: number) => {
-    switch (wallId) {
-      case 0:
-        return { cx: toSvgAlongBack(slotIdx), cy: PAD + 3 };
-      case 1:
-        return { cx: PAD + INNER - 3, cy: toSvgAlongSide(slotIdx) };
-      case 2:
-        return { cx: toSvgAlongBack(slotIdx), cy: PAD + INNER - 3 };
-      case 3:
-        return { cx: PAD + 3, cy: toSvgAlongSide(slotIdx) };
-      default:
-        return { cx: SVG_SIZE / 2, cy: SVG_SIZE / 2 };
+  const updateHoverFromClient = useCallback((clientX: number, clientY: number) => {
+    const coords = screenToSvg(clientX, clientY);
+    if (!coords) { setHoverWall(null); setHoverSlot(null); return; }
+    const p = svgPointToPlacement(coords.x, coords.y);
+    setHoverWall(p?.wallId ?? null);
+    setHoverSlot(p?.slot ?? null);
+  }, []);
+
+  function handleSvgClick(e: React.MouseEvent<SVGSVGElement>) {
+    if (isDragging) return;
+    const coords = screenToSvg(e.clientX, e.clientY);
+    if (!coords) return;
+    const p = svgPointToPlacement(coords.x, coords.y);
+    if (p) onPlace(p.wallId, p.slot);
+  }
+
+  function handleSvgPointerMove(e: React.PointerEvent<SVGSVGElement>) {
+    if (dragActiveRef.current) return;
+    updateHoverFromClient(e.clientX, e.clientY);
+  }
+
+  function handleThumbnailPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    dragActiveRef.current = true;
+    setIsDragging(true);
+    setDragPos({ x: e.clientX, y: e.clientY });
+    updateHoverFromClient(e.clientX, e.clientY);
+  }
+
+  function handleThumbnailPointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (!dragActiveRef.current) return;
+    setDragPos({ x: e.clientX, y: e.clientY });
+    updateHoverFromClient(e.clientX, e.clientY);
+  }
+
+  function handleThumbnailPointerUp(e: React.PointerEvent<HTMLDivElement>) {
+    if (!dragActiveRef.current) return;
+    dragActiveRef.current = false;
+    setIsDragging(false);
+    const coords = screenToSvg(e.clientX, e.clientY);
+    if (coords) {
+      const p = svgPointToPlacement(coords.x, coords.y);
+      if (p) onPlace(p.wallId, p.slot);
     }
-  };
+    setHoverWall(null);
+    setHoverSlot(null);
+  }
 
-  const activeDot = getDotCoords(activeWallId, activeSlot - 1);
+  const activeDot = placementEnabled ? slotSvgPos(activeWallId, activeSlot - 1) : null;
 
   return (
-    <svg
-      width={SVG_SIZE}
-      height={SVG_SIZE}
-      className="w-full max-w-[200px]"
-      viewBox={`0 0 ${SVG_SIZE} ${SVG_SIZE}`}
-    >
-      <rect
-        x={PAD}
-        y={PAD}
-        width={INNER}
-        height={INNER}
-        fill="#1a1714"
-        stroke="#3d3020"
-        strokeWidth={1.5}
-      />
+    <div className="flex flex-col items-center gap-2 w-full">
+      {imageUrl && (
+        <div className="flex items-center gap-2 w-full">
+          <div
+            className={`relative select-none border-2 transition-all ${
+              isDragging
+                ? "border-primary shadow-[0_0_8px_rgba(217,119,6,0.5)] opacity-80 cursor-grabbing"
+                : "border-border/50 hover:border-primary/60 cursor-grab"
+            }`}
+            style={{ width: 52, height: 40, touchAction: "none", flexShrink: 0 }}
+            onPointerDown={handleThumbnailPointerDown}
+            onPointerMove={handleThumbnailPointerMove}
+            onPointerUp={handleThumbnailPointerUp}
+            onPointerCancel={handleThumbnailPointerUp}
+          >
+            <img src={imageUrl} alt="Drag to place" className="w-full h-full object-cover pointer-events-none" />
+            <div className="absolute inset-x-0 bottom-0 flex justify-center pointer-events-none">
+              <span className="font-mono text-[7px] text-white/80 tracking-wider bg-black/60 px-1 py-px">
+                DRAG
+              </span>
+            </div>
+          </div>
+          <span className="font-mono text-[9px] text-muted-foreground/60 leading-tight">
+            Drag onto a wall,<br />or click the floor plan
+          </span>
+        </div>
+      )}
 
-      <rect x={PAD} y={PAD - 2} width={INNER} height={4} fill="#2a2016" />
-      <rect x={PAD} y={PAD + INNER - 2} width={INNER} height={4} fill="#2a2016" />
-      <rect x={PAD - 2} y={PAD} width={4} height={INNER} fill="#2a2016" />
-      <rect x={PAD + INNER - 2} y={PAD} width={4} height={INNER} fill="#2a2016" />
-
-      <text x={SVG_SIZE / 2} y={PAD - 8} textAnchor="middle" fontSize="8" fill="#7a6a4a" fontFamily="monospace">
-        BACK
-      </text>
-      <text x={SVG_SIZE / 2} y={PAD + INNER + 16} textAnchor="middle" fontSize="8" fill="#7a6a4a" fontFamily="monospace">
-        FRONT
-      </text>
-      <text
-        x={PAD - 10}
-        y={SVG_SIZE / 2}
-        textAnchor="middle"
-        fontSize="8"
-        fill="#7a6a4a"
-        fontFamily="monospace"
-        transform={`rotate(-90, ${PAD - 10}, ${SVG_SIZE / 2})`}
+      <svg
+        ref={svgRef}
+        width={FLOOR_SVG_SIZE}
+        height={FLOOR_SVG_SIZE}
+        className="w-full max-w-[220px] cursor-crosshair"
+        viewBox={`0 0 ${FLOOR_SVG_SIZE} ${FLOOR_SVG_SIZE}`}
+        onClick={handleSvgClick}
+        onPointerMove={handleSvgPointerMove}
+        onPointerLeave={() => { if (!dragActiveRef.current) { setHoverWall(null); setHoverSlot(null); } }}
       >
-        LEFT
-      </text>
-      <text
-        x={PAD + INNER + 10}
-        y={SVG_SIZE / 2}
-        textAnchor="middle"
-        fontSize="8"
-        fill="#7a6a4a"
-        fontFamily="monospace"
-        transform={`rotate(90, ${PAD + INNER + 10}, ${SVG_SIZE / 2})`}
-      >
-        RIGHT
-      </text>
+        <rect x={FLOOR_PAD} y={FLOOR_PAD} width={FLOOR_INNER} height={FLOOR_INNER} fill="#1a1714" stroke="#3d3020" strokeWidth={1.5} />
 
-      <circle
-        cx={SVG_SIZE / 2}
-        cy={SVG_SIZE / 2}
-        r={4}
-        fill="none"
-        stroke="#3d3020"
-        strokeWidth={1}
-        strokeDasharray="2,3"
-      />
+        {([0, 1, 2, 3] as const).map((wId) => {
+          const isHov = hoverWall === wId;
+          const fill = isHov ? "#78350f" : "#2a2016";
+          const stroke = isHov ? "#d97706" : "#3d3020";
+          const props: Record<string, number> = {};
+          if (wId === 0) { props.x = FLOOR_PAD; props.y = FLOOR_PAD - 6; props.width = FLOOR_INNER; props.height = 6; }
+          else if (wId === 1) { props.x = FLOOR_PAD + FLOOR_INNER; props.y = FLOOR_PAD; props.width = 6; props.height = FLOOR_INNER; }
+          else if (wId === 2) { props.x = FLOOR_PAD; props.y = FLOOR_PAD + FLOOR_INNER; props.width = FLOOR_INNER; props.height = 6; }
+          else { props.x = FLOOR_PAD - 6; props.y = FLOOR_PAD; props.width = 6; props.height = FLOOR_INNER; }
+          return <rect key={wId} {...props} fill={fill} stroke={stroke} strokeWidth={1} />;
+        })}
 
-      {dots.map((dot, i) => {
-        if (dot.isCurrent) return null;
-        const { cx, cy } = getDotCoords(dot.wallId, dot.slotIndex);
-        return (
+        {([0, 1, 2, 3] as const).map((wId) => {
+          let x, y, w, h;
+          if (wId === 0) { x = FLOOR_PAD; y = FLOOR_PAD - WALL_HIT; w = FLOOR_INNER; h = WALL_HIT * 2; }
+          else if (wId === 1) { x = FLOOR_PAD + FLOOR_INNER - WALL_HIT; y = FLOOR_PAD; w = WALL_HIT * 2; h = FLOOR_INNER; }
+          else if (wId === 2) { x = FLOOR_PAD; y = FLOOR_PAD + FLOOR_INNER - WALL_HIT; w = FLOOR_INNER; h = WALL_HIT * 2; }
+          else { x = FLOOR_PAD - WALL_HIT; y = FLOOR_PAD; w = WALL_HIT * 2; h = FLOOR_INNER; }
+          return <rect key={wId} x={x} y={y} width={w} height={h} fill="transparent" />;
+        })}
+
+        {([0, 1, 2, 3] as const).map((wId) =>
+          SLOT_POSITIONS.map((_, si) => {
+            const { cx, cy } = slotSvgPos(wId, si);
+            const isActiveDot = placementEnabled && wId === activeWallId && si === activeSlot - 1;
+            const isHovTarget = hoverWall === wId && hoverSlot === si + 1;
+            const highlight = isActiveDot || isHovTarget;
+            let x1 = cx, y1 = cy, x2 = cx, y2 = cy;
+            const tickLen = highlight ? 5 : 3;
+            if (wId === 0 || wId === 2) { x1 = cx; y1 = cy - tickLen; x2 = cx; y2 = cy + tickLen; }
+            else { x1 = cx - tickLen; y1 = cy; x2 = cx + tickLen; y2 = cy; }
+            return (
+              <line key={`${wId}-${si}`} x1={x1} y1={y1} x2={x2} y2={y2}
+                stroke={highlight ? "#d97706" : "#4a4030"} strokeWidth={highlight ? 2 : 1} />
+            );
+          })
+        )}
+
+        {hoverWall !== null && hoverSlot !== null &&
+          !(placementEnabled && hoverWall === activeWallId && hoverSlot === activeSlot) && (
           <circle
-            key={i}
-            cx={cx}
-            cy={cy}
-            r={4}
-            fill={dot.isManual ? "#92400e" : "#44403c"}
-            stroke="#78716c"
-            strokeWidth={1}
+            cx={slotSvgPos(hoverWall, hoverSlot - 1).cx}
+            cy={slotSvgPos(hoverWall, hoverSlot - 1).cy}
+            r={5} fill="#78350f" stroke="#d97706" strokeWidth={1.5} strokeDasharray="2,2" opacity={0.9}
           />
-        );
-      })}
+        )}
 
-      <circle
-        cx={activeDot.cx}
-        cy={activeDot.cy}
-        r={5}
-        fill="#d97706"
-        stroke="#fbbf24"
-        strokeWidth={1.5}
-      />
-    </svg>
+        {dots.map((dot, i) => {
+          const { cx, cy } = slotSvgPos(dot.wallId, dot.slotIndex);
+          return <circle key={i} cx={cx} cy={cy} r={4} fill={dot.isManual ? "#92400e" : "#44403c"} stroke="#78716c" strokeWidth={1} />;
+        })}
+
+        {activeDot && (
+          <circle cx={activeDot.cx} cy={activeDot.cy} r={5} fill="#d97706" stroke="#fbbf24" strokeWidth={1.5} />
+        )}
+
+        <text x={FLOOR_SVG_SIZE / 2} y={FLOOR_PAD - 10} textAnchor="middle" fontSize="8" fill="#7a6a4a" fontFamily="monospace">BACK</text>
+        <text x={FLOOR_SVG_SIZE / 2} y={FLOOR_PAD + FLOOR_INNER + 18} textAnchor="middle" fontSize="8" fill="#7a6a4a" fontFamily="monospace">FRONT</text>
+        <text x={FLOOR_PAD - 10} y={FLOOR_SVG_SIZE / 2} textAnchor="middle" fontSize="8" fill="#7a6a4a" fontFamily="monospace" transform={`rotate(-90,${FLOOR_PAD - 10},${FLOOR_SVG_SIZE / 2})`}>LEFT</text>
+        <text x={FLOOR_PAD + FLOOR_INNER + 10} y={FLOOR_SVG_SIZE / 2} textAnchor="middle" fontSize="8" fill="#7a6a4a" fontFamily="monospace" transform={`rotate(90,${FLOOR_PAD + FLOOR_INNER + 10},${FLOOR_SVG_SIZE / 2})`}>RIGHT</text>
+
+        <circle cx={FLOOR_SVG_SIZE / 2} cy={FLOOR_SVG_SIZE / 2} r={4} fill="none" stroke="#3d3020" strokeWidth={1} strokeDasharray="2,3" />
+
+        {hoverWall !== null && hoverSlot !== null && (
+          <text x={FLOOR_SVG_SIZE / 2} y={FLOOR_SVG_SIZE / 2 + 3} textAnchor="middle" fontSize="7" fill="#d97706" fontFamily="monospace">
+            {WALL_NAMES[hoverWall]} · {SLOT_LABELS[hoverSlot - 1]}
+          </text>
+        )}
+      </svg>
+
+      <div className="flex items-center gap-3 font-mono text-[9px] text-muted-foreground/50">
+        <span className="flex items-center gap-1">
+          <span className="w-2.5 h-2.5 rounded-full bg-[#d97706] inline-block" />
+          this artwork
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full bg-[#92400e] inline-block" />
+          placed
+        </span>
+      </div>
+
+      {isDragging && imageUrl && (
+        <div
+          className="fixed pointer-events-none z-[9999] border-2 border-primary shadow-lg shadow-primary/40"
+          style={{ left: dragPos.x - 26, top: dragPos.y - 20, width: 52, height: 40 }}
+        >
+          <img src={imageUrl} alt="" className="w-full h-full object-cover opacity-85 pointer-events-none" />
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -709,19 +853,36 @@ function ArtworkFormDialog({
                 </button>
 
                 {watchPlacementEnabled && (
-                  <div className="px-3 pb-3 pt-0 space-y-4 border-t border-border/40">
-                    <div className="flex gap-3 mt-3">
-                      <div className="flex-1 space-y-2">
+                  <div className="px-3 pb-3 pt-0 space-y-3 border-t border-border/40">
+                    <div className="mt-3">
+                      <InteractiveFloorPlan
+                        dots={floorPlanDots}
+                        activeWallId={watchWallId}
+                        activeSlot={watchWallSlot}
+                        placementEnabled={watchPlacementEnabled}
+                        imageUrl={imagePreview || undefined}
+                        onPlace={(wallId, slot) => {
+                          form.setValue("wallId", wallId);
+                          form.setValue("wallSlot", slot);
+                          if (!watchPlacementEnabled) {
+                            form.setValue("placementEnabled", true);
+                          }
+                        }}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
                         <p className="font-mono text-[10px] tracking-widest text-muted-foreground">
                           WALL
                         </p>
-                        <div className="grid grid-cols-2 gap-1.5">
+                        <div className="grid grid-cols-2 gap-1">
                           {WALL_NAMES.map((name, i) => (
                             <button
                               key={i}
                               type="button"
                               onClick={() => form.setValue("wallId", i)}
-                              className={`px-2 py-1.5 font-mono text-[10px] tracking-widest border transition-colors ${
+                              className={`px-1.5 py-1.5 font-mono text-[10px] tracking-widest border transition-colors ${
                                 watchWallId === i
                                   ? "border-primary bg-primary/10 text-primary"
                                   : "border-border/50 text-muted-foreground hover:border-primary/40 hover:text-white"
@@ -731,43 +892,13 @@ function ArtworkFormDialog({
                             </button>
                           ))}
                         </div>
+                      </div>
 
-                        <p className="font-mono text-[10px] tracking-widest text-muted-foreground pt-1">
-                          POSITION
-                        </p>
-                        <div className="flex gap-1">
-                          {SLOT_LABELS.map((label, i) => (
-                            <button
-                              key={i}
-                              type="button"
-                              title={label}
-                              onClick={() => form.setValue("wallSlot", i + 1)}
-                              className={`flex-1 py-2 font-mono text-[10px] border transition-colors ${
-                                watchWallSlot === i + 1
-                                  ? "border-primary bg-primary/10 text-primary"
-                                  : "border-border/50 text-muted-foreground hover:border-primary/40"
-                              }`}
-                            >
-                              {i + 1}
-                            </button>
-                          ))}
-                        </div>
-                        <div className="flex justify-between px-0.5">
-                          <span className="font-mono text-[9px] text-muted-foreground/60">
-                            Left
-                          </span>
-                          <span className="font-mono text-[9px] text-muted-foreground/60">
-                            Center
-                          </span>
-                          <span className="font-mono text-[9px] text-muted-foreground/60">
-                            Right
-                          </span>
-                        </div>
-
-                        <p className="font-mono text-[10px] tracking-widest text-muted-foreground pt-1">
+                      <div className="space-y-1.5">
+                        <p className="font-mono text-[10px] tracking-widest text-muted-foreground">
                           HEIGHT
                         </p>
-                        <div className="grid grid-cols-4 gap-1">
+                        <div className="grid grid-cols-2 gap-1">
                           {HANG_HEIGHT_OPTIONS.map((opt, i) => (
                             <button
                               key={i}
@@ -784,19 +915,33 @@ function ArtworkFormDialog({
                           ))}
                         </div>
                       </div>
+                    </div>
 
-                      <div className="flex flex-col items-center gap-1.5">
-                        <p className="font-mono text-[10px] tracking-widest text-muted-foreground self-start">
-                          FLOOR PLAN
-                        </p>
-                        <FloorPlanPreview
-                          dots={floorPlanDots}
-                          activeWallId={watchWallId}
-                          activeSlot={watchWallSlot}
-                        />
-                        <p className="font-mono text-[9px] text-muted-foreground/50 text-center">
-                          ● this artwork
-                        </p>
+                    <div className="space-y-1">
+                      <p className="font-mono text-[10px] tracking-widest text-muted-foreground">
+                        SLOT
+                      </p>
+                      <div className="flex gap-1">
+                        {SLOT_LABELS.map((label, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            title={label}
+                            onClick={() => form.setValue("wallSlot", i + 1)}
+                            className={`flex-1 py-1.5 font-mono text-[10px] border transition-colors ${
+                              watchWallSlot === i + 1
+                                ? "border-primary bg-primary/10 text-primary"
+                                : "border-border/50 text-muted-foreground hover:border-primary/40"
+                            }`}
+                          >
+                            {i + 1}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="flex justify-between px-0.5">
+                        <span className="font-mono text-[9px] text-muted-foreground/60">Left</span>
+                        <span className="font-mono text-[9px] text-muted-foreground/60">Center</span>
+                        <span className="font-mono text-[9px] text-muted-foreground/60">Right</span>
                       </div>
                     </div>
                   </div>
