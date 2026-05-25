@@ -28,6 +28,7 @@ function serializeArtwork(a: typeof artworksTable.$inferSelect) {
     zPosition: a.zPosition,
     rotation: a.rotation,
     scale: a.scale,
+    isManuallyPlaced: a.isManuallyPlaced,
     createdAt: a.createdAt.toISOString(),
   };
 }
@@ -92,6 +93,7 @@ router.post("/artworks", requireAuth, async (req, res): Promise<void> => {
       zPosition: parsed.data.zPosition ?? -3,
       rotation: parsed.data.rotation ?? 0,
       scale: parsed.data.scale ?? 1,
+      isManuallyPlaced: parsed.data.isManuallyPlaced ?? false,
     })
     .returning();
 

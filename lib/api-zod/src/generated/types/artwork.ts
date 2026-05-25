@@ -26,5 +26,6 @@ export interface Artwork {
   zPosition: number;
   rotation: number;
   scale: number;
+  isManuallyPlaced: boolean;
   createdAt: string;
 }

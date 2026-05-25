@@ -97,6 +97,7 @@ router.get("/public/galleries/:slug", async (req, res): Promise<void> => {
       zPosition: a.zPosition,
       rotation: a.rotation,
       scale: a.scale,
+      isManuallyPlaced: a.isManuallyPlaced,
       createdAt: a.createdAt.toISOString(),
     })),
   });

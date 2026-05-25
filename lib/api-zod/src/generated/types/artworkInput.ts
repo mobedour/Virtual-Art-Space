@@ -21,4 +21,5 @@ export interface ArtworkInput {
   zPosition?: number;
   rotation?: number;
   scale?: number;
+  isManuallyPlaced?: boolean;
 }

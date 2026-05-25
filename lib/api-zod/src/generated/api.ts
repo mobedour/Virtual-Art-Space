@@ -225,6 +225,7 @@ export const ListArtworksResponseItem = zod.object({
   "zPosition": zod.number(),
   "rotation": zod.number(),
   "scale": zod.number(),
+  "isManuallyPlaced": zod.boolean(),
   "createdAt": zod.string()
 })
 export const ListArtworksResponse = zod.array(ListArtworksResponseItem)
@@ -249,7 +250,8 @@ export const CreateArtworkBody = zod.object({
   "yPosition": zod.number().optional(),
   "zPosition": zod.number().optional(),
   "rotation": zod.number().optional(),
-  "scale": zod.number().optional()
+  "scale": zod.number().optional(),
+  "isManuallyPlaced": zod.boolean().optional()
 })
 
 
@@ -272,7 +274,8 @@ export const UpdateArtworkBody = zod.object({
   "yPosition": zod.number().optional(),
   "zPosition": zod.number().optional(),
   "rotation": zod.number().optional(),
-  "scale": zod.number().optional()
+  "scale": zod.number().optional(),
+  "isManuallyPlaced": zod.boolean().optional()
 })
 
 export const UpdateArtworkResponse = zod.object({
@@ -290,6 +293,7 @@ export const UpdateArtworkResponse = zod.object({
   "zPosition": zod.number(),
   "rotation": zod.number(),
   "scale": zod.number(),
+  "isManuallyPlaced": zod.boolean(),
   "createdAt": zod.string()
 })
 
@@ -347,6 +351,7 @@ export const GetPublicGalleryResponse = zod.object({
   "zPosition": zod.number(),
   "rotation": zod.number(),
   "scale": zod.number(),
+  "isManuallyPlaced": zod.boolean(),
   "createdAt": zod.string()
 }))
 })

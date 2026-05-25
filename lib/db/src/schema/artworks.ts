@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, real, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, real, boolean, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { galleriesTable } from "./galleries";
@@ -18,6 +18,7 @@ export const artworksTable = pgTable("artworks", {
   zPosition: real("z_position").notNull().default(-3),
   rotation: real("rotation").notNull().default(0),
   scale: real("scale").notNull().default(1),
+  isManuallyPlaced: boolean("is_manually_placed").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

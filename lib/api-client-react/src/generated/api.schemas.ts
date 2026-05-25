@@ -106,6 +106,7 @@ export interface Artwork {
   zPosition: number;
   rotation: number;
   scale: number;
+  isManuallyPlaced: boolean;
   createdAt: string;
 }
 
@@ -124,6 +125,7 @@ export interface ArtworkInput {
   zPosition?: number;
   rotation?: number;
   scale?: number;
+  isManuallyPlaced?: boolean;
 }
 
 export interface ArtworkUpdate {
@@ -139,6 +141,7 @@ export interface ArtworkUpdate {
   zPosition?: number;
   rotation?: number;
   scale?: number;
+  isManuallyPlaced?: boolean;
 }
 
 export interface UploadResponse {

@@ -21,69 +21,89 @@ type PlacedArtwork = {
   rotationY: number;
 };
 
+const WALLS = [
+  {
+    // back wall (-z), frame faces +z
+    getPos: (along: number): [number, number, number] => [
+      along,
+      HANG_Y,
+      -(HALF_D - WALL_INSET),
+    ],
+    rotY: 0,
+  },
+  {
+    // right wall (+x), frame faces -x
+    getPos: (along: number): [number, number, number] => [
+      HALF_W - WALL_INSET,
+      HANG_Y,
+      along,
+    ],
+    rotY: -Math.PI / 2,
+  },
+  {
+    // front wall (+z), frame faces -z
+    getPos: (along: number): [number, number, number] => [
+      along,
+      HANG_Y,
+      HALF_D - WALL_INSET,
+    ],
+    rotY: Math.PI,
+  },
+  {
+    // left wall (-x), frame faces +x
+    getPos: (along: number): [number, number, number] => [
+      -(HALF_W - WALL_INSET),
+      HANG_Y,
+      along,
+    ],
+    rotY: Math.PI / 2,
+  },
+];
+
 function placeArtworks(artworks: ArtworkData[]): PlacedArtwork[] {
   if (artworks.length === 0) return [];
 
-  const walls = [
-    {
-      // back wall (-z), frame faces +z
-      getPos: (along: number): [number, number, number] => [
-        along,
-        HANG_Y,
-        -(HALF_D - WALL_INSET),
-      ],
-      rotY: 0,
-    },
-    {
-      // right wall (+x), frame faces -x
-      getPos: (along: number): [number, number, number] => [
-        HALF_W - WALL_INSET,
-        HANG_Y,
-        along,
-      ],
-      rotY: -Math.PI / 2,
-    },
-    {
-      // front wall (+z), frame faces -z
-      getPos: (along: number): [number, number, number] => [
-        along,
-        HANG_Y,
-        HALF_D - WALL_INSET,
-      ],
-      rotY: Math.PI,
-    },
-    {
-      // left wall (-x), frame faces +x
-      getPos: (along: number): [number, number, number] => [
-        -(HALF_W - WALL_INSET),
-        HANG_Y,
-        along,
-      ],
-      rotY: Math.PI / 2,
-    },
-  ];
-
-  // Round-robin distribution across 4 walls
-  const wallGroups: ArtworkData[][] = [[], [], [], []];
-  artworks.forEach((art, i) => wallGroups[i % 4].push(art));
-
-  const USABLE_SPAN = (HALF_W - 1) * 2; // usable span along each wall
   const result: PlacedArtwork[] = [];
 
-  wallGroups.forEach((group, w) => {
-    if (group.length === 0) return;
-    const wall = walls[w];
-    const spacing = Math.min(3.2, USABLE_SPAN / group.length);
-    const totalWidth = (group.length - 1) * spacing;
-    const start = -totalWidth / 2;
-    group.forEach((artwork, i) => {
-      result.push({
-        artwork,
-        position: wall.getPos(start + i * spacing),
-        rotationY: wall.rotY,
+  // Separate manually placed artworks from auto-distributed ones
+  const manual = artworks.filter((a) => a.isManuallyPlaced);
+  const auto = artworks.filter((a) => !a.isManuallyPlaced);
+
+  // Manually placed artworks use their stored 3D positions directly
+  for (const artwork of manual) {
+    result.push({
+      artwork,
+      position: [
+        artwork.xPosition ?? 0,
+        artwork.yPosition ?? HANG_Y,
+        artwork.zPosition ?? -(HALF_D - WALL_INSET),
+      ],
+      rotationY: artwork.rotation ?? 0,
+    });
+  }
+
+  // Auto-distribute remaining artworks round-robin across 4 walls
+  if (auto.length > 0) {
+    const wallGroups: ArtworkData[][] = [[], [], [], []];
+    auto.forEach((art, i) => wallGroups[i % 4].push(art));
+
+    const USABLE_SPAN = (HALF_W - 1) * 2;
+
+    wallGroups.forEach((group, w) => {
+      if (group.length === 0) return;
+      const wall = WALLS[w];
+      const spacing = Math.min(3.2, USABLE_SPAN / group.length);
+      const totalWidth = (group.length - 1) * spacing;
+      const start = -totalWidth / 2;
+      group.forEach((artwork, i) => {
+        result.push({
+          artwork,
+          position: wall.getPos(start + i * spacing),
+          rotationY: wall.rotY,
+        });
       });
     });
-  });
+  }
 
   return result;
 }

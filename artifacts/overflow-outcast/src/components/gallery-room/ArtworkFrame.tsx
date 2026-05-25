@@ -17,6 +17,11 @@ export type ArtworkData = {
   medium?: string | null;
   dimensions?: string | null;
   description?: string | null;
+  xPosition?: number;
+  yPosition?: number;
+  zPosition?: number;
+  rotation?: number;
+  isManuallyPlaced?: boolean;
 };
 
 interface ArtworkFrameProps {

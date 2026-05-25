@@ -19,4 +19,5 @@ export interface ArtworkUpdate {
   zPosition?: number;
   rotation?: number;
   scale?: number;
+  isManuallyPlaced?: boolean;
 }

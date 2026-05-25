@@ -692,6 +692,8 @@ components:
           type: number
         scale:
           type: number
+        isManuallyPlaced:
+          type: boolean
         createdAt:
           type: string
       required:
@@ -704,6 +706,7 @@ components:
         - zPosition
         - rotation
         - scale
+        - isManuallyPlaced
         - createdAt
 
     ArtworkInput:
@@ -736,6 +739,8 @@ components:
           type: number
         scale:
           type: number
+        isManuallyPlaced:
+          type: boolean
       required:
         - galleryId
         - title
@@ -768,6 +773,8 @@ components:
           type: number
         scale:
           type: number
+        isManuallyPlaced:
+          type: boolean
 
     UploadResponse:
       type: object
