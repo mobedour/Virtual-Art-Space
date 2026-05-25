@@ -1,5 +1,6 @@
 import { Component, useCallback, useRef, useState, type ReactNode } from "react";
 import { Canvas } from "@react-three/fiber";
+import * as THREE from "three";
 import { GalleryScene } from "./GalleryScene";
 import { ArtworkDetailModal } from "./ArtworkDetailModal";
 import { VirtualJoystick, type JoystickState } from "./VirtualJoystick";
@@ -108,6 +109,12 @@ export function GalleryRoom({ gallery }: GalleryRoomProps) {
             camera={{ position: [0, 0, 7.5], fov: 75, near: 0.1, far: 100 }}
             style={{ display: "block", width: "100%", height: "100%" }}
             onTouchStart={handleMobileActivate}
+            gl={{
+              toneMapping: THREE.ACESFilmicToneMapping,
+              toneMappingExposure: 1.0,
+              outputColorSpace: THREE.SRGBColorSpace,
+              antialias: true,
+            }}
           >
             <GalleryScene
               artworks={gallery.artworks}
