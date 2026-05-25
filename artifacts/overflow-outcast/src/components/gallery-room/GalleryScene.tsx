@@ -40,32 +40,66 @@ const WALLS = [
   },
 ];
 
+// Detect which wall a manually-placed artwork sits on, and its along-axis value
+function getWallInfo(x: number, z: number): { wallIdx: number; along: number } | null {
+  const THRESH = 0.6;
+  if (Math.abs(z - (-(HALF_D - WALL_INSET))) < THRESH) return { wallIdx: 0, along: x };
+  if (Math.abs(x - (HALF_W - WALL_INSET)) < THRESH) return { wallIdx: 1, along: z };
+  if (Math.abs(z - (HALF_D - WALL_INSET)) < THRESH) return { wallIdx: 2, along: x };
+  if (Math.abs(x - (-(HALF_W - WALL_INSET))) < THRESH) return { wallIdx: 3, along: z };
+  return null;
+}
+
+// Shift an along-axis value until it clears all blocked positions
+function resolveConflict(along: number, blocked: number[], minGap: number): number {
+  let result = along;
+  let attempts = 0;
+  while (attempts < 20 && blocked.some((b) => Math.abs(result - b) < minGap)) {
+    result += minGap;
+    attempts++;
+  }
+  return result;
+}
+
 function placeArtworks(artworks: ArtworkData[]): PlacedArtwork[] {
   if (artworks.length === 0) return [];
   const result: PlacedArtwork[] = [];
   const manual = artworks.filter((a) => a.isManuallyPlaced);
   const auto = artworks.filter((a) => !a.isManuallyPlaced);
 
+  // Track blocked along-values per wall from manually placed artworks
+  const blockedPerWall: Record<number, number[]> = { 0: [], 1: [], 2: [], 3: [] };
+
   for (const artwork of manual) {
-    result.push({
-      artwork,
-      position: [artwork.xPosition ?? 0, artwork.yPosition ?? HANG_Y, artwork.zPosition ?? -(HALF_D - WALL_INSET)],
-      rotationY: artwork.rotation ?? 0,
-    });
+    const pos: [number, number, number] = [
+      artwork.xPosition ?? 0,
+      artwork.yPosition ?? HANG_Y,
+      artwork.zPosition ?? -(HALF_D - WALL_INSET),
+    ];
+    result.push({ artwork, position: pos, rotationY: artwork.rotation ?? 0 });
+    const info = getWallInfo(pos[0], pos[2]);
+    if (info) blockedPerWall[info.wallIdx].push(info.along);
   }
 
   if (auto.length > 0) {
     const wallGroups: ArtworkData[][] = [[], [], [], []];
     auto.forEach((art, i) => wallGroups[i % 4].push(art));
     const USABLE_SPAN = (HALF_W - 1) * 2;
+    const MIN_GAP = 1.8;
+
     wallGroups.forEach((group, w) => {
       if (group.length === 0) return;
       const wall = WALLS[w];
       const spacing = Math.min(3.2, USABLE_SPAN / group.length);
       const totalWidth = (group.length - 1) * spacing;
       const start = -totalWidth / 2;
+      const occupiedOnWall = [...blockedPerWall[w]];
+
       group.forEach((artwork, i) => {
-        result.push({ artwork, position: wall.getPos(start + i * spacing), rotationY: wall.rotY });
+        const rawAlong = start + i * spacing;
+        const safeAlong = resolveConflict(rawAlong, occupiedOnWall, MIN_GAP);
+        occupiedOnWall.push(safeAlong);
+        result.push({ artwork, position: wall.getPos(safeAlong), rotationY: wall.rotY });
       });
     });
   }
