@@ -77,6 +77,7 @@
   "dependencies": {
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
+    "@react-three/xr": "^6.6.29",
     "@types/three": "^0.184.1",
     "three": "^0.184.0"
   }
