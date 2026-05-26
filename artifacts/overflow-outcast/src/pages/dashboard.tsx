@@ -5,9 +5,10 @@ import { useAuth } from "@/lib/auth";
 import { DashboardLayout } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Box, Layers, Image as ImageIcon, Plus, Eye, Loader2 } from "lucide-react";
+import { Box, Image as ImageIcon, Plus, Eye, Loader2 } from "lucide-react";
 import { PageEnter, Stagger, StaggerItem, FadeUp } from "@/lib/motion";
 import { motion } from "framer-motion";
+import { GalleryThumbnail } from "@/components/GalleryThumbnail";
 
 export default function Dashboard() {
   const [, setLocation] = useLocation();
@@ -92,11 +93,14 @@ export default function Dashboard() {
               stats.recentGalleries.map((gallery) => (
                 <StaggerItem key={gallery.id}>
                   <Card className="bg-background/40 border-border/50 rounded-sm overflow-hidden group hover:border-primary/40 transition-all duration-500 h-full">
-                    <div className="aspect-video bg-card flex items-center justify-center border-b border-border/50 relative overflow-hidden">
-                      <Layers className="w-12 h-12 text-muted-foreground/20 group-hover:text-primary/20 transition-colors duration-500" />
-                      <div className="absolute inset-0 bg-gradient-to-br from-primary/0 group-hover:from-primary/5 transition-all duration-500" />
+                    <div className="aspect-video border-b border-border/50 relative overflow-hidden">
+                      <GalleryThumbnail
+                        theme={gallery.roomTheme}
+                        title={gallery.title}
+                        className="absolute inset-0 w-full h-full transition-transform duration-700 group-hover:scale-[1.05]"
+                      />
                       {gallery.published && (
-                        <div className="absolute top-2 right-2 bg-primary/15 text-primary border border-primary/25 px-2 py-0.5 text-[10px] font-sans tracking-wide rounded-sm">
+                        <div className="absolute top-2 right-2 bg-primary/15 text-primary border border-primary/25 px-2 py-0.5 text-[10px] font-sans tracking-wide rounded-sm backdrop-blur-sm z-10">
                           Live
                         </div>
                       )}

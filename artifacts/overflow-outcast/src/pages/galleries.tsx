@@ -12,6 +12,7 @@ import { Loader2, Plus, Settings, Trash2, ExternalLink, Image as ImageIcon } fro
 import { useToast } from "@/hooks/use-toast";
 import { PageEnter, FadeUp, Stagger, StaggerItem } from "@/lib/motion";
 import { motion } from "framer-motion";
+import { GalleryThumbnail } from "@/components/GalleryThumbnail";
 
 export default function Galleries() {
   const [, setLocation] = useLocation();
@@ -105,11 +106,15 @@ export default function Galleries() {
               <StaggerItem key={gallery.id}>
                 <Card className="bg-card/40 border-border/50 backdrop-blur-sm rounded-sm hover:bg-card/60 transition-all duration-500 group hover:border-primary/30 overflow-hidden">
                   <CardContent className="p-0 flex flex-col md:flex-row">
-                    <div className={`w-full md:w-48 h-32 md:h-auto border-r border-border/50 flex items-center justify-center relative overflow-hidden ${gallery.published ? "bg-primary/5" : "bg-muted/10"}`}>
-                      <div className="absolute inset-0 bg-gradient-to-br from-primary/0 group-hover:from-primary/8 transition-all duration-700" />
-                      <div className="text-center relative z-10">
-                        <div className="font-sans text-[10px] text-muted-foreground mb-1 uppercase tracking-wider">Artworks</div>
-                        <div className="font-display text-3xl font-bold text-foreground">{gallery.artworkCount}</div>
+                    <div className="w-full md:w-48 h-32 md:h-auto border-r border-border/50 relative overflow-hidden">
+                      <GalleryThumbnail
+                        theme={gallery.roomTheme}
+                        title={gallery.title}
+                        className="absolute inset-0 w-full h-full transition-transform duration-700 group-hover:scale-[1.06]"
+                      />
+                      <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
+                        <div className="font-sans text-[10px] text-white/50 mb-0.5 uppercase tracking-wider">Artworks</div>
+                        <div className="font-display text-3xl font-bold text-white drop-shadow-lg">{gallery.artworkCount}</div>
                       </div>
                     </div>
 

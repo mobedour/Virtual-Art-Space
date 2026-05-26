@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, ArrowRight, Box } from "lucide-react";
 import { FadeUp, FadeDown, Stagger, StaggerItem } from "@/lib/motion";
+import { GalleryThumbnail } from "@/components/GalleryThumbnail";
 
 export default function PublicGalleries() {
   const { data: galleries, isLoading } = useListPublicGalleries();
@@ -45,12 +46,18 @@ export default function PublicGalleries() {
             {galleries?.map((gallery) => (
               <StaggerItem key={gallery.id}>
                 <Card className="bg-card/40 border-border/50 backdrop-blur-sm rounded-sm hover:bg-card/70 transition-all duration-500 hover:border-primary/40 group overflow-hidden h-full flex flex-col">
-                  <div className="aspect-[4/3] bg-background/80 border-b border-border/50 relative overflow-hidden flex items-center justify-center">
-                    <div className="absolute inset-0 bg-gradient-to-br from-primary/0 to-primary/0 group-hover:from-primary/8 group-hover:to-background/0 transition-all duration-700" />
-                    <div className="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-background/60 to-transparent" />
-                    <div className="text-center z-10 p-6 transform group-hover:scale-[1.03] transition-transform duration-700">
-                      <h3 className="font-display font-semibold text-xl text-foreground mb-2 group-hover:text-primary transition-colors duration-300">{gallery.title}</h3>
-                      <p className="font-sans text-xs text-muted-foreground">by {gallery.artistName || "Unknown Artist"}</p>
+                  <div className="aspect-[4/3] border-b border-border/50 relative overflow-hidden">
+                    <GalleryThumbnail
+                      theme={gallery.roomTheme}
+                      title={gallery.title}
+                      className="absolute inset-0 w-full h-full transition-transform duration-700 group-hover:scale-[1.04]"
+                    />
+                    <div className="absolute inset-0 flex flex-col items-center justify-center z-10 p-6">
+                      <h3 className="font-display font-semibold text-xl text-center mb-1 group-hover:scale-[1.03] transition-transform duration-500"
+                        style={{ color: "white", textShadow: "0 2px 12px rgba(0,0,0,0.7)" }}>
+                        {gallery.title}
+                      </h3>
+                      <p className="font-sans text-xs text-white/60">by {gallery.artistName || "Unknown Artist"}</p>
                     </div>
                   </div>
                   <CardContent className="p-6 flex flex-col flex-1">
