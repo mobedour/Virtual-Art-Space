@@ -1,11 +1,13 @@
+import { useEffect } from "react";
 import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ClerkProvider, SignIn, SignUp } from "@clerk/react";
+import { ClerkProvider, SignIn, SignUp, useAuth } from "@clerk/react";
 import { dark } from "@clerk/themes";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SceneProvider, SCENES, useScene } from "@/lib/scene-context";
+import { setAuthTokenGetter } from "@workspace/api-client-react";
 
 import Home from "@/pages/home";
 import Dashboard from "@/pages/dashboard";
@@ -106,6 +108,21 @@ const clerkAppearance = {
   },
 };
 
+function ClerkAuthSync() {
+  const { getToken, isSignedIn } = useAuth();
+
+  useEffect(() => {
+    if (isSignedIn) {
+      setAuthTokenGetter(() => getToken());
+    } else {
+      setAuthTokenGetter(null);
+    }
+    return () => setAuthTokenGetter(null);
+  }, [getToken, isSignedIn]);
+
+  return null;
+}
+
 function GlobalBackground() {
   const { activeScene } = useScene();
   const scene = SCENES[activeScene];
@@ -186,6 +203,7 @@ function Router() {
 function AppInner() {
   return (
     <>
+      <ClerkAuthSync />
       <GlobalBackground />
       <TooltipProvider>
         <WouterRouter base={basePath}>

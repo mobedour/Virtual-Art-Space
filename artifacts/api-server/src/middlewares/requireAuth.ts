@@ -19,16 +19,16 @@ declare global {
 }
 
 export async function requireAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
+  let clerkUserId: string | undefined | null;
   try {
-  const auth = getAuth(req);
-  const clerkUserId = auth?.userId;
+    const auth = getAuth(req);
+    clerkUserId = auth?.userId;
 
-  if (!clerkUserId) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
+    if (!clerkUserId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
 
-  try {
     let [user] = await db
       .select()
       .from(usersTable)
@@ -51,11 +51,32 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
           .returning();
         await db.insert(profilesTable).values({ userId: user.id });
       } catch {
+        // Insert failed — could be a race condition or an email collision
+        // with an existing account that predates Clerk auth. Try to find the
+        // user by clerk_user_id first, then by email (and link the Clerk ID).
         [user] = await db
           .select()
           .from(usersTable)
           .where(eq(usersTable.clerkUserId, clerkUserId));
+
         if (!user) {
+          const [existingByEmail] = await db
+            .select()
+            .from(usersTable)
+            .where(eq(usersTable.email, email));
+
+          if (existingByEmail) {
+            // Link this Clerk identity to the pre-existing account.
+            [user] = await db
+              .update(usersTable)
+              .set({ clerkUserId })
+              .where(eq(usersTable.id, existingByEmail.id))
+              .returning();
+          }
+        }
+
+        if (!user) {
+          logger.error({ clerkUserId, email }, "requireAuth: failed to provision user");
           res.status(500).json({ error: "Failed to provision user" });
           return;
         }
@@ -65,11 +86,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     req.user = { userId: user.id, email: user.email, username: user.username };
     next();
   } catch (err) {
-    logger.error({ err, clerkUserId }, "requireAuth: inner error");
-    res.status(401).json({ error: "Unauthorized" });
-  }
-  } catch (err) {
-    logger.error({ err, url: req.url }, "requireAuth: outer error (getAuth threw)");
+    logger.error({ err, clerkUserId }, "requireAuth: unexpected error");
     res.status(401).json({ error: "Unauthorized" });
   }
 }

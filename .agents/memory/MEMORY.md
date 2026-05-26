@@ -1,1 +1,3 @@
 - [Clerk auth migration](clerk-auth-migration.md) — full JWT→Clerk migration pattern with JIT user provisioning and Tailwind v4 layer ordering.
+- [Clerk auth for React SPA + Express API](clerk-spa-express.md) — must use getToken() Bearer token, not cookies; clerkMiddleware() with no args reads env vars correctly.
+- [JIT provisioning email collision](jit-provisioning.md) — when insert fails, fall back to link-by-email before returning 500; seed data emails cause silent failures.
