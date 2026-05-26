@@ -130,6 +130,8 @@ function getFullscreenElement(): Element | null {
 export function GalleryRoom({ gallery, onExit }: GalleryRoomProps) {
   const isMobile = useIsMobile();
   const [isFullscreen, setIsFullscreen] = useState(false);
+  /** CSS-level fake fullscreen for iOS where the Fullscreen API is blocked */
+  const [fakeFullscreen, setFakeFullscreen] = useState(false);
   const [showHints, setShowHints] = useState(true);
   const [isLocked, setIsLocked] = useState(false);
   const [selectedArtwork, setSelectedArtwork] = useState<ArtworkData | null>(null);
@@ -152,26 +154,27 @@ export function GalleryRoom({ gallery, onExit }: GalleryRoomProps) {
   }, []);
 
   const toggleFullscreen = useCallback(async () => {
+    // Exit real OS fullscreen if active
     if (getFullscreenElement()) {
       await exitFullscreen();
       return;
     }
-    if (isIOS()) {
-      // iOS doesn't support the Fullscreen API — guide the user to the browser UI
-      toast("Fullscreen on iPhone", {
-        description: 'Tap the ⤢ icon in your browser toolbar, or use the "AA" menu → Hide Toolbar.',
-        duration: 5000,
-      });
+    // Exit CSS fake fullscreen if active
+    if (fakeFullscreen) {
+      setFakeFullscreen(false);
       return;
     }
+    // iOS: Fullscreen API is blocked by Apple — use CSS fake fullscreen instead
+    if (isIOS()) {
+      setFakeFullscreen(true);
+      return;
+    }
+    // Non-iOS: try real fullscreen, fall back to CSS fake fullscreen
     const ok = await requestFullscreen();
     if (!ok) {
-      toast("Fullscreen unavailable", {
-        description: "Your browser doesn't support fullscreen mode.",
-        duration: 3000,
-      });
+      setFakeFullscreen(true);
     }
-  }, []);
+  }, [fakeFullscreen]);
 
   // Suppress pointer-lock errors (proxied iframe)
   useEffect(() => {
@@ -202,11 +205,14 @@ export function GalleryRoom({ gallery, onExit }: GalleryRoomProps) {
     if (isMobile && !isLocked && !selectedArtwork) setIsLocked(true);
   }, [isMobile, isLocked, selectedArtwork]);
 
-  const webglSupported = checkWebGLSupport();
-  const mobileActive   = isMobile && !selectedArtwork;
+  const webglSupported  = checkWebGLSupport();
+  const mobileActive    = isMobile && !selectedArtwork;
+  const inAnyFullscreen = isFullscreen || fakeFullscreen;
 
   return (
-    <div className="absolute inset-0 bg-[#0d0b09]">
+    <div className={fakeFullscreen
+      ? "fixed inset-0 z-[9999] bg-[#0d0b09]"
+      : "absolute inset-0 bg-[#0d0b09]"}>
       {webglSupported ? (
         <CanvasErrorBoundary fallback={<WebGLUnsupportedFallback />}>
           <Canvas
@@ -342,8 +348,8 @@ export function GalleryRoom({ gallery, onExit }: GalleryRoomProps) {
             {/* ○ — Fullscreen */}
             <div className="absolute" style={{ top: 60, left: 60 }}>
               <ControlBtn
-                symbol={isFullscreen ? "⊠" : "○"}
-                label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+                symbol={inAnyFullscreen ? "⊠" : "○"}
+                label={inAnyFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
                 accent="#22d3ee"
                 onClick={toggleFullscreen}
               />
