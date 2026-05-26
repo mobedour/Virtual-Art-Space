@@ -368,3 +368,39 @@
 .bg-fade-in {
   animation: bgFadeIn 0.75s ease forwards;
 }
+
+/* ── Responsive scroll-snap ──
+   Mobile (< md): normal page scroll, sections flow naturally.
+   Desktop (≥ md): full-screen snap scrolling. */
+
+.snap-wrapper {
+  min-height: 100vh;
+}
+
+.snap-container {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.snap-section {
+  min-height: 100dvh;
+}
+
+@media (min-width: 768px) {
+  .snap-wrapper {
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .snap-container {
+    scroll-snap-type: y mandatory;
+    height: 100dvh;
+    overflow-y: scroll;
+  }
+
+  .snap-section {
+    scroll-snap-align: start;
+    height: 100dvh;
+    min-height: unset;
+  }
+}

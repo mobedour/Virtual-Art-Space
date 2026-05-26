@@ -30,18 +30,23 @@ export function PublicLayout({ children, snapSections }: Props) {
   }, [location, setScene]);
 
   useEffect(() => {
-    if (snapSections) {
-      const el = mainRef.current;
-      if (!el) return;
-      const onScroll = () => setScrolled(el.scrollTop > 60);
-      el.addEventListener("scroll", onScroll, { passive: true });
-      return () => el.removeEventListener("scroll", onScroll);
-    } else {
-      const onScroll = () => setScrolled(window.scrollY > 48);
-      window.addEventListener("scroll", onScroll, { passive: true });
-      return () => window.removeEventListener("scroll", onScroll);
+    const el = mainRef.current;
+
+    const onContainerScroll = () => {
+      if (el) setScrolled(el.scrollTop > 60);
+    };
+    const onWindowScroll = () => setScrolled(window.scrollY > 48);
+
+    if (el) {
+      el.addEventListener("scroll", onContainerScroll, { passive: true });
     }
-  }, [snapSections]);
+    window.addEventListener("scroll", onWindowScroll, { passive: true });
+
+    return () => {
+      if (el) el.removeEventListener("scroll", onContainerScroll);
+      window.removeEventListener("scroll", onWindowScroll);
+    };
+  }, []);
 
   const navStyle: React.CSSProperties = {
     background: scrolled
@@ -72,48 +77,17 @@ export function PublicLayout({ children, snapSections }: Props) {
 
   return (
     <div
-      className="text-foreground flex flex-col selection:bg-primary/30 relative z-10"
-      style={snapSections ? { height: "100dvh", overflow: "hidden" } : { minHeight: "100vh" }}
+      className={`text-foreground flex flex-col selection:bg-primary/30 relative z-10 ${snapSections ? "snap-wrapper" : "min-h-screen"}`}
     >
       {/* ── Navbar ── */}
       <header className="fixed top-0 w-full z-50" style={navStyle}>
-        <div className="container mx-auto px-8 h-[4.5rem] flex items-center justify-between">
+        <div className="container mx-auto px-6 md:px-8 h-[4.5rem] flex items-center justify-between">
           <Link href="/">
             <span style={brandStyle}>Virtual Art Space</span>
           </Link>
 
-          {/* Mobile */}
-          <nav className="flex items-center gap-4 md:hidden">
-            <Link href="/galleries">
-              <span style={linkStyle}>Galleries</span>
-            </Link>
-            {user ? (
-              <Link href="/dashboard">
-                <span style={{ ...linkStyle, color: "hsl(38 92% 50%)" }}>Dashboard</span>
-              </Link>
-            ) : (
-              <Link href="/register">
-                <button
-                  style={{
-                    fontFamily: "'DM Mono', monospace",
-                    fontSize: "0.625rem",
-                    letterSpacing: "0.2em",
-                    textTransform: "uppercase",
-                    color: "#0e0a04",
-                    background: "hsl(38 92% 50%)",
-                    padding: "0.45rem 1rem",
-                    border: "none",
-                    cursor: "pointer",
-                  }}
-                >
-                  Exhibit
-                </button>
-              </Link>
-            )}
-          </nav>
-
-          {/* Desktop */}
-          <nav className="hidden md:flex items-center gap-8">
+          {/* Nav links */}
+          <nav className="flex items-center gap-4 md:gap-8">
             <Link href="/galleries">
               <span
                 style={linkStyle}
@@ -135,8 +109,10 @@ export function PublicLayout({ children, snapSections }: Props) {
               </Link>
             ) : (
               <>
+                {/* Sign In: hidden on mobile to save space */}
                 <Link href="/login">
                   <span
+                    className="hidden sm:inline"
                     style={linkStyle}
                     onMouseEnter={(e) => ((e.target as HTMLElement).style.color = "#fff")}
                     onMouseLeave={(e) => ((e.target as HTMLElement).style.color = "rgba(255,255,255,0.6)")}
@@ -149,13 +125,14 @@ export function PublicLayout({ children, snapSections }: Props) {
                     style={{
                       fontFamily: "'DM Mono', monospace",
                       fontSize: "0.625rem",
-                      letterSpacing: "0.2em",
+                      letterSpacing: "0.18em",
                       textTransform: "uppercase",
                       color: "#0e0a04",
                       background: "hsl(38 92% 50%)",
-                      padding: "0.5rem 1.25rem",
+                      padding: "0.45rem 1rem",
                       border: "none",
                       cursor: "pointer",
+                      whiteSpace: "nowrap",
                     }}
                   >
                     Exhibit
@@ -170,12 +147,8 @@ export function PublicLayout({ children, snapSections }: Props) {
       {/* ── Main ── */}
       <main
         ref={mainRef}
-        className="relative flex-1"
-        style={
-          snapSections
-            ? { scrollSnapType: "y mandatory", height: "100dvh", overflowY: "scroll" }
-            : { paddingTop: "4.5rem" }
-        }
+        className={`relative flex-1 ${snapSections ? "snap-container" : ""}`}
+        style={snapSections ? {} : { paddingTop: "4.5rem" }}
       >
         {children}
       </main>

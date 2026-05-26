@@ -7,7 +7,6 @@ import { motion } from "framer-motion";
 import { FadeUp, Stagger, StaggerItem } from "@/lib/motion";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
-
 const SECTION_SCENES = [0, 1, 2, 4];
 
 export default function Home() {
@@ -20,23 +19,19 @@ export default function Home() {
 
   useEffect(() => {
     const observers: IntersectionObserver[] = [];
-
     sectionRefs.current.forEach((section, idx) => {
       if (!section) return;
       const obs = new IntersectionObserver(
         (entries) => {
           entries.forEach((entry) => {
-            if (entry.isIntersecting) {
-              setScene(SECTION_SCENES[idx]);
-            }
+            if (entry.isIntersecting) setScene(SECTION_SCENES[idx]);
           });
         },
-        { threshold: 0.5 }
+        { threshold: 0.4 }
       );
       obs.observe(section);
       observers.push(obs);
     });
-
     return () => observers.forEach((o) => o.disconnect());
   }, [setScene]);
 
@@ -56,14 +51,14 @@ export default function Home() {
       {/* ── Section 0: Hero ── */}
       <section
         ref={setSectionRef(0)}
-        className="relative flex flex-col items-center justify-center text-center px-6"
-        style={{ scrollSnapAlign: "start", height: "100dvh", paddingTop: "4.5rem" }}
+        className="snap-section relative flex flex-col items-center justify-center text-center px-6 py-24 md:py-0"
+        style={{ paddingTop: "calc(4.5rem + 2rem)" }}
       >
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease: EASE, delay: 0.2 }}
-          className="inline-block mb-6 px-4 py-1.5"
+          className="inline-block mb-5 px-4 py-1.5"
           style={{
             ...monoLabel,
             color: "hsl(38 92% 50%)",
@@ -75,11 +70,11 @@ export default function Home() {
         </motion.div>
 
         <h1
-          className="mb-8 overflow-hidden"
+          className="mb-6 overflow-hidden"
           style={{
             fontFamily: "'Playfair Display', serif",
             fontWeight: 700,
-            fontSize: "clamp(3.5rem, 9vw, 7rem)",
+            fontSize: "clamp(3rem, 9vw, 7rem)",
             lineHeight: 1.05,
             letterSpacing: "-0.01em",
             color: "#fff",
@@ -127,8 +122,8 @@ export default function Home() {
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.75, ease: EASE, delay: 0.7 }}
-          className="max-w-2xl mx-auto mb-12 font-light leading-relaxed"
-          style={{ fontSize: "1.1rem", color: "rgba(255,255,255,0.6)" }}
+          className="max-w-2xl mx-auto mb-10 font-light leading-relaxed"
+          style={{ fontSize: "clamp(0.95rem, 2.5vw, 1.1rem)", color: "rgba(255,255,255,0.6)" }}
         >
           A digital home for Amman's artists. Build immersive 3D galleries, share your work with the world, and connect with a growing creative community rooted in Jordan.
         </motion.p>
@@ -137,13 +132,14 @@ export default function Home() {
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease: EASE, delay: 0.88 }}
-          className="flex flex-col sm:flex-row items-center justify-center gap-4"
+          className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full max-w-sm sm:max-w-none"
         >
           <Link href="/register">
             <button
-              className="h-14 px-8 text-sm w-full sm:w-auto transition-opacity hover:opacity-90"
+              className="h-14 px-8 w-full sm:w-auto transition-opacity hover:opacity-90 flex items-center justify-center gap-2"
               style={{
                 fontFamily: "'DM Mono', monospace",
+                fontSize: "0.7rem",
                 letterSpacing: "0.12em",
                 textTransform: "uppercase",
                 color: "#0e0a04",
@@ -151,19 +147,17 @@ export default function Home() {
                 border: "none",
                 cursor: "pointer",
                 boxShadow: "0 4px 24px rgba(217,119,6,0.45)",
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
               }}
             >
-              Start Exhibiting <ArrowRight className="w-4 h-4" />
+              Start Exhibiting <ArrowRight className="w-4 h-4 shrink-0" />
             </button>
           </Link>
           <Link href="/galleries">
             <button
-              className="h-14 px-8 text-sm w-full sm:w-auto transition-colors"
+              className="h-14 px-8 w-full sm:w-auto transition-colors"
               style={{
                 fontFamily: "'DM Mono', monospace",
+                fontSize: "0.7rem",
                 letterSpacing: "0.12em",
                 textTransform: "uppercase",
                 color: "rgba(255,255,255,0.7)",
@@ -177,12 +171,12 @@ export default function Home() {
           </Link>
         </motion.div>
 
-        {/* Scroll hint */}
+        {/* Scroll hint — desktop only */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.5, duration: 1 }}
-          className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
+          className="hidden md:flex absolute bottom-10 left-1/2 -translate-x-1/2 flex-col items-center gap-2"
         >
           <span style={{ ...monoLabel, color: "rgba(255,255,255,0.3)", fontSize: "0.5rem" }}>Scroll</span>
           <motion.div
@@ -197,31 +191,30 @@ export default function Home() {
       {/* ── Section 1: Features ── */}
       <section
         ref={setSectionRef(1)}
-        className="relative flex items-center"
-        style={{ scrollSnapAlign: "start", height: "100dvh" }}
+        className="snap-section relative flex items-center py-20 md:py-0"
       >
         <div
           className="absolute inset-0"
           style={{ background: "rgba(0,0,0,0.28)", backdropFilter: "blur(2px)" }}
         />
-        <div className="container mx-auto px-6 relative z-10 py-20">
-          <FadeUp className="text-center mb-14">
+        <div className="container mx-auto px-6 relative z-10 py-16">
+          <FadeUp className="text-center mb-10 md:mb-14">
             <p style={{ ...monoLabel, color: "hsl(38 92% 50%)", marginBottom: "1rem" }}>
               Built for Artists
             </p>
             <h2
               style={{
                 fontFamily: "'Playfair Display', serif",
-                fontSize: "clamp(2rem, 4vw, 3.25rem)",
+                fontSize: "clamp(1.75rem, 4vw, 3.25rem)",
                 fontWeight: 700,
                 color: "#fff",
-                lineHeight: 1.1,
+                lineHeight: 1.15,
               }}
             >
               Everything you need to present your work
-              <br />
+              <br className="hidden sm:block" />
               <span style={{ fontStyle: "italic", color: "hsl(38 92% 50%)" }}>
-                in a space that does it justice.
+                {" "}in a space that does it justice.
               </span>
             </h2>
           </FadeUp>
@@ -249,21 +242,21 @@ export default function Home() {
             ].map((feature) => (
               <StaggerItem key={feature.num}>
                 <div
-                  className="group p-8 h-full cursor-default relative overflow-hidden"
+                  className="group p-6 md:p-8 h-full cursor-default relative overflow-hidden"
                   style={{
                     background: "rgba(0,0,0,0.40)",
                     borderTop: "1px solid rgba(245,158,11,0.2)",
                   }}
                 >
-                  <div style={{ ...monoLabel, color: "hsl(38 92% 50%)", marginBottom: "1.5rem" }}>
+                  <div style={{ ...monoLabel, color: "hsl(38 92% 50%)", marginBottom: "1.25rem" }}>
                     {feature.num}
                   </div>
-                  <feature.icon className="w-8 h-8 mb-5 text-primary" />
+                  <feature.icon className="w-7 h-7 mb-4 text-primary" />
                   <h3
                     className="mb-3"
                     style={{
                       fontFamily: "'Playfair Display', serif",
-                      fontSize: "1.2rem",
+                      fontSize: "1.15rem",
                       fontWeight: 700,
                       color: "#fff",
                     }}
@@ -274,7 +267,7 @@ export default function Home() {
                     {feature.desc}
                   </p>
                   <div
-                    className="mt-8 h-px w-10 group-hover:w-full transition-all duration-700 ease-out"
+                    className="mt-6 h-px w-10 group-hover:w-full transition-all duration-700 ease-out"
                     style={{ background: "hsl(38 92% 50%)" }}
                   />
                 </div>
@@ -287,16 +280,13 @@ export default function Home() {
       {/* ── Section 2: Stats + Quote ── */}
       <section
         ref={setSectionRef(2)}
-        className="relative flex items-center justify-center"
-        style={{ scrollSnapAlign: "start", height: "100dvh" }}
+        className="snap-section relative flex items-center justify-center py-20 md:py-0"
       >
-        <div
-          className="absolute inset-0"
-          style={{ background: "rgba(0,0,0,0.25)" }}
-        />
+        <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.25)" }} />
         <div className="container mx-auto px-6 relative z-10">
+          {/* Stats grid — stacks vertically on mobile, 3-col on desktop */}
           <div
-            className="grid grid-cols-1 md:grid-cols-3"
+            className="grid grid-cols-1 md:grid-cols-3 divide-y divide-white/10 md:divide-y-0 md:divide-x"
             style={{ borderTop: "1px solid rgba(255,255,255,0.1)", borderBottom: "1px solid rgba(255,255,255,0.1)" }}
           >
             {[
@@ -304,18 +294,11 @@ export default function Home() {
               { num: "∞", label: "Artworks Per Gallery" },
               { num: "عمّان", label: "Rooted in Amman, Jordan" },
             ].map((stat, i) => (
-              <div
-                key={i}
-                className="py-12 px-8 text-center"
-                style={{
-                  borderRight: i < 2 ? "1px solid rgba(255,255,255,0.1)" : "none",
-                  borderBottom: "1px solid rgba(255,255,255,0.05)",
-                }}
-              >
+              <div key={i} className="py-10 md:py-12 px-6 md:px-8 text-center">
                 <div
                   style={{
                     fontFamily: "'Playfair Display', serif",
-                    fontSize: "3.25rem",
+                    fontSize: "clamp(2.5rem, 6vw, 3.25rem)",
                     fontWeight: 700,
                     color: "hsl(38 92% 50%)",
                     lineHeight: 1,
@@ -329,12 +312,12 @@ export default function Home() {
             ))}
           </div>
 
-          <div className="text-center mt-20">
+          <div className="text-center mt-12 md:mt-20">
             <blockquote
               style={{
                 fontFamily: "'Playfair Display', serif",
                 fontStyle: "italic",
-                fontSize: "clamp(1.25rem, 2.5vw, 1.875rem)",
+                fontSize: "clamp(1.1rem, 2.5vw, 1.875rem)",
                 color: "rgba(255,255,255,0.8)",
                 lineHeight: 1.6,
                 maxWidth: "48rem",
@@ -354,13 +337,9 @@ export default function Home() {
       {/* ── Section 3: CTA ── */}
       <section
         ref={setSectionRef(3)}
-        className="relative flex items-center justify-center text-center"
-        style={{ scrollSnapAlign: "start", height: "100dvh" }}
+        className="snap-section relative flex items-center justify-center text-center py-24 md:py-0"
       >
-        <div
-          className="absolute inset-0"
-          style={{ background: "rgba(0,0,0,0.3)" }}
-        />
+        <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.3)" }} />
         <div className="container mx-auto px-6 relative z-10">
           <FadeUp>
             <p style={{ ...monoLabel, color: "hsl(38 92% 50%)", marginBottom: "1.25rem" }}>
@@ -372,7 +351,7 @@ export default function Home() {
               className="mb-6"
               style={{
                 fontFamily: "'Playfair Display', serif",
-                fontSize: "clamp(2.75rem, 7vw, 5.5rem)",
+                fontSize: "clamp(2.5rem, 7vw, 5.5rem)",
                 fontWeight: 700,
                 color: "#fff",
                 lineHeight: 1.1,
@@ -385,8 +364,8 @@ export default function Home() {
           </FadeUp>
           <FadeUp delay={240}>
             <p
-              className="mb-12 max-w-xl mx-auto font-light leading-relaxed"
-              style={{ fontSize: "1.1rem", color: "rgba(255,255,255,0.55)" }}
+              className="mb-10 max-w-xl mx-auto font-light leading-relaxed"
+              style={{ fontSize: "clamp(0.95rem, 2.5vw, 1.1rem)", color: "rgba(255,255,255,0.55)" }}
             >
               Join artists from across Jordan sharing their work without walls, without gatekeepers — just art and space.
             </p>
@@ -397,9 +376,9 @@ export default function Home() {
                 className="h-14 px-10 transition-opacity hover:opacity-90"
                 style={{
                   fontFamily: "'DM Mono', monospace",
+                  fontSize: "0.7rem",
                   letterSpacing: "0.12em",
                   textTransform: "uppercase",
-                  fontSize: "0.75rem",
                   fontWeight: 500,
                   color: "#0e0a04",
                   background: "hsl(38 92% 50%)",
@@ -414,7 +393,7 @@ export default function Home() {
           </FadeUp>
 
           <div
-            className="mt-20 flex items-center justify-between max-w-2xl mx-auto"
+            className="mt-14 md:mt-20 flex items-center justify-between max-w-2xl mx-auto"
             style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: "2rem" }}
           >
             <span
@@ -427,7 +406,7 @@ export default function Home() {
             >
               Virtual Art Space
             </span>
-            <span style={{ ...monoLabel, color: "rgba(255,255,255,0.25)" }}>
+            <span style={{ ...monoLabel, color: "rgba(255,255,255,0.25)", fontSize: "0.55rem" }}>
               Amman · Jordan · 2025
             </span>
           </div>
