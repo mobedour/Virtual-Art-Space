@@ -48,6 +48,14 @@ const THEME_DEFS: Record<string, ThemeDef> = {
     pattern: "lines",
     textColor: "#1a1a1a",
   },
+  concrete_bunker: {
+    bg: "#1a1a1a",
+    bg2: "#3a3a3a",
+    accent: "#a0a0a0",
+    accentDim: "#a0a0a018",
+    pattern: "concrete",
+    textColor: "#c8c8c8",
+  },
   default: {
     bg: "#180e08",
     bg2: "#352c24",

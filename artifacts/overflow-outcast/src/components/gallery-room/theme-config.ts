@@ -12,6 +12,8 @@ export type ThemeConfig = {
   floorGrid: string
   baseboardColor: string
   accentLight: string
+  /** one of: parquet | neon | marble | slate | concrete */
+  floorPattern: string
 }
 
 const THEMES: Record<string, ThemeConfig> = {
@@ -26,9 +28,10 @@ const THEMES: Record<string, ThemeConfig> = {
     spotIntensity: 2.0,
     frameColor: '#c8a45a',
     labelColor: '#e0c876',
-    floorGrid: '#3a3228',
+    floorGrid: '#2c241e',
     baseboardColor: '#3d3530',
     accentLight: '#ffd580',
+    floorPattern: 'parquet',
   },
   neon_grid: {
     wallColor: '#0d1f2d',
@@ -41,9 +44,10 @@ const THEMES: Record<string, ThemeConfig> = {
     spotIntensity: 2.2,
     frameColor: '#00d4ff',
     labelColor: '#80e8ff',
-    floorGrid: '#1a3a4a',
+    floorGrid: '#00d4ff',
     baseboardColor: '#0f2d3d',
     accentLight: '#00d4ff',
+    floorPattern: 'neon',
   },
   purple_mist: {
     wallColor: '#221030',
@@ -59,6 +63,7 @@ const THEMES: Record<string, ThemeConfig> = {
     floorGrid: '#3a1a50',
     baseboardColor: '#2e1545',
     accentLight: '#b06aff',
+    floorPattern: 'slate',
   },
   white_cube: {
     wallColor: '#eeede8',
@@ -67,13 +72,30 @@ const THEMES: Record<string, ThemeConfig> = {
     fogColor: '#e5e3de',
     fogNear: 16,
     fogFar: 42,
-    ambientIntensity: 2.0,
-    spotIntensity: 0.6,
+    ambientIntensity: 2.2,
+    spotIntensity: 0.5,
     frameColor: '#1a1a1a',
     labelColor: '#111111',
-    floorGrid: '#c8c6c0',
+    floorGrid: '#b8b6b0',
     baseboardColor: '#c5c3be',
     accentLight: '#ffffff',
+    floorPattern: 'marble',
+  },
+  concrete_bunker: {
+    wallColor: '#3a3a3a',
+    floorColor: '#2c2c2c',
+    ceilingColor: '#323232',
+    fogColor: '#1a1a1a',
+    fogNear: 13,
+    fogFar: 36,
+    ambientIntensity: 1.1,
+    spotIntensity: 1.8,
+    frameColor: '#a0a0a0',
+    labelColor: '#c8c8c8',
+    floorGrid: '#3e3e3e',
+    baseboardColor: '#484848',
+    accentLight: '#e0e0d0',
+    floorPattern: 'concrete',
   },
   default: {
     wallColor: '#352c24',
@@ -89,6 +111,7 @@ const THEMES: Record<string, ThemeConfig> = {
     floorGrid: '#3d3028',
     baseboardColor: '#3d3028',
     accentLight: '#ffd580',
+    floorPattern: 'parquet',
   },
 }
 

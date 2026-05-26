@@ -4,10 +4,13 @@ import * as THREE from "three";
 
 const IMAGE_W = 1.6;
 const IMAGE_H = 2.0;
-const FRAME_W = IMAGE_W + 0.24;
-const FRAME_H = IMAGE_H + 0.24;
-const FRAME_D = 0.08;
-const MAT_INSET = 0.06;
+const BORDER = 0.14;           // moulding border width
+const FRAME_W = IMAGE_W + BORDER * 2;
+const FRAME_H = IMAGE_H + BORDER * 2;
+const FRAME_D = 0.13;          // moulding depth (thicker = more presence)
+const MAT_INSET = 0.055;       // mat board extends inside frame edge
+const BEVEL_W = 0.022;         // front raised inner rim width
+const BEVEL_D = 0.016;         // how far it protrudes
 
 export type ArtworkData = {
   id: number;
@@ -34,47 +37,61 @@ interface ArtworkFrameProps {
   onSelect: (artwork: ArtworkData) => void;
 }
 
-// Generate a placeholder canvas texture with initials + title when image fails
 function makePlaceholderTexture(title: string, frameColor: string): THREE.Texture {
   const canvas = document.createElement("canvas");
   canvas.width = 512;
   canvas.height = 640;
   const ctx = canvas.getContext("2d")!;
 
-  // Dark background
-  ctx.fillStyle = "#1a1510";
+  ctx.fillStyle = "#16120e";
   ctx.fillRect(0, 0, 512, 640);
 
-  // Subtle border
-  ctx.strokeStyle = frameColor;
-  ctx.lineWidth = 3;
-  ctx.strokeRect(20, 20, 472, 600);
+  // Inner vignette
+  const vg = ctx.createRadialGradient(256, 320, 60, 256, 320, 320);
+  vg.addColorStop(0, "rgba(255,200,80,0.04)");
+  vg.addColorStop(1, "rgba(0,0,0,0.5)");
+  ctx.fillStyle = vg;
+  ctx.fillRect(0, 0, 512, 640);
 
-  // Decorative corner marks
-  const markLen = 28;
+  // Border
   ctx.strokeStyle = frameColor;
   ctx.lineWidth = 2;
-  [[20, 20], [492, 20], [20, 620], [492, 620]].forEach(([cx, cy]) => {
-    ctx.beginPath(); ctx.moveTo(cx, cy + markLen * (cy < 300 ? 1 : -1)); ctx.lineTo(cx, cy); ctx.lineTo(cx + markLen * (cx < 300 ? 1 : -1), cy); ctx.stroke();
-  });
+  ctx.strokeRect(16, 16, 480, 608);
+  ctx.strokeStyle = frameColor + "40";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(24, 24, 464, 592);
 
-  // Initials in centre
+  // Corner marks
+  const L = 32;
+  ctx.strokeStyle = frameColor;
+  ctx.lineWidth = 2;
+  for (const [cx, cy] of [[20, 20], [492, 20], [20, 620], [492, 620]] as [number, number][]) {
+    const sx = cx < 250 ? 1 : -1;
+    const sy = cy < 350 ? 1 : -1;
+    ctx.beginPath();
+    ctx.moveTo(cx + sx * L, cy);
+    ctx.lineTo(cx, cy);
+    ctx.lineTo(cx, cy + sy * L);
+    ctx.stroke();
+  }
+
+  // Ghost initials
   const words = title.trim().split(/\s+/);
   const initials = words.slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
-  ctx.font = "bold 110px serif";
-  ctx.fillStyle = frameColor + "55";
+  ctx.font = "bold 140px serif";
+  ctx.fillStyle = frameColor + "28";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(initials || "?", 256, 280);
+  ctx.fillText(initials || "?", 256, 290);
 
-  // Title text below
-  ctx.font = "22px sans-serif";
+  // Title
+  ctx.font = "20px sans-serif";
   ctx.fillStyle = "#c8b89a";
-  ctx.fillText(title.slice(0, 28), 256, 430);
+  ctx.fillText(title.slice(0, 30), 256, 440);
 
-  ctx.font = "16px monospace";
-  ctx.fillStyle = "#6a5c4a";
-  ctx.fillText("IMAGE UNAVAILABLE", 256, 480);
+  ctx.font = "13px monospace";
+  ctx.fillStyle = "#5a4e40";
+  ctx.fillText("IMAGE UNAVAILABLE", 256, 475);
 
   return new THREE.CanvasTexture(canvas);
 }
@@ -97,14 +114,10 @@ export function ArtworkFrame({
   );
 
   useEffect(() => {
-    if (!artwork.imageUrl) {
-      setLoadFailed(true);
-      return;
-    }
+    if (!artwork.imageUrl) { setLoadFailed(true); return; }
     cancelRef.current = false;
     setTexture(null);
     setLoadFailed(false);
-
     const loader = new THREE.TextureLoader();
     loader.crossOrigin = "anonymous";
     loader.load(
@@ -115,89 +128,114 @@ export function ArtworkFrame({
         setTexture(tex);
       },
       undefined,
-      () => {
-        if (!cancelRef.current) setLoadFailed(true);
-      }
+      () => { if (!cancelRef.current) setLoadFailed(true); }
     );
-    return () => {
-      cancelRef.current = true;
-    };
+    return () => { cancelRef.current = true; };
   }, [artwork.imageUrl]);
 
   const displayTexture = texture ?? (loadFailed ? placeholderTexture : null);
-
   const frameColorObj = useMemo(() => new THREE.Color(frameColor), [frameColor]);
+  const frameDarkObj  = useMemo(() => new THREE.Color(frameColor).multiplyScalar(0.55), [frameColor]);
+
+  // Bevel geometry — four thin strips forming an inner raised rim
+  const bevelPieces: { pos: [number, number, number]; size: [number, number, number] }[] = [
+    { pos: [0,  (IMAGE_H / 2 + MAT_INSET + BEVEL_W / 2), FRAME_D / 2 - BEVEL_D / 2], size: [FRAME_W - BEVEL_W * 2, BEVEL_W, BEVEL_D] },
+    { pos: [0, -(IMAGE_H / 2 + MAT_INSET + BEVEL_W / 2), FRAME_D / 2 - BEVEL_D / 2], size: [FRAME_W - BEVEL_W * 2, BEVEL_W, BEVEL_D] },
+    { pos: [-(IMAGE_W / 2 + MAT_INSET + BEVEL_W / 2), 0,  FRAME_D / 2 - BEVEL_D / 2], size: [BEVEL_W, FRAME_H, BEVEL_D] },
+    { pos: [ (IMAGE_W / 2 + MAT_INSET + BEVEL_W / 2), 0,  FRAME_D / 2 - BEVEL_D / 2], size: [BEVEL_W, FRAME_H, BEVEL_D] },
+  ];
 
   return (
     <group
       position={position}
       rotation={[0, rotationY, 0]}
       userData={{ artworkId: artwork.id }}
-      onClick={(e) => {
-        e.stopPropagation();
-        onSelect(artwork);
-      }}
+      onClick={(e) => { e.stopPropagation(); onSelect(artwork); }}
     >
-      {/* Outer frame — gold moulding */}
+      {/* Main moulding box */}
       <mesh position={[0, 0, -FRAME_D / 2]} castShadow receiveShadow>
         <boxGeometry args={[FRAME_W, FRAME_H, FRAME_D]} />
         <meshStandardMaterial
           color={frameColorObj}
-          metalness={0.6}
-          roughness={0.35}
-          envMapIntensity={0.8}
+          metalness={0.65}
+          roughness={0.3}
+          envMapIntensity={1.0}
         />
       </mesh>
 
-      {/* Inner frame lip (darker inset to add depth) */}
-      <mesh position={[0, 0, -0.005]}>
-        <boxGeometry args={[IMAGE_W + MAT_INSET * 2, IMAGE_H + MAT_INSET * 2, 0.025]} />
-        <meshStandardMaterial color="#0d0b09" roughness={0.9} />
+      {/* Inner raised bevel rim at the front face */}
+      {bevelPieces.map((p, i) => (
+        <mesh key={i} position={p.pos} castShadow>
+          <boxGeometry args={p.size} />
+          <meshStandardMaterial
+            color={frameColorObj}
+            metalness={0.8}
+            roughness={0.2}
+            envMapIntensity={1.2}
+          />
+        </mesh>
+      ))}
+
+      {/* Dark rabbet recess behind mat */}
+      <mesh position={[0, 0, 0]}>
+        <boxGeometry args={[IMAGE_W + MAT_INSET * 2 + 0.01, IMAGE_H + MAT_INSET * 2 + 0.01, 0.03]} />
+        <meshStandardMaterial color="#0a0806" roughness={1} />
       </mesh>
 
-      {/* Mat / mount board */}
-      <mesh position={[0, 0, 0.008]}>
-        <planeGeometry args={[IMAGE_W + MAT_INSET * 2 - 0.02, IMAGE_H + MAT_INSET * 2 - 0.02]} />
-        <meshStandardMaterial color="#f2ede4" roughness={0.95} />
+      {/* Mat board — cream */}
+      <mesh position={[0, 0, 0.016]}>
+        <planeGeometry args={[IMAGE_W + MAT_INSET * 2 - 0.01, IMAGE_H + MAT_INSET * 2 - 0.01]} />
+        <meshStandardMaterial color="#f0ebe0" roughness={0.98} />
       </mesh>
 
-      {/* Artwork image (or placeholder) */}
-      <mesh position={[0, 0, 0.025]}>
+      {/* Artwork canvas */}
+      <mesh position={[0, 0, 0.032]}>
         <planeGeometry args={[IMAGE_W, IMAGE_H]} />
         {displayTexture ? (
           <meshBasicMaterial map={displayTexture} toneMapped={false} />
         ) : (
-          /* Loading state — subtle pulsing dark panel */
-          <meshStandardMaterial color="#1a1510" roughness={0.9} emissive="#0d0b08" emissiveIntensity={0.4} />
+          <meshStandardMaterial color="#1a1510" roughness={0.9} emissive="#0d0b08" emissiveIntensity={0.5} />
         )}
       </mesh>
 
-      {/* Hanging wire (thin line at top) */}
-      <mesh position={[0, FRAME_H / 2 + 0.05, -0.02]}>
-        <cylinderGeometry args={[0.008, 0.008, 0.18, 6]} />
+      {/* Label shelf — thin horizontal ledge below frame */}
+      <mesh position={[0, -(FRAME_H / 2 + 0.025), -FRAME_D / 2 + 0.01]}>
+        <boxGeometry args={[FRAME_W * 0.85, 0.03, 0.055]} />
+        <meshStandardMaterial color={frameDarkObj} metalness={0.5} roughness={0.4} />
+      </mesh>
+
+      {/* Hanging wire */}
+      <mesh position={[0, FRAME_H / 2 + 0.06, -FRAME_D + 0.02]}>
+        <cylinderGeometry args={[0.006, 0.006, 0.22, 6]} />
+        <meshStandardMaterial color="#999" metalness={0.95} roughness={0.15} />
+      </mesh>
+
+      {/* Nail / hook stub */}
+      <mesh position={[0, FRAME_H / 2 + 0.17, -FRAME_D + 0.015]}>
+        <sphereGeometry args={[0.015, 8, 8]} />
         <meshStandardMaterial color="#888" metalness={0.9} roughness={0.2} />
       </mesh>
 
       {/* Title label */}
       <Text
         position={[0, -(FRAME_H / 2 + 0.18), 0.02]}
-        fontSize={0.1}
+        fontSize={0.095}
         color={labelColor}
         anchorX="center"
         anchorY="top"
         maxWidth={FRAME_W + 0.8}
-        outlineWidth={0.004}
+        outlineWidth={0.005}
         outlineColor="#000000"
       >
         {artwork.title}
       </Text>
 
-      {/* Artist name (smaller, below title) */}
+      {/* Artist name */}
       {artwork.artistName && (
         <Text
-          position={[0, -(FRAME_H / 2 + 0.33), 0.02]}
-          fontSize={0.075}
-          color={labelColor + "aa"}
+          position={[0, -(FRAME_H / 2 + 0.32), 0.02]}
+          fontSize={0.07}
+          color={labelColor + "bb"}
           anchorX="center"
           anchorY="top"
           maxWidth={FRAME_W + 0.8}
