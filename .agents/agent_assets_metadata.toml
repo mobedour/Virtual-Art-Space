@@ -1,5 +1,34 @@
 uploads = []
-generated = []
+
+[[generated]]
+id = "HbcTELqNcKWb_CClqpK8d"
+uri = "file://artifacts/mockup-sandbox/public/images/amman-sunset.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "X1tfsychBhPbApTpSUv8q"
+uri = "file://artifacts/mockup-sandbox/public/images/amman-citadel.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "QslmFdHPVMnUDOmxs1CbW"
+uri = "file://artifacts/mockup-sandbox/public/images/amman-calligraphy.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "O7GkSatkjOhU3y9CpirGn"
+uri = "file://artifacts/mockup-sandbox/public/images/amman-gallery.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "3QqozeESrT8_pjrX6WKUD"
+uri = "file://artifacts/mockup-sandbox/public/images/amman-golden.png"
+type = "image"
+title = "generated_image"
 
 [[outputs]]
 id = "StT9DJomcx_2wNxhuCRJ2"
