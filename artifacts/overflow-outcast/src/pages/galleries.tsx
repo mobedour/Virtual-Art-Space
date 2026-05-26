@@ -138,7 +138,7 @@ export default function Galleries() {
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between pt-4 border-t border-border/30">
+                      <div className="flex flex-col gap-3 pt-4 border-t border-border/30 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex items-center gap-3">
                           <Switch
                             checked={gallery.published}
@@ -154,18 +154,21 @@ export default function Galleries() {
                           {gallery.published && (
                             <Button asChild variant="outline" size="sm" className="rounded-sm border-border/50 font-sans text-xs hover:text-foreground hover:border-primary/40">
                               <Link href={`/gallery/${gallery.slug}`}>
-                                <ExternalLink className="w-3.5 h-3.5 mr-2" /> View
+                                <ExternalLink className="w-3.5 h-3.5 sm:mr-2" />
+                                <span className="hidden sm:inline">View</span>
                               </Link>
                             </Button>
                           )}
                           <Button asChild variant="outline" size="sm" className="rounded-sm border-primary/40 text-primary font-sans text-xs hover:bg-primary/10 hover:text-primary">
                             <Link href={`/dashboard/galleries/${gallery.id}/artworks`}>
-                              <ImageIcon className="w-3.5 h-3.5 mr-2" /> Artworks
+                              <ImageIcon className="w-3.5 h-3.5 sm:mr-2" />
+                              <span className="hidden sm:inline">Artworks</span>
                             </Link>
                           </Button>
                           <Button asChild variant="outline" size="sm" className="rounded-sm border-border/50 font-sans text-xs hover:text-foreground hover:border-primary/50">
                             <Link href={`/dashboard/galleries/${gallery.id}/edit`}>
-                              <Settings className="w-3.5 h-3.5 mr-2" /> Edit
+                              <Settings className="w-3.5 h-3.5 sm:mr-2" />
+                              <span className="hidden sm:inline">Edit</span>
                             </Link>
                           </Button>
                           <Button variant="outline" size="sm" className="rounded-sm border-border/50 font-sans text-xs text-destructive hover:bg-destructive/10 hover:text-destructive hover:border-destructive/50" onClick={() => handleDelete(gallery.id)}>
