@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { motion } from "framer-motion";
+import { Compass, LogIn, UserPlus, LayoutDashboard } from "lucide-react";
 
 export function PublicLayout({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -36,7 +37,37 @@ export function PublicLayout({ children }: { children: ReactNode }) {
               Virtual Art Space
             </motion.span>
           </Link>
-          <nav className="flex items-center gap-6">
+          {/* ── Mobile nav: icon-only ───────────────────────────────── */}
+          <nav className="flex items-center gap-2 md:hidden">
+            <Link href="/galleries">
+              <span aria-label="Explore galleries" className="w-9 h-9 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all cursor-pointer">
+                <Compass className="w-[18px] h-[18px]" />
+              </span>
+            </Link>
+            {user ? (
+              <Link href="/dashboard">
+                <span aria-label="Dashboard" className="w-9 h-9 flex items-center justify-center rounded-sm border border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground transition-all cursor-pointer">
+                  <LayoutDashboard className="w-[17px] h-[17px]" />
+                </span>
+              </Link>
+            ) : (
+              <>
+                <Link href="/login">
+                  <span aria-label="Sign in" className="w-9 h-9 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all cursor-pointer">
+                    <LogIn className="w-[18px] h-[18px]" />
+                  </span>
+                </Link>
+                <Link href="/register">
+                  <span aria-label="Create account" className="w-9 h-9 flex items-center justify-center rounded-sm bg-primary text-primary-foreground shadow-[0_2px_12px_rgba(217,119,6,0.35)] hover:bg-primary/90 hover:shadow-[0_4px_18px_rgba(217,119,6,0.5)] transition-all cursor-pointer">
+                    <UserPlus className="w-[17px] h-[17px]" />
+                  </span>
+                </Link>
+              </>
+            )}
+          </nav>
+
+          {/* ── Desktop nav: full text ──────────────────────────────── */}
+          <nav className="hidden md:flex items-center gap-6">
             <Link href="/galleries">
               <span className="font-sans text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer tracking-wide">
                 Explore
