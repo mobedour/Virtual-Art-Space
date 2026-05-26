@@ -87,7 +87,14 @@ export default function PublicGalleryDetail() {
       {/* Full-screen 3D gallery */}
       <main className="flex-1 relative">
         <GalleryRoom
-          gallery={{ artworks: gallery.artworks, roomTheme: gallery.roomTheme }}
+          gallery={{
+            artworks: gallery.artworks,
+            roomTheme: gallery.roomTheme,
+            roomSeed: gallery.roomSeed,
+            roomMode: gallery.roomMode,
+            roomSize: gallery.roomSize,
+            decorationLevel: gallery.decorationLevel,
+          }}
           onExit={handleExit}
         />
       </main>

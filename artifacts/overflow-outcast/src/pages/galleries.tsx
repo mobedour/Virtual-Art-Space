@@ -113,7 +113,7 @@ export default function Galleries() {
                         className="absolute inset-0 w-full h-full transition-transform duration-700 group-hover:scale-[1.06]"
                       />
                       <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
-                        <div className="font-sans text-[10px] text-white/50 mb-0.5 uppercase tracking-wider">Artworks</div>
+                        <div className="font-sans text-[10px] text-white/50 mb-0.5 uppercase tracking-wider">{gallery.artworkCount === 1 ? "Artwork" : "Artworks"}</div>
                         <div className="font-display text-3xl font-bold text-white drop-shadow-lg">{gallery.artworkCount}</div>
                       </div>
                     </div>

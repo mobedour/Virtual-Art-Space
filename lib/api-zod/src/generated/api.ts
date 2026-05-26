@@ -104,7 +104,11 @@ export const ListGalleriesResponseItem = zod.object({
   "published": zod.boolean(),
   "slug": zod.string(),
   "artworkCount": zod.number(),
-  "createdAt": zod.string()
+  "createdAt": zod.string(),
+  "roomSeed": zod.number(),
+  "roomMode": zod.string(),
+  "roomSize": zod.number(),
+  "decorationLevel": zod.number()
 })
 export const ListGalleriesResponse = zod.array(ListGalleriesResponseItem)
 
@@ -113,12 +117,20 @@ export const ListGalleriesResponse = zod.array(ListGalleriesResponseItem)
  * @summary Create a new gallery
  */
 
+export const createGalleryBodyRoomSizeMax = 10;
+
+export const createGalleryBodyDecorationLevelMax = 10;
+
 
 
 export const CreateGalleryBody = zod.object({
   "title": zod.string().min(1),
   "description": zod.string().optional(),
-  "roomTheme": zod.string().optional()
+  "roomTheme": zod.string().optional(),
+  "roomMode": zod.string().optional(),
+  "roomSize": zod.number().min(1).max(createGalleryBodyRoomSizeMax).optional(),
+  "decorationLevel": zod.number().min(1).max(createGalleryBodyDecorationLevelMax).optional(),
+  "roomSeed": zod.number().optional()
 })
 
 
@@ -138,7 +150,11 @@ export const GetGalleryResponse = zod.object({
   "published": zod.boolean(),
   "slug": zod.string(),
   "artworkCount": zod.number(),
-  "createdAt": zod.string()
+  "createdAt": zod.string(),
+  "roomSeed": zod.number(),
+  "roomMode": zod.string(),
+  "roomSize": zod.number(),
+  "decorationLevel": zod.number()
 })
 
 
@@ -150,12 +166,19 @@ export const UpdateGalleryParams = zod.object({
 })
 
 
+export const updateGalleryBodyRoomSizeMax = 10;
+
+export const updateGalleryBodyDecorationLevelMax = 10;
+
 
 
 export const UpdateGalleryBody = zod.object({
   "title": zod.string().min(1).optional(),
   "description": zod.string().optional(),
-  "roomTheme": zod.string().optional()
+  "roomTheme": zod.string().optional(),
+  "roomMode": zod.string().optional(),
+  "roomSize": zod.number().min(1).max(updateGalleryBodyRoomSizeMax).optional(),
+  "decorationLevel": zod.number().min(1).max(updateGalleryBodyDecorationLevelMax).optional()
 })
 
 export const UpdateGalleryResponse = zod.object({
@@ -167,7 +190,11 @@ export const UpdateGalleryResponse = zod.object({
   "published": zod.boolean(),
   "slug": zod.string(),
   "artworkCount": zod.number(),
-  "createdAt": zod.string()
+  "createdAt": zod.string(),
+  "roomSeed": zod.number(),
+  "roomMode": zod.string(),
+  "roomSize": zod.number(),
+  "decorationLevel": zod.number()
 })
 
 
@@ -199,7 +226,11 @@ export const ToggleGalleryPublishResponse = zod.object({
   "published": zod.boolean(),
   "slug": zod.string(),
   "artworkCount": zod.number(),
-  "createdAt": zod.string()
+  "createdAt": zod.string(),
+  "roomSeed": zod.number(),
+  "roomMode": zod.string(),
+  "roomSize": zod.number(),
+  "decorationLevel": zod.number()
 })
 
 
@@ -315,6 +346,7 @@ export const ListPublicGalleriesResponseItem = zod.object({
   "description": zod.string().nullish(),
   "slug": zod.string(),
   "roomTheme": zod.string(),
+  "roomSize": zod.number(),
   "artworkCount": zod.number(),
   "artistName": zod.string().nullish(),
   "createdAt": zod.string()
@@ -335,6 +367,10 @@ export const GetPublicGalleryResponse = zod.object({
   "description": zod.string().nullish(),
   "slug": zod.string(),
   "roomTheme": zod.string(),
+  "roomSeed": zod.number(),
+  "roomMode": zod.string(),
+  "roomSize": zod.number(),
+  "decorationLevel": zod.number(),
   "artistName": zod.string().nullish(),
   "artworks": zod.array(zod.object({
   "id": zod.number(),
@@ -373,7 +409,11 @@ export const GetDashboardStatsResponse = zod.object({
   "published": zod.boolean(),
   "slug": zod.string(),
   "artworkCount": zod.number(),
-  "createdAt": zod.string()
+  "createdAt": zod.string(),
+  "roomSeed": zod.number(),
+  "roomMode": zod.string(),
+  "roomSize": zod.number(),
+  "decorationLevel": zod.number()
 }))
 })
 

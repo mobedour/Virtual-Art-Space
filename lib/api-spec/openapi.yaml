@@ -619,6 +619,14 @@ components:
           type: integer
         createdAt:
           type: string
+        roomSeed:
+          type: integer
+        roomMode:
+          type: string
+        roomSize:
+          type: integer
+        decorationLevel:
+          type: integer
       required:
         - id
         - userId
@@ -628,6 +636,10 @@ components:
         - slug
         - artworkCount
         - createdAt
+        - roomSeed
+        - roomMode
+        - roomSize
+        - decorationLevel
 
     GalleryInput:
       type: object
@@ -639,6 +651,18 @@ components:
           type: string
         roomTheme:
           type: string
+        roomMode:
+          type: string
+        roomSize:
+          type: integer
+          minimum: 1
+          maximum: 10
+        decorationLevel:
+          type: integer
+          minimum: 1
+          maximum: 10
+        roomSeed:
+          type: integer
       required:
         - title
 
@@ -652,6 +676,16 @@ components:
           type: string
         roomTheme:
           type: string
+        roomMode:
+          type: string
+        roomSize:
+          type: integer
+          minimum: 1
+          maximum: 10
+        decorationLevel:
+          type: integer
+          minimum: 1
+          maximum: 10
 
     PublishToggle:
       type: object
@@ -797,6 +831,8 @@ components:
           type: string
         roomTheme:
           type: string
+        roomSize:
+          type: integer
         artworkCount:
           type: integer
         artistName:
@@ -808,6 +844,7 @@ components:
         - title
         - slug
         - roomTheme
+        - roomSize
         - artworkCount
         - createdAt
 
@@ -824,6 +861,14 @@ components:
           type: string
         roomTheme:
           type: string
+        roomSeed:
+          type: integer
+        roomMode:
+          type: string
+        roomSize:
+          type: integer
+        decorationLevel:
+          type: integer
         artistName:
           type: ["string", "null"]
         artworks:
@@ -835,6 +880,10 @@ components:
         - title
         - slug
         - roomTheme
+        - roomSeed
+        - roomMode
+        - roomSize
+        - decorationLevel
         - artworks
 
     DashboardStats:

@@ -3,8 +3,6 @@ import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import type { JoystickState } from "./VirtualJoystick";
 
-const HALF_W = 9;
-const HALF_D = 9;
 const EYE_Y = 0;
 const LOOK_SENSITIVITY = 0.004;
 const MOVE_SPEED = 7;
@@ -14,12 +12,16 @@ interface TouchControlsProps {
   enabled: boolean;
   joystickRef: React.RefObject<JoystickState>;
   onArtworkTap: () => void;
+  halfW: number;
+  halfD: number;
 }
 
 export function TouchControls({
   enabled,
   joystickRef,
   onArtworkTap,
+  halfW,
+  halfD,
 }: TouchControlsProps) {
   const { gl, camera } = useThree();
 
@@ -158,12 +160,12 @@ export function TouchControls({
       move.normalize().multiplyScalar(MOVE_SPEED * delta);
       camera.position.add(move);
       camera.position.x = Math.max(
-        -(HALF_W - 0.6),
-        Math.min(HALF_W - 0.6, camera.position.x)
+        -(halfW - 0.6),
+        Math.min(halfW - 0.6, camera.position.x)
       );
       camera.position.z = Math.max(
-        -(HALF_D - 0.6),
-        Math.min(HALF_D - 0.6, camera.position.z)
+        -(halfD - 0.6),
+        Math.min(halfD - 0.6, camera.position.z)
       );
       camera.position.y = EYE_Y;
     }

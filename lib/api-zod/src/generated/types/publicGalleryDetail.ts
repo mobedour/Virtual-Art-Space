@@ -14,6 +14,10 @@ export interface PublicGalleryDetail {
   description?: string | null;
   slug: string;
   roomTheme: string;
+  roomSeed: number;
+  roomMode: string;
+  roomSize: number;
+  decorationLevel: number;
   /** @nullable */
   artistName?: string | null;
   artworks: Artwork[];

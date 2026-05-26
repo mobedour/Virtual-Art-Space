@@ -66,6 +66,10 @@ export interface Gallery {
   slug: string;
   artworkCount: number;
   createdAt: string;
+  roomSeed: number;
+  roomMode: string;
+  roomSize: number;
+  decorationLevel: number;
 }
 
 export interface GalleryInput {
@@ -73,6 +77,18 @@ export interface GalleryInput {
   title: string;
   description?: string;
   roomTheme?: string;
+  roomMode?: string;
+  /**
+     * @minimum 1
+     * @maximum 10
+     */
+  roomSize?: number;
+  /**
+     * @minimum 1
+     * @maximum 10
+     */
+  decorationLevel?: number;
+  roomSeed?: number;
 }
 
 export interface GalleryUpdate {
@@ -80,6 +96,17 @@ export interface GalleryUpdate {
   title?: string;
   description?: string;
   roomTheme?: string;
+  roomMode?: string;
+  /**
+     * @minimum 1
+     * @maximum 10
+     */
+  roomSize?: number;
+  /**
+     * @minimum 1
+     * @maximum 10
+     */
+  decorationLevel?: number;
 }
 
 export interface PublishToggle {
@@ -155,6 +182,7 @@ export interface PublicGallery {
   description?: string | null;
   slug: string;
   roomTheme: string;
+  roomSize: number;
   artworkCount: number;
   /** @nullable */
   artistName?: string | null;
@@ -168,6 +196,10 @@ export interface PublicGalleryDetail {
   description?: string | null;
   slug: string;
   roomTheme: string;
+  roomSeed: number;
+  roomMode: string;
+  roomSize: number;
+  decorationLevel: number;
   /** @nullable */
   artistName?: string | null;
   artworks: Artwork[];

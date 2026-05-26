@@ -6,10 +6,9 @@ import { ArtworkFrame, type ArtworkData } from "./ArtworkFrame";
 import { getTheme } from "./theme-config";
 import { TouchControls } from "./TouchControls";
 import type { JoystickState } from "./VirtualJoystick";
+import { getRoomDims } from "./room-dimensions";
+import { RoomDecorations } from "./RoomDecorations";
 
-const HALF_W = 9;
-const HALF_H = 4.5;
-const HALF_D = 9;
 const EYE_Y = 0;
 const WALL_INSET = 0.12;
 const HANG_Y = 0.8;
@@ -20,19 +19,12 @@ type PlacedArtwork = {
   rotationY: number;
 };
 
-const WALLS = [
-  { getPos: (along: number): [number, number, number] => [along, HANG_Y, -(HALF_D - WALL_INSET)], rotY: 0 },
-  { getPos: (along: number): [number, number, number] => [HALF_W - WALL_INSET, HANG_Y, along], rotY: -Math.PI / 2 },
-  { getPos: (along: number): [number, number, number] => [along, HANG_Y, HALF_D - WALL_INSET], rotY: Math.PI },
-  { getPos: (along: number): [number, number, number] => [-(HALF_W - WALL_INSET), HANG_Y, along], rotY: Math.PI / 2 },
-];
-
-function getWallInfo(x: number, z: number): { wallIdx: number; along: number } | null {
+function getWallInfo(x: number, z: number, halfW: number, halfD: number): { wallIdx: number; along: number } | null {
   const THRESH = 0.6;
-  if (Math.abs(z - (-(HALF_D - WALL_INSET))) < THRESH) return { wallIdx: 0, along: x };
-  if (Math.abs(x - (HALF_W - WALL_INSET)) < THRESH)    return { wallIdx: 1, along: z };
-  if (Math.abs(z - (HALF_D - WALL_INSET)) < THRESH)     return { wallIdx: 2, along: x };
-  if (Math.abs(x - (-(HALF_W - WALL_INSET))) < THRESH)  return { wallIdx: 3, along: z };
+  if (Math.abs(z - (-(halfD - WALL_INSET))) < THRESH) return { wallIdx: 0, along: x };
+  if (Math.abs(x - (halfW - WALL_INSET)) < THRESH)    return { wallIdx: 1, along: z };
+  if (Math.abs(z - (halfD - WALL_INSET)) < THRESH)     return { wallIdx: 2, along: x };
+  if (Math.abs(x - (-(halfW - WALL_INSET))) < THRESH)  return { wallIdx: 3, along: z };
   return null;
 }
 
@@ -46,28 +38,36 @@ function resolveConflict(along: number, blocked: number[], minGap: number): numb
   return result;
 }
 
-function placeArtworks(artworks: ArtworkData[]): PlacedArtwork[] {
+function placeArtworks(artworks: ArtworkData[], halfW: number, halfD: number): PlacedArtwork[] {
   if (artworks.length === 0) return [];
+
+  const walls = [
+    { getPos: (along: number): [number, number, number] => [along, HANG_Y, -(halfD - WALL_INSET)], rotY: 0 },
+    { getPos: (along: number): [number, number, number] => [halfW - WALL_INSET, HANG_Y, along], rotY: -Math.PI / 2 },
+    { getPos: (along: number): [number, number, number] => [along, HANG_Y, halfD - WALL_INSET], rotY: Math.PI },
+    { getPos: (along: number): [number, number, number] => [-(halfW - WALL_INSET), HANG_Y, along], rotY: Math.PI / 2 },
+  ];
+
   const result: PlacedArtwork[] = [];
   const manual = artworks.filter((a) => a.isManuallyPlaced);
   const auto   = artworks.filter((a) => !a.isManuallyPlaced);
   const blockedPerWall: Record<number, number[]> = { 0: [], 1: [], 2: [], 3: [] };
 
   for (const artwork of manual) {
-    const pos: [number, number, number] = [artwork.xPosition ?? 0, artwork.yPosition ?? HANG_Y, artwork.zPosition ?? -(HALF_D - WALL_INSET)];
+    const pos: [number, number, number] = [artwork.xPosition ?? 0, artwork.yPosition ?? HANG_Y, artwork.zPosition ?? -(halfD - WALL_INSET)];
     result.push({ artwork, position: pos, rotationY: artwork.rotation ?? 0 });
-    const info = getWallInfo(pos[0], pos[2]);
+    const info = getWallInfo(pos[0], pos[2], halfW, halfD);
     if (info) blockedPerWall[info.wallIdx].push(info.along);
   }
 
   if (auto.length > 0) {
     const wallGroups: ArtworkData[][] = [[], [], [], []];
     auto.forEach((art, i) => wallGroups[i % 4].push(art));
-    const USABLE_SPAN = (HALF_W - 1) * 2;
+    const USABLE_SPAN = (halfW - 1) * 2;
     const MIN_GAP = 1.8;
     wallGroups.forEach((group, w) => {
       if (group.length === 0) return;
-      const wall = WALLS[w];
+      const wall = walls[w];
       const spacing = Math.min(3.2, USABLE_SPAN / group.length);
       const totalWidth = (group.length - 1) * spacing;
       const start = -totalWidth / 2;
@@ -102,7 +102,6 @@ function makeParquetFloor(c1: string, c2: string, size = 512): THREE.Texture {
           ? `hsl(${parseInt(c2.slice(1,3),16)*0.5 + 28},${25}%,${parseInt(c2.slice(1,3),16) / 5}%)`
           : c1;
         ctx.fillRect(x + 1, y + 1, PLANK - 2, PLANK - 2);
-        // Subtle grain lines
         ctx.strokeStyle = "rgba(0,0,0,0.07)";
         ctx.lineWidth = 0.5;
         for (let g = 4; g < PLANK - 2; g += 6) {
@@ -111,7 +110,6 @@ function makeParquetFloor(c1: string, c2: string, size = 512): THREE.Texture {
       }
     }
   }
-  // Grout lines
   ctx.strokeStyle = "rgba(0,0,0,0.18)";
   ctx.lineWidth = 1.5;
   for (let i = 0; i <= 12; i++) {
@@ -131,7 +129,6 @@ function makeNeonFloor(baseColor: string, gridColor: string, size = 512): THREE.
   ctx.fillStyle = baseColor;
   ctx.fillRect(0, 0, size, size);
   const TILE = size / 8;
-  // Glow grid
   ctx.shadowColor = gridColor;
   ctx.shadowBlur = 6;
   ctx.strokeStyle = gridColor;
@@ -142,7 +139,6 @@ function makeNeonFloor(baseColor: string, gridColor: string, size = 512): THREE.
     ctx.beginPath(); ctx.moveTo(0, i*TILE); ctx.lineTo(size, i*TILE); ctx.stroke();
   }
   ctx.shadowBlur = 0; ctx.globalAlpha = 1;
-  // Center cross highlight
   ctx.strokeStyle = gridColor + "40"; ctx.lineWidth = 0.5;
   for (let i = 0; i <= 16; i++) {
     ctx.beginPath(); ctx.moveTo(i*TILE/2, 0); ctx.lineTo(i*TILE/2, size); ctx.stroke();
@@ -162,7 +158,6 @@ function makeMarbleFloor(baseColor: string, groutColor: string, size = 512): THR
   for (let row = 0; row < 4; row++) {
     for (let col = 0; col < 4; col++) {
       const tx = col * TILE; const ty = row * TILE;
-      // Base marble tile
       const grad = ctx.createLinearGradient(tx, ty, tx + TILE, ty + TILE);
       grad.addColorStop(0, baseColor);
       grad.addColorStop(0.4, groutColor + "88");
@@ -170,7 +165,6 @@ function makeMarbleFloor(baseColor: string, groutColor: string, size = 512): THR
       grad.addColorStop(1, groutColor + "44");
       ctx.fillStyle = grad;
       ctx.fillRect(tx + 2, ty + 2, TILE - 4, TILE - 4);
-      // Veining
       ctx.strokeStyle = "rgba(150,148,142,0.25)";
       ctx.lineWidth = 1;
       for (let v = 0; v < 3; v++) {
@@ -184,7 +178,6 @@ function makeMarbleFloor(baseColor: string, groutColor: string, size = 512): THR
       }
     }
   }
-  // Grout lines
   ctx.strokeStyle = groutColor;
   ctx.lineWidth = 3;
   for (let i = 0; i <= 4; i++) {
@@ -203,13 +196,11 @@ function makeSlateTiles(baseColor: string, groutColor: string, size = 512): THRE
   const ctx = canvas.getContext("2d")!;
   ctx.fillStyle = baseColor;
   ctx.fillRect(0, 0, size, size);
-  // Irregular hexagon-like tiles via offset grid
   const W = size / 7; const H = W * 0.866;
   for (let row = 0; row < 10; row++) {
     for (let col = 0; col < 8; col++) {
       const ox = row % 2 === 0 ? 0 : W * 0.5;
       const x = col * W + ox; const y = row * H;
-      // Subtle variation per tile
       const lum = 0.88 + Math.random() * 0.12;
       ctx.fillStyle = `rgba(${Math.random()*10+10},${Math.random()*5+5},${Math.random()*15+15},${lum * 0.15})`;
       ctx.fillRect(x + 2, y + 2, W - 4, H - 4);
@@ -236,14 +227,12 @@ function makeConcreteFloor(baseColor: string, size = 512): THREE.Texture {
   const ctx = canvas.getContext("2d")!;
   ctx.fillStyle = baseColor;
   ctx.fillRect(0, 0, size, size);
-  // Noise grain
   for (let i = 0; i < 8000; i++) {
     const x = Math.random() * size; const y = Math.random() * size;
     const b = (Math.random() - 0.5) * 20;
     ctx.fillStyle = `rgba(${128+b},${128+b},${128+b},0.12)`;
     ctx.fillRect(x, y, 2, 2);
   }
-  // Expansion joints
   ctx.strokeStyle = "rgba(0,0,0,0.2)"; ctx.lineWidth = 2;
   const SLAB = size / 3;
   for (let i = 1; i < 3; i++) {
@@ -283,7 +272,7 @@ function makeWallTexture(baseColor: string, size = 512): THREE.Texture {
 }
 
 // ─── WASD movement ────────────────────────────────────────────────────────────
-function MovementController({ enabled }: { enabled: boolean }) {
+function MovementController({ enabled, halfW, halfD }: { enabled: boolean; halfW: number; halfD: number }) {
   const keys = useRef(new Set<string>());
   useEffect(() => {
     const onDown = (e: KeyboardEvent) => { keys.current.add(e.code); if (["ArrowUp","ArrowDown","Space"].includes(e.code)) e.preventDefault(); };
@@ -304,8 +293,8 @@ function MovementController({ enabled }: { enabled: boolean }) {
     if (move.lengthSq() > 0.001) {
       const SPEED = 7; move.normalize().multiplyScalar(SPEED * delta);
       camera.position.add(move);
-      camera.position.x = Math.max(-(HALF_W - 0.6), Math.min(HALF_W - 0.6, camera.position.x));
-      camera.position.z = Math.max(-(HALF_D - 0.6), Math.min(HALF_D - 0.6, camera.position.z));
+      camera.position.x = Math.max(-(halfW - 0.6), Math.min(halfW - 0.6, camera.position.x));
+      camera.position.z = Math.max(-(halfD - 0.6), Math.min(halfD - 0.6, camera.position.z));
       camera.position.y = EYE_Y;
     }
   });
@@ -337,23 +326,39 @@ interface GallerySceneProps {
   onLock: () => void;
   onUnlock: () => void;
   onArtworkSelect: (artwork: ArtworkData) => void;
-  /** GalleryRoom passes this ref; GalleryScene populates it with fireCenterRaycast */
   inspectCallbackRef?: React.MutableRefObject<(() => void) | null>;
+  roomSize?: number;
+  roomMode?: string;
+  roomSeed?: number;
+  decorationLevel?: number;
 }
 
-export function GalleryScene({ artworks, roomTheme, isLocked, isMobile, joystickRef, onLock, onUnlock, onArtworkSelect, inspectCallbackRef }: GallerySceneProps) {
+export function GalleryScene({
+  artworks, roomTheme, isLocked, isMobile, joystickRef, onLock, onUnlock, onArtworkSelect, inspectCallbackRef,
+  roomSize = 5, roomMode = "basic", roomSeed = 0, decorationLevel = 5,
+}: GallerySceneProps) {
   const theme = getTheme(roomTheme);
   const controlsRef = useRef<any>(null);
   const { camera, gl, scene } = useThree();
 
-  const placedArtworks = placeArtworks(artworks);
+  const { halfW, halfH, halfD } = getRoomDims(roomSize);
+  const fogScale = halfW / 9;
+
+  const placedArtworks = useMemo(
+    () => placeArtworks(artworks, halfW, halfD),
+    [artworks, halfW, halfD]
+  );
+
+  const artworkPositions = useMemo(
+    () => placedArtworks.map(({ position }) => ({ x: position[0], z: position[2] })),
+    [placedArtworks]
+  );
 
   const artworksRef  = useRef(artworks); artworksRef.current = artworks;
   const onSelectRef  = useRef(onArtworkSelect); onSelectRef.current = onArtworkSelect;
   const onLockRef    = useRef(onLock); onLockRef.current = onLock;
   const onUnlockRef  = useRef(onUnlock); onUnlockRef.current = onUnlock;
 
-  // ── Floor texture — per theme pattern
   const floorTexture = useMemo(() => {
     switch (theme.floorPattern) {
       case 'neon':     return makeNeonFloor(theme.floorColor, theme.floorGrid);
@@ -366,7 +371,7 @@ export function GalleryScene({ artworks, roomTheme, isLocked, isMobile, joystick
 
   const wallTexture = useMemo(() => makeWallTexture(theme.wallColor), [theme.wallColor]);
 
-  useEffect(() => { camera.position.set(0, EYE_Y, HALF_D - 1.5); }, [camera]);
+  useEffect(() => { camera.position.set(0, EYE_Y, halfD - 1.5); }, [camera, halfD]);
 
   useEffect(() => {
     if (isMobile) return;
@@ -385,6 +390,7 @@ export function GalleryScene({ artworks, roomTheme, isLocked, isMobile, joystick
     for (const hit of intersects) {
       let obj: THREE.Object3D | null = hit.object;
       while (obj) {
+        if (obj.userData.decorProp) break;
         if (obj.userData.artworkId !== undefined) {
           const artwork = artworksRef.current.find((a) => a.id === obj!.userData.artworkId);
           if (artwork) { if (!isMobile) controlsRef.current?.unlock(); onSelectRef.current(artwork); }
@@ -395,7 +401,6 @@ export function GalleryScene({ artworks, roomTheme, isLocked, isMobile, joystick
     }
   }, [camera, scene, isMobile]);
 
-  // Expose fireCenterRaycast to parent (for the × controller button)
   useEffect(() => {
     if (inspectCallbackRef) inspectCallbackRef.current = fireCenterRaycast;
   }, [inspectCallbackRef, fireCenterRaycast]);
@@ -410,45 +415,45 @@ export function GalleryScene({ artworks, roomTheme, isLocked, isMobile, joystick
 
   const fogColor = new THREE.Color(theme.fogColor);
   const BASEBOARD_H = 0.22;
-  const BASEBOARD_Y = -HALF_H + BASEBOARD_H / 2;
+  const BASEBOARD_Y = -halfH + BASEBOARD_H / 2;
   const CORNICE_H   = 0.16;
-  const CORNICE_Y   = HALF_H - CORNICE_H / 2;
+  const CORNICE_Y   = halfH - CORNICE_H / 2;
 
-  // Per-artwork museum spotlights (capped at 10 for performance)
   const artworkSpots = placedArtworks.slice(0, 10).map(({ position, rotationY }) => {
-    // Project spotlight forward from wall by 3 units at ceiling height
     const lx = position[0] + Math.sin(rotationY) * 3;
     const lz = position[2] + Math.cos(rotationY) * 3;
     return {
-      lightPos: [lx, HALF_H - 0.8, lz] as [number,number,number],
+      lightPos: [lx, halfH - 0.8, lz] as [number,number,number],
       targetPos: position,
     };
   });
 
-  // Ceiling fixture positions
-  const fixturePositions: [number, number][] = [[-4, -4], [4, -4], [-4, 4], [4, 4], [0, 0]];
+  const fp = halfW * 0.44;
+  const fixturePositions: [number, number][] = [[-fp, -fp], [fp, -fp], [-fp, fp], [fp, fp], [0, 0]];
 
   const isNeon    = theme.floorPattern === 'neon';
   const isLight   = theme.floorPattern === 'marble';
   const fillColor = isNeon ? theme.accentLight : isLight ? "#ffffff" : "#fff5e8";
 
+  const showDecorations = roomMode !== "basic";
+
   return (
     <>
       <color attach="background" args={[theme.fogColor]} />
-      <fog attach="fog" args={[fogColor, theme.fogNear, theme.fogFar]} />
+      <fog attach="fog" args={[fogColor, theme.fogNear * fogScale, theme.fogFar * fogScale]} />
 
       {/* ── Ambient ── */}
       <ambientLight intensity={theme.ambientIntensity} color={isLight ? "#ffffff" : "#fff8f0"} />
 
       {/* ── Central overhead fill ── */}
-      <pointLight position={[0, HALF_H - 0.3, 0]} intensity={theme.spotIntensity * 90}
-        color={theme.accentLight} distance={30} decay={2} />
+      <pointLight position={[0, halfH - 0.3, 0]} intensity={theme.spotIntensity * 90}
+        color={theme.accentLight} distance={30 * fogScale} decay={2} />
 
       {/* ── Corner fill lights ── */}
       {([[-1,-1],[-1,1],[1,-1],[1,1]] as [number,number][]).map(([sx,sz], i) => (
         <pointLight key={i}
-          position={[sx * HALF_W * 0.55, HALF_H - 1.2, sz * HALF_D * 0.55]}
-          intensity={theme.spotIntensity * 28} color={fillColor} distance={22} decay={2} />
+          position={[sx * halfW * 0.55, halfH - 1.2, sz * halfD * 0.55]}
+          intensity={theme.spotIntensity * 28} color={fillColor} distance={22 * fogScale} decay={2} />
       ))}
 
       {/* ── Per-artwork museum spotlights ── */}
@@ -458,34 +463,31 @@ export function GalleryScene({ artworks, roomTheme, isLocked, isMobile, joystick
       ))}
 
       {/* ── Floor ── */}
-      <mesh position={[0, -HALF_H, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[HALF_W * 2, HALF_D * 2]} />
+      <mesh position={[0, -halfH, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[halfW * 2, halfD * 2]} />
         <meshStandardMaterial map={floorTexture} roughness={isNeon ? 0.3 : isLight ? 0.15 : 0.65}
           metalness={isNeon ? 0.4 : isLight ? 0.08 : 0.02}
           envMapIntensity={isLight ? 0.5 : 0.2} />
       </mesh>
 
       {/* ── Ceiling ── */}
-      <mesh position={[0, HALF_H, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[HALF_W * 2, HALF_D * 2]} />
+      <mesh position={[0, halfH, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[halfW * 2, halfD * 2]} />
         <meshStandardMaterial color={theme.ceilingColor} roughness={0.95} />
       </mesh>
 
       {/* ── Ceiling fixtures ── */}
       {fixturePositions.map(([x, z], i) => (
-        <group key={i} position={[x, HALF_H - 0.01, z]}>
-          {/* Housing disc */}
+        <group key={i} position={[x, halfH - 0.01, z]}>
           <mesh rotation={[Math.PI / 2, 0, 0]}>
             <cylinderGeometry args={[0.28, 0.28, 0.06, 20]} />
             <meshStandardMaterial color={isLight ? "#d8d6d0" : "#2a2520"} roughness={0.4} metalness={0.3} />
           </mesh>
-          {/* Emissive inner glow */}
           <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, -0.01, 0]}>
             <cylinderGeometry args={[0.18, 0.18, 0.02, 20]} />
             <meshStandardMaterial color={theme.accentLight} emissive={theme.accentLight}
               emissiveIntensity={isNeon ? 2.5 : isLight ? 1.0 : 1.4} roughness={0.1} />
           </mesh>
-          {/* Neon: tube ring */}
           {isNeon && (
             <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, -0.015, 0]}>
               <torusGeometry args={[0.22, 0.025, 8, 24]} />
@@ -496,48 +498,59 @@ export function GalleryScene({ artworks, roomTheme, isLocked, isMobile, joystick
       ))}
 
       {/* ── Walls ── */}
-      <mesh position={[0, 0, -HALF_D]} receiveShadow>
-        <planeGeometry args={[HALF_W * 2, HALF_H * 2]} />
+      <mesh position={[0, 0, -halfD]} receiveShadow>
+        <planeGeometry args={[halfW * 2, halfH * 2]} />
         <meshStandardMaterial map={wallTexture} roughness={0.88} />
       </mesh>
-      <mesh position={[0, 0, HALF_D]} rotation={[0, Math.PI, 0]} receiveShadow>
-        <planeGeometry args={[HALF_W * 2, HALF_H * 2]} />
+      <mesh position={[0, 0, halfD]} rotation={[0, Math.PI, 0]} receiveShadow>
+        <planeGeometry args={[halfW * 2, halfH * 2]} />
         <meshStandardMaterial map={wallTexture} roughness={0.88} />
       </mesh>
-      <mesh position={[-HALF_W, 0, 0]} rotation={[0, Math.PI / 2, 0]} receiveShadow>
-        <planeGeometry args={[HALF_D * 2, HALF_H * 2]} />
+      <mesh position={[-halfW, 0, 0]} rotation={[0, Math.PI / 2, 0]} receiveShadow>
+        <planeGeometry args={[halfD * 2, halfH * 2]} />
         <meshStandardMaterial map={wallTexture} roughness={0.88} />
       </mesh>
-      <mesh position={[HALF_W, 0, 0]} rotation={[0, -Math.PI / 2, 0]} receiveShadow>
-        <planeGeometry args={[HALF_D * 2, HALF_H * 2]} />
+      <mesh position={[halfW, 0, 0]} rotation={[0, -Math.PI / 2, 0]} receiveShadow>
+        <planeGeometry args={[halfD * 2, halfH * 2]} />
         <meshStandardMaterial map={wallTexture} roughness={0.88} />
       </mesh>
 
       {/* ── Baseboards ── */}
       {([
-        [0, BASEBOARD_Y, -HALF_D+0.02, 0],
-        [0, BASEBOARD_Y,  HALF_D-0.02, Math.PI],
-        [-HALF_W+0.02, BASEBOARD_Y, 0, Math.PI/2],
-        [ HALF_W-0.02, BASEBOARD_Y, 0, -Math.PI/2],
+        [0, BASEBOARD_Y, -halfD+0.02, 0],
+        [0, BASEBOARD_Y,  halfD-0.02, Math.PI],
+        [-halfW+0.02, BASEBOARD_Y, 0, Math.PI/2],
+        [ halfW-0.02, BASEBOARD_Y, 0, -Math.PI/2],
       ] as [number,number,number,number][]).map(([x,y,z,ry], i) => (
         <mesh key={i} position={[x,y,z]} rotation={[0,ry,0]}>
-          <boxGeometry args={[i < 2 ? HALF_W*2 : HALF_D*2, BASEBOARD_H, 0.055]} />
+          <boxGeometry args={[i < 2 ? halfW*2 : halfD*2, BASEBOARD_H, 0.055]} />
           <meshStandardMaterial color={theme.baseboardColor} roughness={0.55} metalness={0.1} />
         </mesh>
       ))}
 
       {/* ── Cornice strips ── */}
       {([
-        [0, CORNICE_Y, -HALF_D+0.02, 0],
-        [0, CORNICE_Y,  HALF_D-0.02, Math.PI],
-        [-HALF_W+0.02, CORNICE_Y, 0, Math.PI/2],
-        [ HALF_W-0.02, CORNICE_Y, 0, -Math.PI/2],
+        [0, CORNICE_Y, -halfD+0.02, 0],
+        [0, CORNICE_Y,  halfD-0.02, Math.PI],
+        [-halfW+0.02, CORNICE_Y, 0, Math.PI/2],
+        [ halfW-0.02, CORNICE_Y, 0, -Math.PI/2],
       ] as [number,number,number,number][]).map(([x,y,z,ry], i) => (
         <mesh key={i} position={[x,y,z]} rotation={[0,ry,0]}>
-          <boxGeometry args={[i < 2 ? HALF_W*2 : HALF_D*2, CORNICE_H, 0.048]} />
+          <boxGeometry args={[i < 2 ? halfW*2 : halfD*2, CORNICE_H, 0.048]} />
           <meshStandardMaterial color={theme.baseboardColor} roughness={0.5} />
         </mesh>
       ))}
+
+      {/* ── Room decorations (auto / custom modes only) ── */}
+      {showDecorations && (
+        <RoomDecorations
+          seed={roomSeed}
+          decorationLevel={decorationLevel}
+          dims={{ halfW, halfH, halfD }}
+          theme={theme}
+          artworkPositions={artworkPositions}
+        />
+      )}
 
       {/* ── Artwork frames ── */}
       {placedArtworks.map(({ artwork, position, rotationY }) => (
@@ -547,8 +560,8 @@ export function GalleryScene({ artworks, roomTheme, isLocked, isMobile, joystick
       ))}
 
       {!isMobile && <PointerLockControls ref={controlsRef} makeDefault />}
-      {!isMobile && <MovementController enabled={isLocked} />}
-      {isMobile && <TouchControls enabled={isLocked} joystickRef={joystickRef} onArtworkTap={fireCenterRaycast} />}
+      {!isMobile && <MovementController enabled={isLocked} halfW={halfW} halfD={halfD} />}
+      {isMobile && <TouchControls enabled={isLocked} joystickRef={joystickRef} onArtworkTap={fireCenterRaycast} halfW={halfW} halfD={halfD} />}
     </>
   );
 }

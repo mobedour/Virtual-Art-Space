@@ -17,4 +17,8 @@ export interface Gallery {
   slug: string;
   artworkCount: number;
   createdAt: string;
+  roomSeed: number;
+  roomMode: string;
+  roomSize: number;
+  decorationLevel: number;
 }

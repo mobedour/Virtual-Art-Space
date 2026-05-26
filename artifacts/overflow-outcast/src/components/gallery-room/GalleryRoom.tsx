@@ -11,6 +11,10 @@ import { toast } from "sonner";
 type GalleryRoomData = {
   artworks: ArtworkData[];
   roomTheme: string;
+  roomSeed?: number;
+  roomMode?: string;
+  roomSize?: number;
+  decorationLevel?: number;
 };
 
 interface GalleryRoomProps {
@@ -230,6 +234,10 @@ export function GalleryRoom({ gallery, onExit }: GalleryRoomProps) {
             <GalleryScene
               artworks={gallery.artworks}
               roomTheme={gallery.roomTheme}
+              roomSeed={gallery.roomSeed}
+              roomMode={gallery.roomMode}
+              roomSize={gallery.roomSize}
+              decorationLevel={gallery.decorationLevel}
               isLocked={isMobile ? mobileActive : isLocked}
               isMobile={isMobile}
               joystickRef={joystickRef}

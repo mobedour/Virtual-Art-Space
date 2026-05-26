@@ -39,6 +39,10 @@ async function galleryWithCount(gallery: typeof galleriesTable.$inferSelect) {
     roomTheme: gallery.roomTheme,
     published: gallery.published,
     slug: gallery.slug,
+    roomSeed: gallery.roomSeed,
+    roomMode: gallery.roomMode,
+    roomSize: gallery.roomSize,
+    decorationLevel: gallery.decorationLevel,
     artworkCount: Number(artworkCount),
     createdAt: gallery.createdAt.toISOString(),
   };
@@ -65,6 +69,7 @@ router.post("/galleries", requireAuth, async (req, res): Promise<void> => {
   }
 
   const slug = generateSlug(parsed.data.title);
+  const roomSeed = parsed.data.roomSeed ?? Math.floor(Math.random() * 2_147_483_647);
   const [gallery] = await db
     .insert(galleriesTable)
     .values({
@@ -72,6 +77,10 @@ router.post("/galleries", requireAuth, async (req, res): Promise<void> => {
       title: parsed.data.title,
       description: parsed.data.description ?? null,
       roomTheme: parsed.data.roomTheme ?? "dark_void",
+      roomSeed,
+      roomMode: parsed.data.roomMode ?? "basic",
+      roomSize: parsed.data.roomSize ?? 5,
+      decorationLevel: parsed.data.decorationLevel ?? 5,
       slug,
     })
     .returning();

@@ -13,6 +13,7 @@ export interface PublicGallery {
   description?: string | null;
   slug: string;
   roomTheme: string;
+  roomSize: number;
   artworkCount: number;
   /** @nullable */
   artistName?: string | null;

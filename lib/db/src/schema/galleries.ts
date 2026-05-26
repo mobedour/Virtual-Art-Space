@@ -11,6 +11,10 @@ export const galleriesTable = pgTable("galleries", {
   roomTheme: text("room_theme").notNull().default("dark_void"),
   published: boolean("published").notNull().default(false),
   slug: text("slug").notNull().unique(),
+  roomSeed: integer("room_seed").notNull().default(0),
+  roomMode: text("room_mode").notNull().default("basic"),
+  roomSize: integer("room_size").notNull().default(5),
+  decorationLevel: integer("decoration_level").notNull().default(5),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

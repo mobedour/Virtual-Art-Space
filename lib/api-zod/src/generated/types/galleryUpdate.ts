@@ -11,4 +11,15 @@ export interface GalleryUpdate {
   title?: string;
   description?: string;
   roomTheme?: string;
+  roomMode?: string;
+  /**
+     * @minimum 1
+     * @maximum 10
+     */
+  roomSize?: number;
+  /**
+     * @minimum 1
+     * @maximum 10
+     */
+  decorationLevel?: number;
 }
