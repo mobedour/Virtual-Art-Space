@@ -16,9 +16,13 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { motion } from "framer-motion";
+import { FadeUp } from "@/lib/motion";
+
+const EASE = [0.22, 1, 0.36, 1] as const;
 
 const formSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -33,10 +37,7 @@ export default function Login() {
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-    },
+    defaultValues: { email: "", password: "" },
   });
 
   const loginMutation = useLogin();
@@ -58,71 +59,87 @@ export default function Login() {
   return (
     <PublicLayout>
       <div className="container mx-auto px-6 py-20 flex justify-center items-center min-h-[70vh]">
-        <div className="w-full max-w-md animate-in fade-in zoom-in duration-500">
-          <div className="text-center mb-8">
+        <div className="w-full max-w-md">
+          <motion.div
+            initial={{ opacity: 0, y: 32 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, ease: EASE }}
+            className="text-center mb-8"
+          >
             <h1 className="font-display text-3xl font-bold text-foreground mb-2">Welcome back</h1>
             <p className="text-muted-foreground font-sans text-sm">Sign in to your artist account</p>
-          </div>
-          <Card className="bg-card/50 border-border/50 backdrop-blur-md rounded-sm shadow-[0_0_30px_rgba(217,119,6,0.08)] relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-0.5 bg-primary" />
-            <CardContent className="pt-8">
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-                  <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="font-sans text-sm text-muted-foreground">Email</FormLabel>
-                        <FormControl>
-                          <Input placeholder="you@example.com" className="font-sans bg-background/50 border-border/50 focus-visible:ring-primary rounded-sm" {...field} />
-                        </FormControl>
-                        <FormMessage className="font-sans text-xs" />
-                      </FormItem>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 40, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.75, ease: EASE, delay: 0.12 }}
+          >
+            <Card className="bg-card/50 border-border/50 backdrop-blur-md rounded-sm shadow-[0_0_40px_rgba(217,119,6,0.1)] relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-primary to-transparent" />
+              <CardContent className="pt-8">
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+                    <FormField
+                      control={form.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="font-sans text-sm text-muted-foreground">Email</FormLabel>
+                          <FormControl>
+                            <Input placeholder="you@example.com" className="font-sans bg-background/50 border-border/50 focus-visible:ring-primary rounded-sm transition-all" {...field} />
+                          </FormControl>
+                          <FormMessage className="font-sans text-xs" />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="password"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="font-sans text-sm text-muted-foreground">Password</FormLabel>
+                          <FormControl>
+                            <Input type="password" placeholder="••••••••" className="font-sans bg-background/50 border-border/50 focus-visible:ring-primary rounded-sm transition-all" {...field} />
+                          </FormControl>
+                          <FormMessage className="font-sans text-xs" />
+                        </FormItem>
+                      )}
+                    />
+
+                    {errorMsg && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="p-3 border border-destructive/50 bg-destructive/10 text-destructive font-sans text-sm rounded-sm"
+                      >
+                        {errorMsg}
+                      </motion.div>
                     )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="font-sans text-sm text-muted-foreground">Password</FormLabel>
-                        <FormControl>
-                          <Input type="password" placeholder="••••••••" className="font-sans bg-background/50 border-border/50 focus-visible:ring-primary rounded-sm" {...field} />
-                        </FormControl>
-                        <FormMessage className="font-sans text-xs" />
-                      </FormItem>
-                    )}
-                  />
 
-                  {errorMsg && (
-                    <div className="p-3 border border-destructive/50 bg-destructive/10 text-destructive font-sans text-sm rounded-sm">
-                      {errorMsg}
-                    </div>
-                  )}
+                    <Button
+                      type="submit"
+                      className="w-full h-11 rounded-sm font-sans font-medium bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_2px_12px_rgba(217,119,6,0.3)] hover:shadow-[0_4px_20px_rgba(217,119,6,0.45)] transition-all"
+                      disabled={loginMutation.isPending}
+                    >
+                      {loginMutation.isPending ? <Loader2 className="animate-spin w-5 h-5" /> : "Sign In"}
+                    </Button>
+                  </form>
+                </Form>
 
-                  <Button
-                    type="submit"
-                    className="w-full h-11 rounded-sm font-sans font-medium bg-primary text-primary-foreground hover:bg-primary/90"
-                    disabled={loginMutation.isPending}
-                  >
-                    {loginMutation.isPending ? <Loader2 className="animate-spin w-5 h-5" /> : "Sign In"}
-                  </Button>
-                </form>
-              </Form>
-
-              <div className="mt-6 text-center">
-                <p className="text-muted-foreground font-sans text-sm">
-                  Don't have an account?{" "}
-                  <Link href="/register">
-                    <span className="text-primary hover:text-primary/80 hover:underline cursor-pointer">
-                      Create one
-                    </span>
-                  </Link>
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+                <div className="mt-6 text-center">
+                  <p className="text-muted-foreground font-sans text-sm">
+                    Don't have an account?{" "}
+                    <Link href="/register">
+                      <span className="text-primary hover:text-primary/80 hover:underline cursor-pointer">
+                        Create one
+                      </span>
+                    </Link>
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
         </div>
       </div>
     </PublicLayout>

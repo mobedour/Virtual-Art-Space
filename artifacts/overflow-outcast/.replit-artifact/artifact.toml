@@ -1,6 +1,6 @@
 kind = "web"
 previewPath = "/"
-title = "Overflow Outcast"
+title = "Virtual Art Space"
 version = "1.0.0"
 id = "artifacts/overflow-outcast"
 router = "path"

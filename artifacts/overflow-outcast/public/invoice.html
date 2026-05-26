@@ -1,364 +1,426 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Virtual Art Space — Project Invoice</title>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600&family=DM+Mono&display=swap');
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Virtual Art Space — Project Invoice</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600&family=DM+Mono&display=swap");
 
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
-    body {
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      background: #faf8f4;
-      color: #1a1510;
-      min-height: 100vh;
-      padding: 40px 20px;
-    }
+      body {
+        font-family: "Plus Jakarta Sans", sans-serif;
+        background: #faf8f4;
+        color: #1a1510;
+        min-height: 100vh;
+        padding: 40px 20px;
+      }
 
-    .page {
-      max-width: 780px;
-      margin: 0 auto;
-      background: #ffffff;
-      border: 1px solid #e0d8cc;
-      padding: 64px 72px;
-      position: relative;
-    }
+      .page {
+        max-width: 780px;
+        margin: 0 auto;
+        background: #ffffff;
+        border: 1px solid #e0d8cc;
+        padding: 64px 72px;
+        position: relative;
+      }
 
-    /* Top accent bar */
-    .page::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 4px;
-      background: linear-gradient(90deg, #c8a45a, #e0c876, #c8a45a);
-    }
+      /* Top accent bar */
+      .page::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #c8a45a, #e0c876, #c8a45a);
+      }
 
-    /* Header */
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 48px;
-      padding-bottom: 32px;
-      border-bottom: 1px solid #e8e0d0;
-    }
+      /* Header */
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 48px;
+        padding-bottom: 32px;
+        border-bottom: 1px solid #e8e0d0;
+      }
 
-    .brand {
-      font-family: 'Playfair Display', serif;
-      font-size: 22px;
-      font-weight: 700;
-      color: #1a1510;
-      letter-spacing: -0.3px;
-    }
+      .brand {
+        font-family: "Playfair Display", serif;
+        font-size: 22px;
+        font-weight: 700;
+        color: #1a1510;
+        letter-spacing: -0.3px;
+      }
 
-    .brand span {
-      color: #c8a45a;
-    }
+      .brand span {
+        color: #c8a45a;
+      }
 
-    .invoice-meta {
-      text-align: right;
-      font-family: 'DM Mono', monospace;
-      font-size: 11px;
-      color: #7a6a58;
-      line-height: 1.8;
-    }
+      .invoice-meta {
+        text-align: right;
+        font-family: "DM Mono", monospace;
+        font-size: 11px;
+        color: #7a6a58;
+        line-height: 1.8;
+      }
 
-    .invoice-meta .invoice-label {
-      font-size: 9px;
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-      color: #c8a45a;
-      margin-bottom: 4px;
-    }
+      .invoice-meta .invoice-label {
+        font-size: 9px;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        color: #c8a45a;
+        margin-bottom: 4px;
+      }
 
-    /* Title */
-    h1 {
-      font-family: 'Playfair Display', serif;
-      font-size: 32px;
-      font-weight: 700;
-      color: #1a1510;
-      margin-bottom: 6px;
-      line-height: 1.2;
-    }
+      /* Title */
+      h1 {
+        font-family: "Playfair Display", serif;
+        font-size: 32px;
+        font-weight: 700;
+        color: #1a1510;
+        margin-bottom: 6px;
+        line-height: 1.2;
+      }
 
-    .subtitle {
-      font-family: 'DM Mono', monospace;
-      font-size: 11px;
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-      color: #c8a45a;
-      margin-bottom: 40px;
-    }
+      .subtitle {
+        font-family: "DM Mono", monospace;
+        font-size: 11px;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        color: #c8a45a;
+        margin-bottom: 40px;
+      }
 
-    /* Section heading */
-    h2 {
-      font-family: 'DM Mono', monospace;
-      font-size: 9px;
-      letter-spacing: 0.2em;
-      text-transform: uppercase;
-      color: #c8a45a;
-      margin-bottom: 14px;
-      margin-top: 36px;
-    }
+      /* Section heading */
+      h2 {
+        font-family: "DM Mono", monospace;
+        font-size: 9px;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: #c8a45a;
+        margin-bottom: 14px;
+        margin-top: 36px;
+      }
 
-    /* Deliverables list */
-    .deliverables {
-      list-style: none;
-      margin-bottom: 8px;
-    }
+      /* Deliverables list */
+      .deliverables {
+        list-style: none;
+        margin-bottom: 8px;
+      }
 
-    .deliverables li {
-      font-size: 13.5px;
-      color: #3a2e24;
-      padding: 5px 0 5px 18px;
-      position: relative;
-      line-height: 1.5;
-      border-bottom: 1px solid #f0ebe2;
-    }
+      .deliverables li {
+        font-size: 13.5px;
+        color: #3a2e24;
+        padding: 5px 0 5px 18px;
+        position: relative;
+        line-height: 1.5;
+        border-bottom: 1px solid #f0ebe2;
+      }
 
-    .deliverables li::before {
-      content: '—';
-      position: absolute;
-      left: 0;
-      color: #c8a45a;
-      font-family: 'DM Mono', monospace;
-    }
+      .deliverables li::before {
+        content: "—";
+        position: absolute;
+        left: 0;
+        color: #c8a45a;
+        font-family: "DM Mono", monospace;
+      }
 
-    /* Tables */
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 13.5px;
-      margin-bottom: 8px;
-    }
+      /* Tables */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13.5px;
+        margin-bottom: 8px;
+      }
 
-    thead tr {
-      background: #1a1510;
-    }
+      thead tr {
+        background: #1a1510;
+      }
 
-    thead th {
-      font-family: 'DM Mono', monospace;
-      font-size: 9px;
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-      color: #e0c876;
-      padding: 10px 14px;
-      text-align: left;
-      font-weight: 500;
-    }
+      thead th {
+        font-family: "DM Mono", monospace;
+        font-size: 9px;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        color: #e0c876;
+        padding: 10px 14px;
+        text-align: left;
+        font-weight: 500;
+      }
 
-    thead th:last-child { text-align: right; }
+      thead th:last-child {
+        text-align: right;
+      }
 
-    tbody tr {
-      border-bottom: 1px solid #ede8df;
-    }
+      tbody tr {
+        border-bottom: 1px solid #ede8df;
+      }
 
-    tbody tr:nth-child(even) {
-      background: #faf7f2;
-    }
+      tbody tr:nth-child(even) {
+        background: #faf7f2;
+      }
 
-    tbody td {
-      padding: 11px 14px;
-      color: #3a2e24;
-      vertical-align: top;
-      line-height: 1.5;
-    }
+      tbody td {
+        padding: 11px 14px;
+        color: #3a2e24;
+        vertical-align: top;
+        line-height: 1.5;
+      }
 
-    tbody td:last-child {
-      text-align: right;
-      font-family: 'DM Mono', monospace;
-      font-size: 13px;
-      white-space: nowrap;
-    }
+      tbody td:last-child {
+        text-align: right;
+        font-family: "DM Mono", monospace;
+        font-size: 13px;
+        white-space: nowrap;
+      }
 
-    /* Total row */
-    .total-row td {
-      background: #1a1510 !important;
-      color: #f5f0e8 !important;
-      font-weight: 600;
-      padding: 13px 14px;
-      border: none;
-    }
+      /* Total row */
+      .total-row td {
+        background: #1a1510 !important;
+        color: #f5f0e8 !important;
+        font-weight: 600;
+        padding: 13px 14px;
+        border: none;
+      }
 
-    .total-row td:last-child {
-      color: #e0c876 !important;
-      font-family: 'DM Mono', monospace;
-      font-size: 16px;
-    }
+      .total-row td:last-child {
+        color: #e0c876 !important;
+        font-family: "DM Mono", monospace;
+        font-size: 16px;
+      }
 
-    /* Discount row */
-    .discount-row td {
-      background: #f5f0e8 !important;
-      color: #7a6a58 !important;
-      font-style: italic;
-    }
+      /* Discount row */
+      .discount-row td {
+        background: #f5f0e8 !important;
+        color: #7a6a58 !important;
+        font-style: italic;
+      }
 
-    .discount-row td:last-child {
-      color: #c8a45a !important;
-    }
+      .discount-row td:last-child {
+        color: #c8a45a !important;
+      }
 
-    /* Footer */
-    .footer {
-      margin-top: 48px;
-      padding-top: 24px;
-      border-top: 1px solid #e8e0d0;
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
-    }
+      /* Footer */
+      .footer {
+        margin-top: 48px;
+        padding-top: 24px;
+        border-top: 1px solid #e8e0d0;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+      }
 
-    .footer-note {
-      font-size: 11.5px;
-      color: #9a8a78;
-      line-height: 1.7;
-      max-width: 420px;
-    }
+      .footer-note {
+        font-size: 11.5px;
+        color: #9a8a78;
+        line-height: 1.7;
+        max-width: 420px;
+      }
 
-    .footer-logo {
-      font-family: 'Playfair Display', serif;
-      font-size: 13px;
-      color: #c8a45a;
-      text-align: right;
-    }
+      .footer-logo {
+        font-family: "Playfair Display", serif;
+        font-size: 13px;
+        color: #c8a45a;
+        text-align: right;
+      }
 
-    /* Print button */
-    .print-btn {
-      display: block;
-      margin: 28px auto 0;
-      padding: 12px 32px;
-      background: #1a1510;
-      color: #e0c876;
-      border: none;
-      font-family: 'DM Mono', monospace;
-      font-size: 11px;
-      letter-spacing: 0.2em;
-      text-transform: uppercase;
-      cursor: pointer;
-    }
+      /* Print button */
+      .print-btn {
+        display: block;
+        margin: 28px auto 0;
+        padding: 12px 32px;
+        background: #1a1510;
+        color: #e0c876;
+        border: none;
+        font-family: "DM Mono", monospace;
+        font-size: 11px;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        cursor: pointer;
+      }
 
-    .print-btn:hover {
-      background: #c8a45a;
-      color: #1a1510;
-    }
+      .print-btn:hover {
+        background: #c8a45a;
+        color: #1a1510;
+      }
 
-    @media print {
-      body { background: white; padding: 0; }
-      .page { border: none; padding: 48px 56px; box-shadow: none; }
-      .print-btn { display: none; }
-    }
-  </style>
-</head>
-<body>
-
-  <div class="page">
-
-    <div class="header">
-      <div>
-        <div class="brand">Virtual Art <span>Space</span></div>
+      @media print {
+        body {
+          background: white;
+          padding: 0;
+        }
+        .page {
+          border: none;
+          padding: 48px 56px;
+          box-shadow: none;
+        }
+        .print-btn {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <div class="header">
+        <div>
+          <div class="brand">Virtual Art <span>Space</span></div>
+        </div>
+        <div class="invoice-meta">
+          <div class="invoice-label">Invoice</div>
+          May 2026<br />
+          Amman, Jordan
+        </div>
       </div>
-      <div class="invoice-meta">
-        <div class="invoice-label">Invoice</div>
-        May 2026<br>
-        Amman, Jordan
+
+      <h1>Project Invoice</h1>
+      <div class="subtitle">Family &amp; Friend Rate — Confidential</div>
+
+      <h2>What You're Getting</h2>
+      <ul class="deliverables">
+        <li>Artist registration, login, and profile management</li>
+        <li>Gallery creation, editing, publishing, and deletion</li>
+        <li>
+          Artwork upload with full metadata (year, medium, dimensions,
+          description)
+        </li>
+        <li>
+          Interactive drag-to-place floor plan for hanging artworks on specific
+          walls
+        </li>
+        <li>
+          Immersive 3D first-person gallery viewer — walk through the gallery
+          like a real space
+        </li>
+        <li>
+          5 room themes: Dark Void, Neon Grid, Purple Mist, White Cube, Concrete
+          Bunker (and more to come))
+        </li>
+        <li>
+          Desktop controls (WASD + mouse look) and mobile controls (touch +
+          virtual joystick)
+        </li>
+        <li>
+          VR headset support via WebXR (Meta Quest, Apple Vision Pro, generic
+          headsets)
+        </li>
+        <li>Public gallery browsing page for visitors</li>
+        <li>Artwork detail modal with full artwork info on click/tap</li>
+        <li>
+          Full-stack: React frontend + Node.js backend + PostgreSQL database
+        </li>
+        <li>Deployed and live on the internet with SSL</li>
+        <li>Source code delivered — yours to keep and modify</li>
+        <li>post-launch support (bug fixes, changes and updates)</li>
+      </ul>
+
+      <h2>Cost Breakdown</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Service</th>
+            <th style="text-align: right">Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <strong>Full-stack development</strong><br />
+              <span style="font-size: 12px; color: #7a6a58"
+                >Frontend (React, 3D engine, 25+ components), backend API
+                (Express, PostgreSQL, JWT auth), database schema, OpenAPI
+                contract</span
+              >
+            </td>
+            <td>900 JOD</td>
+          </tr>
+          <tr>
+            <td>
+              <strong>3D Gallery Engine</strong><br />
+              <span style="font-size: 12px; color: #7a6a58"
+                >Room geometry, procedural textures, dynamic lighting, 5 theme
+                presets, artwork frame system</span
+              >
+            </td>
+            <td>250 JOD</td>
+          </tr>
+          <tr>
+            <td>
+              <strong>VR / WebXR Headset Support</strong><br />
+              <span style="font-size: 12px; color: #7a6a58"
+                >Works on any WebXR-compatible VR headset — optional, visitors
+                can still view without VR</span
+              >
+            </td>
+            <td>150 JOD</td>
+          </tr>
+          <tr>
+            <td>
+              <strong>Design System</strong><br />
+              <span style="font-size: 12px; color: #7a6a58"
+                >UI components, typography (Playfair Display + Plus Jakarta
+                Sans), Amman art scene aesthetic, dark warm palette</span
+              >
+            </td>
+            <td>100 JOD</td>
+          </tr>
+          <tr>
+            <td>
+              <strong>Deployment &amp; Hosting Infrastructure</strong><br />
+              <span style="font-size: 12px; color: #7a6a58"
+                >Replit platform credits, live URL, SSL certificate, environment
+                setup</span
+              >
+            </td>
+            <td>100 JOD</td>
+          </tr>
+          <tr class="discount-row">
+            <td><em>Family &amp; friend discount</em></td>
+            <td>−1,000 JOD</td>
+          </tr>
+          <tr class="total-row">
+            <td><strong>Total — Your Price</strong></td>
+            <td><strong>1,500 JOD</strong></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p
+        style="
+          font-size: 11.5px;
+          color: #9a8a78;
+          margin-top: 8px;
+          font-family: &quot;DM Mono&quot;, monospace;
+        "
+      >
+        Market rate for equivalent scope: 4,000–6,000 JOD &nbsp;|&nbsp;
+        Estimated asset resale value: 15,000–35,000 JOD
+      </p>
+
+      <div class="footer">
+        <div class="footer-logo">
+          Virtual Art Space<br />
+          <span
+            style="
+              font-size: 11px;
+              font-family: &quot;DM Mono&quot;, monospace;
+              color: #9a8a78;
+            "
+            >Amman · Jordan · 2026</span
+          >
+        </div>
       </div>
     </div>
 
-    <h1>Project Invoice</h1>
-    <div class="subtitle">Family &amp; Friend Rate — Confidential</div>
-
-    <h2>What You're Getting</h2>
-    <ul class="deliverables">
-      <li>Artist registration, login, and profile management</li>
-      <li>Gallery creation, editing, publishing, and deletion</li>
-      <li>Artwork upload with full metadata (year, medium, dimensions, description)</li>
-      <li>Interactive drag-to-place floor plan for hanging artworks on specific walls</li>
-      <li>Immersive 3D first-person gallery viewer — walk through the gallery like a real space</li>
-      <li>5 room themes: Dark Void, Neon Grid, Purple Mist, White Cube, Concrete Bunker</li>
-      <li>Desktop controls (WASD + mouse look) and mobile controls (touch + virtual joystick)</li>
-      <li>VR headset support via WebXR (Meta Quest, Apple Vision Pro, generic headsets)</li>
-      <li>Public gallery browsing page for visitors</li>
-      <li>Artwork detail modal with full artwork info on click/tap</li>
-      <li>Full-stack: React frontend + Node.js backend + PostgreSQL database</li>
-      <li>Deployed and live on the internet with SSL</li>
-      <li>Source code delivered — yours to keep and modify</li>
-      <li>1 month post-launch support (bug fixes and small changes)</li>
-    </ul>
-
-    <h2>Cost Breakdown</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Service</th>
-          <th style="text-align:right">Value</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>
-            <strong>Full-stack development</strong><br>
-            <span style="font-size:12px;color:#7a6a58">Frontend (React, 3D engine, 25+ components), backend API (Express, PostgreSQL, JWT auth), database schema, OpenAPI contract</span>
-          </td>
-          <td>900 JOD</td>
-        </tr>
-        <tr>
-          <td>
-            <strong>3D Gallery Engine</strong><br>
-            <span style="font-size:12px;color:#7a6a58">Room geometry, procedural textures, dynamic lighting, 5 theme presets, artwork frame system</span>
-          </td>
-          <td>250 JOD</td>
-        </tr>
-        <tr>
-          <td>
-            <strong>VR / WebXR Headset Support</strong><br>
-            <span style="font-size:12px;color:#7a6a58">Works on any WebXR-compatible VR headset — optional, visitors can still view without VR</span>
-          </td>
-          <td>150 JOD</td>
-        </tr>
-        <tr>
-          <td>
-            <strong>Design System</strong><br>
-            <span style="font-size:12px;color:#7a6a58">UI components, typography (Playfair Display + Plus Jakarta Sans), Amman art scene aesthetic, dark warm palette</span>
-          </td>
-          <td>100 JOD</td>
-        </tr>
-        <tr>
-          <td>
-            <strong>Deployment &amp; Hosting Infrastructure</strong><br>
-            <span style="font-size:12px;color:#7a6a58">Replit platform credits (already paid out-of-pocket), live URL, SSL certificate, environment setup</span>
-          </td>
-          <td>100 JOD</td>
-        </tr>
-        <tr class="discount-row">
-          <td><em>Family &amp; friend discount</em></td>
-          <td>−1,000 JOD</td>
-        </tr>
-        <tr class="total-row">
-          <td><strong>Total — Your Price</strong></td>
-          <td><strong>1,500 JOD</strong></td>
-        </tr>
-      </tbody>
-    </table>
-
-    <p style="font-size:11.5px;color:#9a8a78;margin-top:8px;font-family:'DM Mono',monospace;">
-      Market rate for equivalent scope: 4,000–6,000 JOD &nbsp;|&nbsp; Estimated asset resale value: 15,000–35,000 JOD
-    </p>
-
-    <div class="footer">
-      <div class="footer-note">
-        This invoice reflects a significant family and friend discount from standard commercial rates.
-        Pricing is confidential and specific to this agreement.
-      </div>
-      <div class="footer-logo">
-        Virtual Art Space<br>
-        <span style="font-size:11px;font-family:'DM Mono',monospace;color:#9a8a78">Amman · Jordan · 2026</span>
-      </div>
-    </div>
-
-  </div>
-
-  <button class="print-btn" onclick="window.print()">⬇ Save as PDF / Print</button>
-
-</body>
+    <button class="print-btn" onclick="window.print()">
+      ⬇ Save as PDF / Print
+    </button>
+  </body>
 </html>
