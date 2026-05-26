@@ -35,6 +35,25 @@ paths:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
 
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current authenticated user (Clerk-backed)
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /profile:
     get:
       operationId: getProfile

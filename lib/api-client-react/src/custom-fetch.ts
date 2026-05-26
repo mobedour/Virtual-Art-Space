@@ -351,13 +351,11 @@ export async function customFetch<T = unknown>(
 
   // Attach bearer token when an auth getter is configured and no
   // Authorization header has been explicitly provided.
+  // NOTE: In web apps with Clerk, session auth is handled automatically via
+  // cookies — do NOT use localStorage tokens here. The _authTokenGetter is
+  // reserved for non-web clients (e.g. Expo mobile) that need explicit tokens.
   if (_authTokenGetter && !headers.has("authorization")) {
     const token = await _authTokenGetter();
-    if (token) {
-      headers.set("authorization", `Bearer ${token}`);
-    }
-  } else if (!headers.has("authorization") && typeof localStorage !== 'undefined') {
-    const token = localStorage.getItem('overflow_token');
     if (token) {
       headers.set("authorization", `Bearer ${token}`);
     }

@@ -17,6 +17,17 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
+ * @summary Get current authenticated user (Clerk-backed)
+ */
+export const GetMeResponse = zod.object({
+  "id": zod.number(),
+  "email": zod.string(),
+  "username": zod.string(),
+  "createdAt": zod.string()
+})
+
+
+/**
  * @summary Get authenticated artist's profile
  */
 export const GetProfileResponse = zod.object({

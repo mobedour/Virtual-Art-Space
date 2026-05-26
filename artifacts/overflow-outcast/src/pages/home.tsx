@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
+import { useUser } from "@clerk/react";
 import { PublicLayout } from "@/components/public-layout";
 import { useScene } from "@/lib/scene-context";
 import { ArrowRight, Box, Globe, Palette } from "lucide-react";
@@ -11,7 +12,13 @@ const SECTION_SCENES = [0, 1, 2, 4];
 
 export default function Home() {
   const { setScene } = useScene();
+  const [, setLocation] = useLocation();
+  const { user, isLoaded } = useUser();
   const sectionRefs = useRef<(HTMLElement | null)[]>([]);
+
+  useEffect(() => {
+    if (isLoaded && user) setLocation("/dashboard");
+  }, [user, isLoaded, setLocation]);
 
   useEffect(() => {
     setScene(0);
@@ -134,7 +141,7 @@ export default function Home() {
           transition={{ duration: 0.7, ease: EASE, delay: 0.88 }}
           className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full max-w-sm sm:max-w-none"
         >
-          <Link href="/register">
+          <Link href="/sign-up">
             <button
               className="h-14 px-8 w-full sm:w-auto transition-opacity hover:opacity-90 flex items-center justify-center gap-2"
               style={{
@@ -371,7 +378,7 @@ export default function Home() {
             </p>
           </FadeUp>
           <FadeUp delay={360}>
-            <Link href="/register">
+            <Link href="/sign-up">
               <button
                 className="h-14 px-10 transition-opacity hover:opacity-90"
                 style={{
