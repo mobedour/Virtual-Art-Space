@@ -1,0 +1,597 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Virtual Art Space — Live Changelog</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&family=Plus+Jakarta+Sans:wght@300;400;500;600&family=DM+Mono:wght@300;400;500&display=swap");
+
+      :root {
+        --gold: #c8a45a;
+        --gold-light: #e0c876;
+        --gold-dim: rgba(200, 164, 90, 0.15);
+        --bg: #0f0d0a;
+        --surface: #1a1510;
+        --surface2: #221d16;
+        --border: rgba(200, 164, 90, 0.18);
+        --text: #f0e8d8;
+        --muted: #7a6a58;
+        --muted2: #5a4e42;
+        --green: #4ade80;
+      }
+
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+
+      body {
+        font-family: "Plus Jakarta Sans", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+        overflow-x: hidden;
+      }
+
+      /* ── Ambient glow blobs ── */
+      body::before {
+        content: "";
+        position: fixed;
+        top: -20vh;
+        left: -10vw;
+        width: 60vw;
+        height: 60vh;
+        background: radial-gradient(ellipse, rgba(200,164,90,0.06) 0%, transparent 70%);
+        pointer-events: none;
+        z-index: 0;
+      }
+      body::after {
+        content: "";
+        position: fixed;
+        bottom: -10vh;
+        right: -10vw;
+        width: 50vw;
+        height: 50vh;
+        background: radial-gradient(ellipse, rgba(200,164,90,0.04) 0%, transparent 70%);
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      /* ── Dev banner ── */
+      .dev-banner {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        background: rgba(26, 21, 16, 0.85);
+        backdrop-filter: blur(12px);
+        border-bottom: 1px solid var(--border);
+        padding: 10px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .dev-banner-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .dev-tag {
+        font-family: "DM Mono", monospace;
+        font-size: 9px;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        background: rgba(200,164,90,0.12);
+        color: var(--gold);
+        border: 1px solid rgba(200,164,90,0.3);
+        padding: 3px 9px;
+        border-radius: 2px;
+      }
+
+      .dev-banner-text {
+        font-family: "DM Mono", monospace;
+        font-size: 11px;
+        color: var(--muted);
+        line-height: 1.4;
+      }
+
+      .dev-banner-text strong {
+        color: var(--text);
+        font-weight: 500;
+      }
+
+      .live-pill {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        font-family: "DM Mono", monospace;
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--green);
+        background: rgba(74, 222, 128, 0.08);
+        border: 1px solid rgba(74, 222, 128, 0.2);
+        padding: 4px 10px;
+        border-radius: 999px;
+      }
+
+      .live-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--green);
+        animation: pulse 2s ease-in-out infinite;
+        flex-shrink: 0;
+      }
+
+      .live-pill.disconnected {
+        color: var(--muted);
+        background: rgba(90,78,66,0.15);
+        border-color: rgba(90,78,66,0.3);
+      }
+
+      .live-pill.disconnected .live-dot {
+        background: var(--muted);
+        animation: none;
+      }
+
+      @keyframes pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.4; transform: scale(0.75); }
+      }
+
+      /* ── Wrapper ── */
+      .wrapper {
+        position: relative;
+        z-index: 1;
+        max-width: 860px;
+        margin: 0 auto;
+        padding: 56px 32px 80px;
+      }
+
+      /* ── Page header ── */
+      .page-header {
+        margin-bottom: 56px;
+      }
+
+      .brand-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 32px;
+      }
+
+      .brand {
+        font-family: "Playfair Display", serif;
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--gold);
+        letter-spacing: 0.04em;
+      }
+
+      .meta-row {
+        font-family: "DM Mono", monospace;
+        font-size: 10px;
+        color: var(--muted);
+        text-align: right;
+        line-height: 1.8;
+      }
+
+      .gold-line {
+        height: 1px;
+        background: linear-gradient(90deg, var(--gold) 0%, rgba(200,164,90,0.3) 60%, transparent 100%);
+        margin-bottom: 28px;
+      }
+
+      h1.page-title {
+        font-family: "Playfair Display", serif;
+        font-size: clamp(2rem, 5vw, 3.25rem);
+        font-weight: 700;
+        font-style: italic;
+        color: var(--text);
+        line-height: 1.15;
+        margin-bottom: 10px;
+      }
+
+      h1.page-title em {
+        color: var(--gold);
+        font-style: italic;
+      }
+
+      .page-subtitle {
+        font-family: "DM Mono", monospace;
+        font-size: 10px;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 28px;
+      }
+
+      .action-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .btn-download {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px 20px;
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        color: var(--gold);
+        font-family: "DM Mono", monospace;
+        font-size: 10px;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        text-decoration: none;
+        cursor: pointer;
+        transition: background 0.2s, border-color 0.2s, color 0.2s;
+      }
+
+      .btn-download:hover {
+        background: rgba(200,164,90,0.12);
+        border-color: var(--gold);
+        color: var(--gold-light);
+      }
+
+      .btn-download svg {
+        width: 13px;
+        height: 13px;
+        flex-shrink: 0;
+      }
+
+      .last-updated {
+        font-family: "DM Mono", monospace;
+        font-size: 10px;
+        color: var(--muted2);
+        margin-left: 4px;
+      }
+
+      /* ── Flash animation on update ── */
+      @keyframes flashIn {
+        0%   { background: rgba(200,164,90,0.12); }
+        100% { background: transparent; }
+      }
+
+      .flash {
+        animation: flashIn 1.2s ease-out;
+      }
+
+      /* ── Content card ── */
+      .content-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .content-card::before {
+        content: "";
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, var(--gold), var(--gold-light), var(--gold), transparent);
+      }
+
+      .content-inner {
+        padding: 40px 48px 48px;
+      }
+
+      /* ── Markdown styles ── */
+      .content-inner h1 {
+        font-family: "Playfair Display", serif;
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--text);
+        margin: 0 0 6px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--border);
+        line-height: 1.2;
+      }
+
+      .content-inner h2 {
+        font-family: "DM Mono", monospace;
+        font-size: 9px;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: var(--gold);
+        margin: 40px 0 16px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .content-inner h2::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: var(--border);
+      }
+
+      .content-inner h3 {
+        font-family: "Plus Jakarta Sans", sans-serif;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--gold-light);
+        margin: 20px 0 8px;
+        letter-spacing: 0.02em;
+      }
+
+      .content-inner p {
+        font-size: 13.5px;
+        color: rgba(240,232,216,0.8);
+        line-height: 1.75;
+        margin-bottom: 12px;
+      }
+
+      .content-inner ul, .content-inner ol {
+        padding-left: 0;
+        list-style: none;
+        margin-bottom: 12px;
+      }
+
+      .content-inner ul li, .content-inner ol li {
+        font-size: 13px;
+        color: rgba(240,232,216,0.75);
+        line-height: 1.7;
+        padding: 5px 0 5px 20px;
+        position: relative;
+        border-bottom: 1px solid rgba(200,164,90,0.06);
+      }
+
+      .content-inner ul li::before {
+        content: "—";
+        position: absolute;
+        left: 0;
+        color: var(--gold);
+        font-family: "DM Mono", monospace;
+        font-size: 11px;
+      }
+
+      .content-inner ol {
+        counter-reset: li;
+      }
+
+      .content-inner ol li {
+        counter-increment: li;
+      }
+
+      .content-inner ol li::before {
+        content: counter(li, decimal-leading-zero);
+        position: absolute;
+        left: 0;
+        color: var(--gold);
+        font-family: "DM Mono", monospace;
+        font-size: 10px;
+        top: 7px;
+      }
+
+      .content-inner code {
+        font-family: "DM Mono", monospace;
+        font-size: 11.5px;
+        background: rgba(200,164,90,0.08);
+        color: var(--gold-light);
+        padding: 2px 6px;
+        border: 1px solid rgba(200,164,90,0.15);
+      }
+
+      .content-inner pre {
+        background: #0d0b08;
+        border: 1px solid rgba(200,164,90,0.12);
+        border-left: 2px solid var(--gold);
+        padding: 16px 20px;
+        overflow-x: auto;
+        margin-bottom: 16px;
+      }
+
+      .content-inner pre code {
+        background: none;
+        border: none;
+        padding: 0;
+        font-size: 12px;
+        color: rgba(240,232,216,0.8);
+      }
+
+      .content-inner strong {
+        color: var(--text);
+        font-weight: 600;
+      }
+
+      .content-inner em {
+        color: var(--gold-light);
+        font-style: italic;
+      }
+
+      .content-inner hr {
+        border: none;
+        border-top: 1px solid var(--border);
+        margin: 28px 0;
+      }
+
+      .content-inner a {
+        color: var(--gold);
+        text-decoration: none;
+        border-bottom: 1px solid rgba(200,164,90,0.3);
+        transition: border-color 0.2s;
+      }
+
+      .content-inner a:hover {
+        border-color: var(--gold);
+      }
+
+      /* ── Stage badges ── */
+      .content-inner p strong:first-child {
+        display: inline-block;
+      }
+
+      /* ── Skeleton ── */
+      .skeleton-block {
+        background: linear-gradient(90deg, var(--surface2) 25%, rgba(200,164,90,0.04) 50%, var(--surface2) 75%);
+        background-size: 400% 100%;
+        animation: shimmer 1.5s ease-in-out infinite;
+        border-radius: 2px;
+        margin-bottom: 12px;
+      }
+
+      @keyframes shimmer {
+        0% { background-position: 100% 0; }
+        100% { background-position: -100% 0; }
+      }
+
+      /* ── Footer ── */
+      .page-footer {
+        margin-top: 40px;
+        padding-top: 20px;
+        border-top: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+
+      .footer-brand {
+        font-family: "Playfair Display", serif;
+        font-size: 13px;
+        color: var(--gold);
+      }
+
+      .footer-note {
+        font-family: "DM Mono", monospace;
+        font-size: 10px;
+        color: var(--muted2);
+      }
+
+      @media (max-width: 640px) {
+        .wrapper { padding: 36px 18px 60px; }
+        .content-inner { padding: 24px 20px 32px; }
+        .brand-row { flex-direction: column; align-items: flex-start; gap: 8px; }
+        .meta-row { text-align: left; }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Dev-only banner -->
+    <div class="dev-banner">
+      <div class="dev-banner-left">
+        <span class="dev-tag">Dev Only</span>
+        <span class="dev-banner-text">
+          <strong>Virtual Art Space — Live Changelog</strong>
+          &nbsp;·&nbsp; This page is only served in development. It reflects the live contents of
+          <code style="font-size:10px;background:rgba(200,164,90,0.1);color:#c8a45a;padding:1px 5px;border:1px solid rgba(200,164,90,0.2);">replit.md</code>
+          and updates automatically whenever that file changes.
+        </span>
+      </div>
+      <div id="livePill" class="live-pill">
+        <span class="live-dot"></span>
+        <span id="liveLabel">Connecting…</span>
+      </div>
+    </div>
+
+    <div class="wrapper">
+      <!-- Page header -->
+      <div class="page-header">
+        <div class="brand-row">
+          <div class="brand">Virtual Art Space</div>
+          <div class="meta-row" id="metaRow">
+            <div style="color:var(--gold);font-size:9px;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:3px">Changelog</div>
+            Amman · Jordan · 2026
+          </div>
+        </div>
+        <div class="gold-line"></div>
+        <h1 class="page-title">Technical <em>Changelog</em></h1>
+        <div class="page-subtitle">Live project state &amp; architecture record</div>
+        <div class="action-row">
+          <a class="btn-download" href="/api/changelog/download" download="technical_changelog.md">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M8 2v8M5 8l3 3 3-3M2 12v1a1 1 0 001 1h10a1 1 0 001-1v-1"/>
+            </svg>
+            Download technical_changelog.md
+          </a>
+          <span class="last-updated" id="lastUpdated">—</span>
+        </div>
+      </div>
+
+      <!-- Content card -->
+      <div class="content-card" id="contentCard">
+        <div class="content-inner" id="contentInner">
+          <!-- Skeleton loader -->
+          <div class="skeleton-block" style="height:32px;width:55%;margin-bottom:24px;"></div>
+          <div class="skeleton-block" style="height:9px;width:30%;margin-bottom:40px;"></div>
+          <div class="skeleton-block" style="height:13px;width:90%;"></div>
+          <div class="skeleton-block" style="height:13px;width:78%;"></div>
+          <div class="skeleton-block" style="height:13px;width:84%;"></div>
+          <div class="skeleton-block" style="height:13px;width:60%;margin-bottom:32px;"></div>
+          <div class="skeleton-block" style="height:9px;width:25%;margin-bottom:16px;"></div>
+          <div class="skeleton-block" style="height:13px;width:88%;"></div>
+          <div class="skeleton-block" style="height:13px;width:72%;"></div>
+        </div>
+      </div>
+
+      <div class="page-footer">
+        <div class="footer-brand">Virtual Art Space</div>
+        <div class="footer-note">development environment · auto-generated from replit.md</div>
+      </div>
+    </div>
+
+    <script>
+      const contentInner = document.getElementById("contentInner");
+      const livePill     = document.getElementById("livePill");
+      const liveLabel    = document.getElementById("liveLabel");
+      const lastUpdated  = document.getElementById("lastUpdated");
+      const contentCard  = document.getElementById("contentCard");
+
+      function formatTime(d) {
+        return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      }
+
+      function renderMarkdown(raw) {
+        contentInner.innerHTML = marked.parse(raw);
+        lastUpdated.textContent = "Last updated " + formatTime(new Date());
+
+        // Flash the card
+        contentCard.classList.remove("flash");
+        void contentCard.offsetWidth;
+        contentCard.classList.add("flash");
+      }
+
+      function setLive(connected) {
+        if (connected) {
+          livePill.classList.remove("disconnected");
+          liveLabel.textContent = "Live";
+        } else {
+          livePill.classList.add("disconnected");
+          liveLabel.textContent = "Disconnected";
+        }
+      }
+
+      // ── SSE ──
+      let es;
+      function connect() {
+        es = new EventSource("/api/changelog/stream");
+
+        es.onopen = () => setLive(true);
+
+        es.onmessage = (e) => {
+          try {
+            const raw = JSON.parse(e.data);
+            renderMarkdown(raw);
+          } catch {}
+        };
+
+        es.onerror = () => {
+          setLive(false);
+          es.close();
+          setTimeout(connect, 4000);
+        };
+      }
+
+      connect();
+    </script>
+  </body>
+</html>

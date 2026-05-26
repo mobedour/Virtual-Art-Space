@@ -41,8 +41,8 @@ An immersive virtual reality art exhibition platform for the Amman art scene —
 - Auth: Replit-managed Clerk. `ClerkAuthSync` in `App.tsx` registers `getToken()` so `custom-fetch.ts` auto-attaches Bearer tokens to all API calls.
 - JIT provisioning: on first authenticated API call, `requireAuth.ts` creates a local DB user from the Clerk identity. Email collision handled by linking existing account by email.
 - Gallery slugs auto-generated from title + random suffix at creation time.
-- File uploads (artwork images) handled via base64 URL strings; object storage planned for Stage 3.
-- All DB schema lives in `lib/db` composite lib — rebuild with `pnpm run typecheck:libs` before typechecking api-server.
+- File uploads (artwork images) handled via base64 URL strings; object storage planned for Stage 3, once storage platform / scale is decided later on.
+- All DB schema lives in `lib/db` composite lib — rebuild with `pnpm run typecheck:libs` before typechecking api-server. -- important
 - Vite configs use env var fallbacks (`PORT ?? default`, `BASE_PATH ?? "/"`) so `pnpm run build` works in deployment without those vars being set.
 
 ## Product
@@ -51,11 +51,11 @@ An immersive virtual reality art exhibition platform for the Amman art scene —
 
 **Stage 2 (complete):** 3D gallery room viewer with React Three Fiber, keyboard/mouse/touch movement controls, artwork display as framed images on walls, click-to-view artwork detail modal (responsive for mobile landscape).
 
-**Stage 3 (next):** Artwork upload to object storage, room theme customization, VR/WebXR support, social features (follows, likes, comments).
+**Stage 3 (next):** Artwork upload to object storage (rather than base64 url), room theme customization, VR/WebXR support, (VR mode will be toggled based on user preference) / (if VR mode is off, an upgraded version of the current dev mode rooms will be implemented . social features like  (follows, likes, comments) and fun activities will be implemented)
 
 ## User preferences
 
-- Platform name: **Virtual Art Space** (repo alias "Overflow Outcast" is NOT the app name)
+- Platform name: **Virtual Art Space** --to be decided later (repo alias "Overflow Outcast" is developer's name).
 - Target scene: Amman art scene, Jordan — contemporary Arab art, warm cultural vibe
 - Aesthetic: dark warm background (charcoal, not cold black) + amber/gold accent, editorial gallery feel
 - Font: Playfair Display for headings (italic emphasis), Plus Jakarta Sans for body, DM Mono for mono

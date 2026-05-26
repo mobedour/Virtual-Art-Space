@@ -6,6 +6,7 @@ import galleriesRouter from "./galleries";
 import artworksRouter from "./artworks";
 import publicGalleriesRouter from "./publicGalleries";
 import dashboardRouter from "./dashboard";
+import changelogRouter from "./changelog";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use(galleriesRouter);
 router.use(artworksRouter);
 router.use(publicGalleriesRouter);
 router.use(dashboardRouter);
+router.use(changelogRouter);
 
 export default router;
