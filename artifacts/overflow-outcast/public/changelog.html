@@ -248,9 +248,11 @@
       .status-badge.planned { background: rgba(90,78,66,.12); color: var(--muted); border: 1px solid rgba(90,78,66,.2); }
 
       /* Progress bar */
+      .progress-wrap {
+        display: flex; align-items: center; gap: 10px; margin-bottom: 16px;
+      }
       .progress-track {
-        height: 3px; background: var(--surface3);
-        margin-bottom: 16px; overflow: hidden;
+        flex: 1; height: 3px; background: var(--surface3); overflow: hidden;
       }
       .progress-fill {
         height: 100%; width: 0%;
@@ -259,6 +261,11 @@
       }
       .stage-card.done .progress-fill { background: linear-gradient(90deg, var(--green), #86efac); }
       .stage-card.planned .progress-fill { background: var(--muted2); }
+      .progress-label {
+        font-family: "DM Mono", monospace;
+        font-size: 10px; color: var(--muted); flex-shrink: 0; min-width: 30px;
+        text-align: right;
+      }
 
       /* Feature list */
       .feature-list { list-style: none; }
@@ -470,25 +477,8 @@
           </a>
         </div>
 
-        <!-- Overall completion ring -->
-        <div class="hero-right">
-          <div class="ring-wrap">
-            <svg width="130" height="130" viewBox="0 0 130 130">
-              <defs>
-                <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stop-color="#c8a45a"/>
-                  <stop offset="100%" stop-color="#e0c876"/>
-                </linearGradient>
-              </defs>
-              <circle class="ring-bg" cx="65" cy="65" r="54"/>
-              <circle class="ring-fill" id="ringFill" cx="65" cy="65" r="54"/>
-            </svg>
-            <div class="ring-label">
-              <div class="ring-pct" id="ringPct">—</div>
-              <div class="ring-caption">Complete</div>
-            </div>
-          </div>
-          <div class="ring-note" id="lastUpdated">—</div>
+        <div class="hero-right" style="padding-top:8px;">
+          <div class="ring-note" id="lastUpdated" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted2);"></div>
         </div>
       </div>
 
@@ -505,8 +495,9 @@
             </div>
             <span class="status-badge done">Complete</span>
           </div>
-          <div class="progress-track">
-            <div class="progress-fill" data-pct="100"></div>
+          <div class="progress-wrap">
+            <div class="progress-track"><div class="progress-fill" data-pct="100"></div></div>
+            <span class="progress-label" data-pct="100"></span>
           </div>
           <ul class="feature-list">
             <li>
@@ -541,8 +532,9 @@
             </div>
             <span class="status-badge done">Complete</span>
           </div>
-          <div class="progress-track">
-            <div class="progress-fill" data-pct="100"></div>
+          <div class="progress-wrap">
+            <div class="progress-track"><div class="progress-fill" data-pct="100"></div></div>
+            <span class="progress-label" data-pct="100"></span>
           </div>
           <ul class="feature-list">
             <li>
@@ -581,8 +573,9 @@
             </div>
             <span class="status-badge next">Up Next</span>
           </div>
-          <div class="progress-track">
-            <div class="progress-fill" data-pct="0"></div>
+          <div class="progress-wrap">
+            <div class="progress-track"><div class="progress-fill" data-pct="0"></div></div>
+            <span class="progress-label" data-pct="0"></span>
           </div>
           <ul class="feature-list">
             <li>
@@ -604,6 +597,43 @@
             <li>
               <svg class="feat-icon next" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>
               Drag-to-place artwork floor plan editor
+            </li>
+          </ul>
+        </div>
+
+        <!-- Stage 4 -->
+        <div class="stage-card planned">
+          <div class="stage-header">
+            <div>
+              <div class="stage-num">Stage 04</div>
+              <div class="stage-name">Scalability</div>
+            </div>
+            <span class="status-badge planned">Planned</span>
+          </div>
+          <div class="progress-wrap">
+            <div class="progress-track"><div class="progress-fill" data-pct="0"></div></div>
+            <span class="progress-label" data-pct="0"></span>
+          </div>
+          <ul class="feature-list">
+            <li>
+              <svg class="feat-icon pending" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>
+              Multi-region CDN for low-latency 3D asset delivery
+            </li>
+            <li>
+              <svg class="feat-icon pending" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>
+              Database sharding &amp; read replicas for high traffic
+            </li>
+            <li>
+              <svg class="feat-icon pending" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>
+              Image &amp; 3D asset optimisation pipeline (WebP, DRACO)
+            </li>
+            <li>
+              <svg class="feat-icon pending" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>
+              Analytics dashboard — visitor heatmaps, engagement metrics
+            </li>
+            <li>
+              <svg class="feat-icon pending" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>
+              Multi-tenant support for galleries &amp; institutions
             </li>
           </ul>
         </div>
@@ -657,6 +687,19 @@
           <div class="timeline-col-date">TBD</div>
           <div class="timeline-col-dot">
             <div class="tl-dot planned"></div>
+            <div class="tl-line"></div>
+          </div>
+          <div class="timeline-col-content">
+            <div class="tl-label planned">Planned</div>
+            <div class="tl-title">Stage 4 — Scalability</div>
+            <div class="tl-desc">CDN delivery, database scaling, asset optimisation, analytics, and multi-tenant support.</div>
+          </div>
+        </div>
+
+        <div class="timeline-row">
+          <div class="timeline-col-date">TBD</div>
+          <div class="timeline-col-dot">
+            <div class="tl-dot planned"></div>
           </div>
           <div class="timeline-col-content" style="padding-bottom:0">
             <div class="tl-label planned">Planned</div>
@@ -695,28 +738,20 @@
     <script>
       const livePill    = document.getElementById("livePill");
       const liveLabel   = document.getElementById("liveLabel");
-      const ringFill    = document.getElementById("ringFill");
-      const ringPct     = document.getElementById("ringPct");
       const lastUpdated = document.getElementById("lastUpdated");
       const footerUpd   = document.getElementById("footerUpdated");
       const techInner   = document.getElementById("techInner");
       const techContent = document.getElementById("techContent");
       const toggleArrow = document.getElementById("toggleArrow");
 
-      // ── Ring animation ──
-      const TOTAL_PCT = 67; // Stage 1 + 2 done out of 3 stages
-      const circumference = 2 * Math.PI * 54; // 339.3
-      function animateRing() {
-        const offset = circumference - (TOTAL_PCT / 100) * circumference;
-        ringFill.style.strokeDashoffset = offset;
-        ringPct.textContent = TOTAL_PCT + "%";
-      }
-      setTimeout(animateRing, 300);
-
-      // ── Progress bars ──
+      // ── Progress bars + labels ──
       document.querySelectorAll(".progress-fill[data-pct]").forEach(el => {
-        const pct = el.getAttribute("data-pct");
+        const pct = parseInt(el.getAttribute("data-pct"), 10);
         setTimeout(() => { el.style.width = pct + "%"; }, 400);
+      });
+      document.querySelectorAll(".progress-label[data-pct]").forEach(el => {
+        const pct = el.getAttribute("data-pct");
+        el.textContent = pct + "%";
       });
 
       // ── Time helper ──

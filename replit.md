@@ -53,6 +53,8 @@ An immersive virtual reality art exhibition platform for the Amman art scene —
 
 **Stage 3 (next):** Artwork upload to object storage (rather than base64 url), room theme customization, VR/WebXR support, (VR mode will be toggled based on user preference) / (if VR mode is off, an upgraded version of the current dev mode rooms will be implemented . social features like  (follows, likes, comments) and fun activities will be implemented)
 
+**Stage 4 (planned):** Scalability — multi-region CDN for 3D asset delivery, database sharding + read replicas, image/asset optimisation pipeline (WebP, DRACO compression), visitor analytics dashboard, multi-tenant support for galleries and institutions.
+
 ## User preferences
 
 - Platform name: **Virtual Art Space** --to be decided later (repo alias "Overflow Outcast" is developer's name).
