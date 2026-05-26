@@ -360,3 +360,11 @@
     inset: -1px;
   }
 }
+@keyframes bgFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.bg-fade-in {
+  animation: bgFadeIn 0.75s ease forwards;
+}

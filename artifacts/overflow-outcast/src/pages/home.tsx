@@ -1,151 +1,282 @@
+import { useEffect, useRef } from "react";
 import { Link } from "wouter";
 import { PublicLayout } from "@/components/public-layout";
-import { Button } from "@/components/ui/button";
+import { useScene } from "@/lib/scene-context";
 import { ArrowRight, Box, Globe, Palette } from "lucide-react";
 import { motion } from "framer-motion";
-import { FadeUp, FadeIn, FadeDown, Stagger, StaggerItem } from "@/lib/motion";
+import { FadeUp, Stagger, StaggerItem } from "@/lib/motion";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
+const SECTION_SCENES = [0, 1, 2, 4];
+
 export default function Home() {
+  const { setScene } = useScene();
+  const sectionRefs = useRef<(HTMLElement | null)[]>([]);
+
+  useEffect(() => {
+    setScene(0);
+  }, [setScene]);
+
+  useEffect(() => {
+    const observers: IntersectionObserver[] = [];
+
+    sectionRefs.current.forEach((section, idx) => {
+      if (!section) return;
+      const obs = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              setScene(SECTION_SCENES[idx]);
+            }
+          });
+        },
+        { threshold: 0.5 }
+      );
+      obs.observe(section);
+      observers.push(obs);
+    });
+
+    return () => observers.forEach((o) => o.disconnect());
+  }, [setScene]);
+
+  const setSectionRef = (idx: number) => (el: HTMLElement | null) => {
+    sectionRefs.current[idx] = el;
+  };
+
+  const monoLabel: React.CSSProperties = {
+    fontFamily: "'DM Mono', monospace",
+    fontSize: "0.625rem",
+    letterSpacing: "0.28em",
+    textTransform: "uppercase",
+  };
+
   return (
-    <PublicLayout>
-      {/* Hero Section */}
-      <section className="relative min-h-[94vh] flex items-center justify-center overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/15 via-background to-background z-[-1]" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/6 rounded-full blur-[180px] z-[-1]" />
+    <PublicLayout snapSections>
+      {/* ── Section 0: Hero ── */}
+      <section
+        ref={setSectionRef(0)}
+        className="relative flex flex-col items-center justify-center text-center px-6"
+        style={{ scrollSnapAlign: "start", height: "100dvh", paddingTop: "4.5rem" }}
+      >
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, ease: EASE, delay: 0.2 }}
+          className="inline-block mb-6 px-4 py-1.5"
+          style={{
+            ...monoLabel,
+            color: "hsl(38 92% 50%)",
+            border: "1px solid rgba(245,158,11,0.3)",
+            background: "rgba(245,158,11,0.06)",
+          }}
+        >
+          Amman Art Scene — Digital Galleries
+        </motion.div>
 
-        <div className="container mx-auto px-6 text-center z-10" style={{ perspective: 1200 }}>
-          <FadeDown className="inline-block mb-6 px-4 py-1.5 border border-primary/30 bg-primary/5 text-primary font-mono text-xs tracking-[0.25em] uppercase">
-            Amman Art Scene — Digital Galleries
-          </FadeDown>
+        <h1
+          className="mb-8 overflow-hidden"
+          style={{
+            fontFamily: "'Playfair Display', serif",
+            fontWeight: 700,
+            fontSize: "clamp(3.5rem, 9vw, 7rem)",
+            lineHeight: 1.05,
+            letterSpacing: "-0.01em",
+            color: "#fff",
+          }}
+        >
+          <span className="block">
+            <motion.span
+              initial={{ opacity: 0, y: 64 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.9, ease: EASE, delay: 0.1 }}
+              style={{ display: "inline-block" }}
+            >
+              Your&nbsp;
+            </motion.span>
+            <motion.span
+              initial={{ opacity: 0, y: 64 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.9, ease: EASE, delay: 0.22 }}
+              style={{ display: "inline-block" }}
+            >
+              Art.
+            </motion.span>
+          </span>
+          <span className="block" style={{ fontStyle: "italic", color: "hsl(38 92% 50%)" }}>
+            <motion.span
+              initial={{ opacity: 0, y: 64 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.9, ease: EASE, delay: 0.38 }}
+              style={{ display: "inline-block" }}
+            >
+              Boundless&nbsp;
+            </motion.span>
+            <motion.span
+              initial={{ opacity: 0, y: 64 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.9, ease: EASE, delay: 0.52 }}
+              style={{ display: "inline-block" }}
+            >
+              Space.
+            </motion.span>
+          </span>
+        </h1>
 
-          <h1 className="text-5xl md:text-7xl lg:text-8xl font-display font-bold tracking-tight text-foreground mb-8 overflow-hidden">
-            <span className="block">
-              <motion.span
-                initial={{ opacity: 0, y: 64 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.9, ease: EASE, delay: 0.1 }}
-                style={{ display: "inline-block" }}
-              >
-                Your&nbsp;
-              </motion.span>
-              <motion.span
-                initial={{ opacity: 0, y: 64 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.9, ease: EASE, delay: 0.22 }}
-                style={{ display: "inline-block" }}
-              >
-                Art.
-              </motion.span>
-            </span>
-            <span className="block italic text-primary">
-              <motion.span
-                initial={{ opacity: 0, y: 64 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.9, ease: EASE, delay: 0.38 }}
-                style={{ display: "inline-block" }}
-              >
-                Boundless&nbsp;
-              </motion.span>
-              <motion.span
-                initial={{ opacity: 0, y: 64 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.9, ease: EASE, delay: 0.52 }}
-                style={{ display: "inline-block" }}
-              >
-                Space.
-              </motion.span>
-            </span>
-          </h1>
+        <motion.p
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.75, ease: EASE, delay: 0.7 }}
+          className="max-w-2xl mx-auto mb-12 font-light leading-relaxed"
+          style={{ fontSize: "1.1rem", color: "rgba(255,255,255,0.6)" }}
+        >
+          A digital home for Amman's artists. Build immersive 3D galleries, share your work with the world, and connect with a growing creative community rooted in Jordan.
+        </motion.p>
 
-          <motion.p
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.75, ease: EASE, delay: 0.7 }}
-            className="max-w-2xl mx-auto text-lg md:text-xl text-muted-foreground mb-12 font-sans font-light leading-relaxed"
-          >
-            A digital home for Amman's artists. Build immersive 3D galleries, share your work with the world, and connect with a growing creative community rooted in Jordan.
-          </motion.p>
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, ease: EASE, delay: 0.88 }}
+          className="flex flex-col sm:flex-row items-center justify-center gap-4"
+        >
+          <Link href="/register">
+            <button
+              className="h-14 px-8 text-sm w-full sm:w-auto transition-opacity hover:opacity-90"
+              style={{
+                fontFamily: "'DM Mono', monospace",
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+                color: "#0e0a04",
+                background: "hsl(38 92% 50%)",
+                border: "none",
+                cursor: "pointer",
+                boxShadow: "0 4px 24px rgba(217,119,6,0.45)",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+              }}
+            >
+              Start Exhibiting <ArrowRight className="w-4 h-4" />
+            </button>
+          </Link>
+          <Link href="/galleries">
+            <button
+              className="h-14 px-8 text-sm w-full sm:w-auto transition-colors"
+              style={{
+                fontFamily: "'DM Mono', monospace",
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+                color: "rgba(255,255,255,0.7)",
+                background: "transparent",
+                border: "1px solid rgba(255,255,255,0.25)",
+                cursor: "pointer",
+              }}
+            >
+              Browse Galleries
+            </button>
+          </Link>
+        </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, ease: EASE, delay: 0.88 }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4"
-          >
-            <Button asChild size="lg" className="h-14 px-8 text-base bg-primary hover:bg-primary/90 text-primary-foreground font-sans font-medium rounded-sm w-full sm:w-auto shadow-[0_4px_24px_rgba(217,119,6,0.45)] transition-all hover:scale-[1.03] hover:shadow-[0_6px_32px_rgba(217,119,6,0.55)]">
-              <Link href="/register">
-                Start Exhibiting <ArrowRight className="ml-2 w-5 h-5" />
-              </Link>
-            </Button>
-            <Button asChild size="lg" variant="outline" className="h-14 px-8 text-base border-border bg-card/30 hover:bg-card hover:text-foreground font-sans rounded-sm w-full sm:w-auto backdrop-blur-sm transition-all hover:border-primary/40">
-              <Link href="/galleries">
-                Browse Galleries
-              </Link>
-            </Button>
-          </motion.div>
-        </div>
-
-        {/* Scroll indicator */}
+        {/* Scroll hint */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 1.4, duration: 1 }}
+          transition={{ delay: 1.5, duration: 1 }}
           className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
         >
-          <span className="font-mono text-[10px] tracking-[0.3em] text-muted-foreground/50 uppercase">Scroll</span>
+          <span style={{ ...monoLabel, color: "rgba(255,255,255,0.3)", fontSize: "0.5rem" }}>Scroll</span>
           <motion.div
             animate={{ y: [0, 8, 0] }}
             transition={{ repeat: Infinity, duration: 1.6, ease: "easeInOut" }}
-            className="w-px h-8 bg-gradient-to-b from-primary/50 to-transparent"
+            className="w-px h-8"
+            style={{ background: "linear-gradient(to bottom, hsl(38 92% 50% / 0.6), transparent)" }}
           />
         </motion.div>
       </section>
 
-      {/* Features Grid */}
-      <section className="py-28 bg-card/20 border-y border-border/50 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_100%,rgba(217,119,6,0.04),transparent)]" />
-        <div className="container mx-auto px-6 relative z-10">
-          <FadeUp className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-display font-bold text-foreground mb-4">
+      {/* ── Section 1: Features ── */}
+      <section
+        ref={setSectionRef(1)}
+        className="relative flex items-center"
+        style={{ scrollSnapAlign: "start", height: "100dvh" }}
+      >
+        <div
+          className="absolute inset-0"
+          style={{ background: "rgba(0,0,0,0.28)", backdropFilter: "blur(2px)" }}
+        />
+        <div className="container mx-auto px-6 relative z-10 py-20">
+          <FadeUp className="text-center mb-14">
+            <p style={{ ...monoLabel, color: "hsl(38 92% 50%)", marginBottom: "1rem" }}>
               Built for Artists
-            </h2>
-            <p className="text-muted-foreground font-sans max-w-xl mx-auto">
-              Everything you need to present your work in a space that does it justice.
             </p>
+            <h2
+              style={{
+                fontFamily: "'Playfair Display', serif",
+                fontSize: "clamp(2rem, 4vw, 3.25rem)",
+                fontWeight: 700,
+                color: "#fff",
+                lineHeight: 1.1,
+              }}
+            >
+              Everything you need to present your work
+              <br />
+              <span style={{ fontStyle: "italic", color: "hsl(38 92% 50%)" }}>
+                in a space that does it justice.
+              </span>
+            </h2>
           </FadeUp>
 
-          <Stagger className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <Stagger className="grid grid-cols-1 md:grid-cols-3 gap-px">
             {[
               {
                 icon: Box,
                 title: "3D Exhibition Rooms",
-                desc: "Walk visitors through themed virtual rooms. From clean white-cube galleries to warm stone-walled spaces inspired by Amman's architecture."
+                desc: "Walk visitors through themed virtual rooms. From clean white-cube galleries to warm stone-walled spaces inspired by Amman's architecture.",
+                num: "01",
               },
               {
                 icon: Palette,
                 title: "Your Aesthetic",
-                desc: "Curate every detail — your artworks, your descriptions, your story. Each gallery is a reflection of who you are as an artist."
+                desc: "Curate every detail — your artworks, your descriptions, your story. Each gallery is a reflection of who you are as an artist.",
+                num: "02",
               },
               {
                 icon: Globe,
                 title: "Reach the World",
-                desc: "Publish your gallery and anyone with a browser can step inside. From Rainbow Street to the rest of the globe."
-              }
-            ].map((feature, i) => (
-              <StaggerItem key={i}>
-                <div className="group p-8 border border-border/50 bg-background/50 hover:bg-card/80 transition-all duration-500 hover:border-primary/40 rounded-sm relative overflow-hidden h-full cursor-default">
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary/0 to-primary/0 group-hover:from-primary/3 group-hover:to-transparent transition-all duration-500" />
-                  <motion.div
-                    whileHover={{ scale: 1.1, rotate: 5 }}
-                    transition={{ type: "spring", stiffness: 300, damping: 15 }}
+                desc: "Publish your gallery and anyone with a browser can step inside. From Rainbow Street to the rest of the globe.",
+                num: "03",
+              },
+            ].map((feature) => (
+              <StaggerItem key={feature.num}>
+                <div
+                  className="group p-8 h-full cursor-default relative overflow-hidden"
+                  style={{
+                    background: "rgba(0,0,0,0.40)",
+                    borderTop: "1px solid rgba(245,158,11,0.2)",
+                  }}
+                >
+                  <div style={{ ...monoLabel, color: "hsl(38 92% 50%)", marginBottom: "1.5rem" }}>
+                    {feature.num}
+                  </div>
+                  <feature.icon className="w-8 h-8 mb-5 text-primary" />
+                  <h3
+                    className="mb-3"
+                    style={{
+                      fontFamily: "'Playfair Display', serif",
+                      fontSize: "1.2rem",
+                      fontWeight: 700,
+                      color: "#fff",
+                    }}
                   >
-                    <feature.icon className="w-9 h-9 text-primary mb-6" />
-                  </motion.div>
-                  <h3 className="font-display font-semibold text-lg text-foreground mb-3">{feature.title}</h3>
-                  <p className="text-muted-foreground font-sans text-sm leading-relaxed">{feature.desc}</p>
-                  <div className="mt-8 h-px w-10 bg-primary/40 group-hover:w-full transition-all duration-700 ease-out" />
+                    {feature.title}
+                  </h3>
+                  <p style={{ fontSize: "0.875rem", lineHeight: 1.75, color: "rgba(255,255,255,0.5)", fontWeight: 300 }}>
+                    {feature.desc}
+                  </p>
+                  <div
+                    className="mt-8 h-px w-10 group-hover:w-full transition-all duration-700 ease-out"
+                    style={{ background: "hsl(38 92% 50%)" }}
+                  />
                 </div>
               </StaggerItem>
             ))}
@@ -153,55 +284,153 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Stats bar */}
-      <section className="py-16 border-b border-border/50">
-        <div className="container mx-auto px-6">
-          <Stagger fast className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-border/40">
+      {/* ── Section 2: Stats + Quote ── */}
+      <section
+        ref={setSectionRef(2)}
+        className="relative flex items-center justify-center"
+        style={{ scrollSnapAlign: "start", height: "100dvh" }}
+      >
+        <div
+          className="absolute inset-0"
+          style={{ background: "rgba(0,0,0,0.25)" }}
+        />
+        <div className="container mx-auto px-6 relative z-10">
+          <div
+            className="grid grid-cols-1 md:grid-cols-3"
+            style={{ borderTop: "1px solid rgba(255,255,255,0.1)", borderBottom: "1px solid rgba(255,255,255,0.1)" }}
+          >
             {[
               { num: "3D", label: "Immersive Gallery Rooms" },
               { num: "∞", label: "Artworks Per Gallery" },
-              { num: "JO", label: "Based in Amman, Jordan" },
+              { num: "عمّان", label: "Rooted in Amman, Jordan" },
             ].map((stat, i) => (
-              <StaggerItem key={i}>
-                <div className="py-8 md:px-12 text-center md:text-left">
-                  <div className="font-display text-4xl font-bold text-primary mb-1">{stat.num}</div>
-                  <div className="font-sans text-sm text-muted-foreground">{stat.label}</div>
+              <div
+                key={i}
+                className="py-12 px-8 text-center"
+                style={{
+                  borderRight: i < 2 ? "1px solid rgba(255,255,255,0.1)" : "none",
+                  borderBottom: "1px solid rgba(255,255,255,0.05)",
+                }}
+              >
+                <div
+                  style={{
+                    fontFamily: "'Playfair Display', serif",
+                    fontSize: "3.25rem",
+                    fontWeight: 700,
+                    color: "hsl(38 92% 50%)",
+                    lineHeight: 1,
+                    marginBottom: "0.75rem",
+                  }}
+                >
+                  {stat.num}
                 </div>
-              </StaggerItem>
+                <div style={{ ...monoLabel, color: "rgba(255,255,255,0.4)" }}>{stat.label}</div>
+              </div>
             ))}
-          </Stagger>
+          </div>
+
+          <div className="text-center mt-20">
+            <blockquote
+              style={{
+                fontFamily: "'Playfair Display', serif",
+                fontStyle: "italic",
+                fontSize: "clamp(1.25rem, 2.5vw, 1.875rem)",
+                color: "rgba(255,255,255,0.8)",
+                lineHeight: 1.6,
+                maxWidth: "48rem",
+                margin: "0 auto",
+              }}
+            >
+              "Art in Amman has always lived on the street, on the walls, in the hills.
+              We're giving it a new dimension."
+            </blockquote>
+            <div style={{ ...monoLabel, color: "hsl(38 92% 50%)", marginTop: "1.5rem" }}>
+              Virtual Art Space
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-36 relative overflow-hidden">
-        <motion.div
-          initial={{ opacity: 0, scaleX: 0.8 }}
-          whileInView={{ opacity: 1, scaleX: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 1.2, ease: EASE }}
-          className="absolute inset-0 bg-primary/4 skew-y-2 origin-top-left z-[-1]"
+      {/* ── Section 3: CTA ── */}
+      <section
+        ref={setSectionRef(3)}
+        className="relative flex items-center justify-center text-center"
+        style={{ scrollSnapAlign: "start", height: "100dvh" }}
+      >
+        <div
+          className="absolute inset-0"
+          style={{ background: "rgba(0,0,0,0.3)" }}
         />
-        <div className="container mx-auto px-6 text-center">
+        <div className="container mx-auto px-6 relative z-10">
           <FadeUp>
-            <p className="text-primary font-sans text-sm tracking-widest uppercase mb-4">For every artist in Amman</p>
+            <p style={{ ...monoLabel, color: "hsl(38 92% 50%)", marginBottom: "1.25rem" }}>
+              For every artist in Amman
+            </p>
           </FadeUp>
           <FadeUp delay={120}>
-            <h2 className="text-4xl md:text-6xl font-display font-bold text-foreground mb-6 leading-tight">
-              Your gallery<br className="hidden md:block" />
-              <span className="italic text-primary"> is waiting.</span>
+            <h2
+              className="mb-6"
+              style={{
+                fontFamily: "'Playfair Display', serif",
+                fontSize: "clamp(2.75rem, 7vw, 5.5rem)",
+                fontWeight: 700,
+                color: "#fff",
+                lineHeight: 1.1,
+              }}
+            >
+              Your gallery
+              <br />
+              <span style={{ fontStyle: "italic", color: "hsl(38 92% 50%)" }}>is waiting.</span>
             </h2>
           </FadeUp>
           <FadeUp delay={240}>
-            <p className="text-xl text-muted-foreground font-sans mb-12 max-w-xl mx-auto leading-relaxed">
+            <p
+              className="mb-12 max-w-xl mx-auto font-light leading-relaxed"
+              style={{ fontSize: "1.1rem", color: "rgba(255,255,255,0.55)" }}
+            >
               Join artists from across Jordan sharing their work without walls, without gatekeepers — just art and space.
             </p>
           </FadeUp>
           <FadeUp delay={360}>
-            <Button asChild size="lg" className="h-14 px-10 text-base bg-primary hover:bg-primary/90 text-primary-foreground font-sans font-semibold rounded-sm shadow-[0_4px_24px_rgba(217,119,6,0.45)] hover:scale-[1.03] transition-all">
-              <Link href="/register">Create Your Gallery</Link>
-            </Button>
+            <Link href="/register">
+              <button
+                className="h-14 px-10 transition-opacity hover:opacity-90"
+                style={{
+                  fontFamily: "'DM Mono', monospace",
+                  letterSpacing: "0.12em",
+                  textTransform: "uppercase",
+                  fontSize: "0.75rem",
+                  fontWeight: 500,
+                  color: "#0e0a04",
+                  background: "hsl(38 92% 50%)",
+                  border: "none",
+                  cursor: "pointer",
+                  boxShadow: "0 8px 32px rgba(217,119,6,0.5)",
+                }}
+              >
+                Create Your Gallery
+              </button>
+            </Link>
           </FadeUp>
+
+          <div
+            className="mt-20 flex items-center justify-between max-w-2xl mx-auto"
+            style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: "2rem" }}
+          >
+            <span
+              style={{
+                fontFamily: "'Playfair Display', serif",
+                fontStyle: "italic",
+                fontSize: "0.95rem",
+                color: "hsl(38 92% 50%)",
+              }}
+            >
+              Virtual Art Space
+            </span>
+            <span style={{ ...monoLabel, color: "rgba(255,255,255,0.25)" }}>
+              Amman · Jordan · 2025
+            </span>
+          </div>
         </div>
       </section>
     </PublicLayout>

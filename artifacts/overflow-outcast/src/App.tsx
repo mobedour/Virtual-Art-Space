@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/lib/auth";
+import { SceneProvider, SCENES, useScene } from "@/lib/scene-context";
 
 import Home from "@/pages/home";
 import Login from "@/pages/login";
@@ -17,6 +18,36 @@ import PublicGalleryDetail from "@/pages/public-gallery-detail";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
+
+function GlobalBackground() {
+  const { activeScene } = useScene();
+  const scene = SCENES[activeScene];
+
+  return (
+    <div className="fixed inset-0 z-0" style={{ background: "#0e0a04" }}>
+      <div
+        key={activeScene}
+        className="absolute inset-0 bg-fade-in"
+        style={{
+          backgroundImage: `url('${scene.img}')`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+      />
+      <div
+        className="absolute inset-0 transition-[background] duration-700"
+        style={{ background: scene.overlay }}
+      />
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,0.55) 100%)",
+        }}
+      />
+    </div>
+  );
+}
 
 function Router() {
   return (
@@ -37,9 +68,10 @@ function Router() {
   );
 }
 
-function App() {
+function AppInner() {
   return (
-    <QueryClientProvider client={queryClient}>
+    <>
+      <GlobalBackground />
       <TooltipProvider>
         <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
           <AuthProvider>
@@ -48,8 +80,16 @@ function App() {
         </WouterRouter>
         <Toaster />
       </TooltipProvider>
-    </QueryClientProvider>
+    </>
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <SceneProvider>
+        <AppInner />
+      </SceneProvider>
+    </QueryClientProvider>
+  );
+}
