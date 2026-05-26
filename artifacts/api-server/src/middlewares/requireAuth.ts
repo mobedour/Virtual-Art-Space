@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { getAuth, clerkClient } from "@clerk/express";
 import { eq } from "drizzle-orm";
 import { db, usersTable, profilesTable } from "@workspace/db";
+import { logger } from "../lib/logger";
 
 export interface LocalUser {
   userId: number;
@@ -18,6 +19,7 @@ declare global {
 }
 
 export async function requireAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
   const auth = getAuth(req);
   const clerkUserId = auth?.userId;
 
@@ -62,7 +64,12 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
 
     req.user = { userId: user.id, email: user.email, username: user.username };
     next();
-  } catch {
+  } catch (err) {
+    logger.error({ err, clerkUserId }, "requireAuth: inner error");
+    res.status(401).json({ error: "Unauthorized" });
+  }
+  } catch (err) {
+    logger.error({ err, url: req.url }, "requireAuth: outer error (getAuth threw)");
     res.status(401).json({ error: "Unauthorized" });
   }
 }
