@@ -337,9 +337,11 @@ interface GallerySceneProps {
   onLock: () => void;
   onUnlock: () => void;
   onArtworkSelect: (artwork: ArtworkData) => void;
+  /** GalleryRoom passes this ref; GalleryScene populates it with fireCenterRaycast */
+  inspectCallbackRef?: React.MutableRefObject<(() => void) | null>;
 }
 
-export function GalleryScene({ artworks, roomTheme, isLocked, isMobile, joystickRef, onLock, onUnlock, onArtworkSelect }: GallerySceneProps) {
+export function GalleryScene({ artworks, roomTheme, isLocked, isMobile, joystickRef, onLock, onUnlock, onArtworkSelect, inspectCallbackRef }: GallerySceneProps) {
   const theme = getTheme(roomTheme);
   const controlsRef = useRef<any>(null);
   const { camera, gl, scene } = useThree();
@@ -392,6 +394,11 @@ export function GalleryScene({ artworks, roomTheme, isLocked, isMobile, joystick
       }
     }
   }, [camera, scene, isMobile]);
+
+  // Expose fireCenterRaycast to parent (for the × controller button)
+  useEffect(() => {
+    if (inspectCallbackRef) inspectCallbackRef.current = fireCenterRaycast;
+  }, [inspectCallbackRef, fireCenterRaycast]);
 
   useEffect(() => {
     if (isMobile) return;

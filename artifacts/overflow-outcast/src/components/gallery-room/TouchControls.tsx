@@ -54,8 +54,8 @@ export function TouchControls({
       for (let i = 0; i < e.changedTouches.length; i++) {
         const t = e.changedTouches[i];
         const target = document.elementFromPoint(t.clientX, t.clientY);
-        // Skip if the touch landed on the joystick overlay
-        if (target && (target as HTMLElement).closest("[data-joystick]")) {
+        // Skip if the touch landed on the joystick or controller buttons overlay
+        if (target && (target as HTMLElement).closest("[data-joystick], [data-controls]")) {
           continue;
         }
         lookTouchRef.current = {
