@@ -17,7 +17,7 @@ export default function Home() {
   const sectionRefs = useRef<(HTMLElement | null)[]>([]);
 
   useEffect(() => {
-    if (isLoaded && user) setLocation("/dashboard");
+    if (isLoaded && user) setLocation("/galleries");
   }, [user, isLoaded, setLocation]);
 
   useEffect(() => {
