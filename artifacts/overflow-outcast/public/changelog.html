@@ -3,23 +3,28 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Virtual Art Space — Live Changelog</title>
+    <title>Virtual Art Space — Project Progress</title>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
-      @import url("https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&family=Plus+Jakarta+Sans:wght@300;400;500;600&family=DM+Mono:wght@300;400;500&display=swap");
+      @import url("https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@300;400;500&display=swap");
 
       :root {
         --gold: #c8a45a;
         --gold-light: #e0c876;
-        --gold-dim: rgba(200, 164, 90, 0.15);
+        --gold-dim: rgba(200, 164, 90, 0.12);
         --bg: #0f0d0a;
         --surface: #1a1510;
         --surface2: #221d16;
-        --border: rgba(200, 164, 90, 0.18);
+        --surface3: #2a241b;
+        --border: rgba(200, 164, 90, 0.16);
+        --border2: rgba(200, 164, 90, 0.08);
         --text: #f0e8d8;
         --muted: #7a6a58;
         --muted2: #5a4e42;
         --green: #4ade80;
+        --green-dim: rgba(74, 222, 128, 0.1);
+        --amber: #f59e0b;
+        --blue: #60a5fa;
       }
 
       * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -32,458 +37,410 @@
         overflow-x: hidden;
       }
 
-      /* ── Ambient glow blobs ── */
+      /* Ambient glow */
       body::before {
         content: "";
         position: fixed;
-        top: -20vh;
-        left: -10vw;
-        width: 60vw;
-        height: 60vh;
-        background: radial-gradient(ellipse, rgba(200,164,90,0.06) 0%, transparent 70%);
-        pointer-events: none;
-        z-index: 0;
+        top: -20vh; left: -10vw;
+        width: 70vw; height: 60vh;
+        background: radial-gradient(ellipse, rgba(200,164,90,0.055) 0%, transparent 65%);
+        pointer-events: none; z-index: 0;
       }
       body::after {
         content: "";
         position: fixed;
-        bottom: -10vh;
-        right: -10vw;
-        width: 50vw;
-        height: 50vh;
-        background: radial-gradient(ellipse, rgba(200,164,90,0.04) 0%, transparent 70%);
-        pointer-events: none;
-        z-index: 0;
+        bottom: -15vh; right: -10vw;
+        width: 50vw; height: 50vh;
+        background: radial-gradient(ellipse, rgba(200,164,90,0.03) 0%, transparent 65%);
+        pointer-events: none; z-index: 0;
       }
 
-      /* ── Dev banner ── */
-      .dev-banner {
-        position: sticky;
-        top: 0;
-        z-index: 100;
-        background: rgba(26, 21, 16, 0.85);
-        backdrop-filter: blur(12px);
+      /* ── Top bar ── */
+      .topbar {
+        position: sticky; top: 0; z-index: 100;
+        background: rgba(15, 13, 10, 0.88);
+        backdrop-filter: blur(14px);
         border-bottom: 1px solid var(--border);
-        padding: 10px 24px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
+        padding: 10px 28px;
+        display: flex; align-items: center; justify-content: space-between; gap: 12px;
         flex-wrap: wrap;
       }
-
-      .dev-banner-left {
-        display: flex;
-        align-items: center;
-        gap: 10px;
+      .topbar-left {
+        display: flex; align-items: center; gap: 10px;
       }
-
-      .dev-tag {
+      .tag {
         font-family: "DM Mono", monospace;
-        font-size: 9px;
-        letter-spacing: 0.2em;
-        text-transform: uppercase;
-        background: rgba(200,164,90,0.12);
+        font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase;
+        background: var(--gold-dim);
         color: var(--gold);
-        border: 1px solid rgba(200,164,90,0.3);
+        border: 1px solid rgba(200,164,90,0.28);
         padding: 3px 9px;
-        border-radius: 2px;
       }
-
-      .dev-banner-text {
+      .topbar-text {
         font-family: "DM Mono", monospace;
-        font-size: 11px;
-        color: var(--muted);
-        line-height: 1.4;
+        font-size: 11px; color: var(--muted);
       }
-
-      .dev-banner-text strong {
-        color: var(--text);
-        font-weight: 500;
-      }
-
+      .topbar-text strong { color: var(--text); font-weight: 500; }
       .live-pill {
-        display: flex;
-        align-items: center;
-        gap: 7px;
+        display: flex; align-items: center; gap: 7px;
         font-family: "DM Mono", monospace;
-        font-size: 10px;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
+        font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
         color: var(--green);
-        background: rgba(74, 222, 128, 0.08);
-        border: 1px solid rgba(74, 222, 128, 0.2);
-        padding: 4px 10px;
-        border-radius: 999px;
+        background: var(--green-dim);
+        border: 1px solid rgba(74,222,128,0.22);
+        padding: 4px 11px; border-radius: 999px;
+        transition: all 0.3s;
       }
-
+      .live-pill.off { color: var(--muted); background: rgba(90,78,66,0.12); border-color: rgba(90,78,66,0.25); }
       .live-dot {
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        background: var(--green);
+        width: 6px; height: 6px; border-radius: 50%;
+        background: var(--green); flex-shrink: 0;
         animation: pulse 2s ease-in-out infinite;
-        flex-shrink: 0;
       }
+      .live-pill.off .live-dot { background: var(--muted); animation: none; }
+      @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.35;transform:scale(.7)} }
 
-      .live-pill.disconnected {
-        color: var(--muted);
-        background: rgba(90,78,66,0.15);
-        border-color: rgba(90,78,66,0.3);
-      }
-
-      .live-pill.disconnected .live-dot {
-        background: var(--muted);
-        animation: none;
-      }
-
-      @keyframes pulse {
-        0%, 100% { opacity: 1; transform: scale(1); }
-        50% { opacity: 0.4; transform: scale(0.75); }
-      }
-
-      /* ── Wrapper ── */
+      /* ── Layout ── */
       .wrapper {
-        position: relative;
-        z-index: 1;
-        max-width: 860px;
-        margin: 0 auto;
-        padding: 56px 32px 80px;
+        position: relative; z-index: 1;
+        max-width: 980px; margin: 0 auto;
+        padding: 52px 28px 80px;
       }
 
-      /* ── Page header ── */
-      .page-header {
-        margin-bottom: 56px;
+      /* ── Hero ── */
+      .hero {
+        display: flex; align-items: flex-start; justify-content: space-between;
+        gap: 32px; margin-bottom: 52px; flex-wrap: wrap;
       }
-
-      .brand-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 32px;
-      }
-
+      .hero-left { flex: 1; min-width: 260px; }
       .brand {
         font-family: "Playfair Display", serif;
-        font-size: 15px;
-        font-weight: 700;
-        color: var(--gold);
-        letter-spacing: 0.04em;
+        font-size: 14px; font-weight: 700;
+        color: var(--gold); letter-spacing: 0.05em;
+        margin-bottom: 20px;
       }
-
-      .meta-row {
-        font-family: "DM Mono", monospace;
-        font-size: 10px;
-        color: var(--muted);
-        text-align: right;
-        line-height: 1.8;
-      }
-
-      .gold-line {
+      .gold-rule {
         height: 1px;
-        background: linear-gradient(90deg, var(--gold) 0%, rgba(200,164,90,0.3) 60%, transparent 100%);
-        margin-bottom: 28px;
+        background: linear-gradient(90deg, var(--gold) 0%, rgba(200,164,90,.25) 55%, transparent 100%);
+        margin-bottom: 22px;
       }
-
-      h1.page-title {
+      h1.hero-title {
         font-family: "Playfair Display", serif;
-        font-size: clamp(2rem, 5vw, 3.25rem);
-        font-weight: 700;
-        font-style: italic;
-        color: var(--text);
-        line-height: 1.15;
+        font-size: clamp(2rem, 4.5vw, 3rem);
+        font-weight: 700; font-style: italic;
+        color: var(--text); line-height: 1.12;
         margin-bottom: 10px;
       }
-
-      h1.page-title em {
-        color: var(--gold);
-        font-style: italic;
-      }
-
-      .page-subtitle {
+      h1.hero-title em { color: var(--gold); font-style: italic; }
+      .hero-sub {
         font-family: "DM Mono", monospace;
-        font-size: 10px;
-        letter-spacing: 0.2em;
-        text-transform: uppercase;
-        color: var(--muted);
-        margin-bottom: 28px;
+        font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase;
+        color: var(--muted); margin-bottom: 24px;
       }
-
-      .action-row {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        flex-wrap: wrap;
+      .hero-desc {
+        font-size: 14px; color: rgba(240,232,216,0.65);
+        line-height: 1.7; max-width: 520px;
+        margin-bottom: 24px;
       }
-
       .btn-download {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 9px 20px;
+        display: inline-flex; align-items: center; gap: 8px;
+        padding: 10px 20px;
         background: var(--surface2);
         border: 1px solid var(--border);
         color: var(--gold);
         font-family: "DM Mono", monospace;
-        font-size: 10px;
-        letter-spacing: 0.15em;
-        text-transform: uppercase;
-        text-decoration: none;
-        cursor: pointer;
-        transition: background 0.2s, border-color 0.2s, color 0.2s;
+        font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase;
+        text-decoration: none; cursor: pointer;
+        transition: background .2s, border-color .2s, color .2s;
       }
+      .btn-download:hover { background: var(--gold-dim); border-color: var(--gold); color: var(--gold-light); }
+      .btn-download svg { width: 13px; height: 13px; flex-shrink: 0; }
 
-      .btn-download:hover {
-        background: rgba(200,164,90,0.12);
-        border-color: var(--gold);
-        color: var(--gold-light);
+      /* Overall ring */
+      .hero-right { display: flex; flex-direction: column; align-items: center; gap: 10px; padding-top: 8px; }
+      .ring-wrap { position: relative; width: 130px; height: 130px; }
+      .ring-wrap svg { transform: rotate(-90deg); }
+      .ring-bg { fill: none; stroke: var(--surface2); stroke-width: 8; }
+      .ring-fill {
+        fill: none; stroke: url(#goldGrad); stroke-width: 8;
+        stroke-linecap: round;
+        stroke-dasharray: 339.3;
+        stroke-dashoffset: 339.3;
+        transition: stroke-dashoffset 1.4s cubic-bezier(.4,0,.2,1);
       }
-
-      .btn-download svg {
-        width: 13px;
-        height: 13px;
-        flex-shrink: 0;
+      .ring-label {
+        position: absolute; inset: 0;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
       }
-
-      .last-updated {
+      .ring-pct {
+        font-family: "Playfair Display", serif;
+        font-size: 28px; font-weight: 700; color: var(--text);
+        line-height: 1;
+      }
+      .ring-caption {
         font-family: "DM Mono", monospace;
-        font-size: 10px;
-        color: var(--muted2);
-        margin-left: 4px;
+        font-size: 8.5px; letter-spacing: 0.15em; text-transform: uppercase;
+        color: var(--muted); margin-top: 4px;
+      }
+      .ring-note {
+        font-family: "DM Mono", monospace;
+        font-size: 9px; color: var(--muted2);
+        text-align: center; letter-spacing: 0.08em;
       }
 
-      /* ── Flash animation on update ── */
-      @keyframes flashIn {
-        0%   { background: rgba(200,164,90,0.12); }
-        100% { background: transparent; }
+      /* ── Stage grid ── */
+      .section-label {
+        font-family: "DM Mono", monospace;
+        font-size: 9px; letter-spacing: 0.22em; text-transform: uppercase;
+        color: var(--gold); margin-bottom: 18px;
+        display: flex; align-items: center; gap: 10px;
+      }
+      .section-label::after { content:""; flex:1; height:1px; background: var(--border); }
+
+      .stages-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+        gap: 16px;
+        margin-bottom: 48px;
       }
 
-      .flash {
-        animation: flashIn 1.2s ease-out;
-      }
-
-      /* ── Content card ── */
-      .content-card {
+      .stage-card {
         background: var(--surface);
-        border: 1px solid var(--border);
+        border: 1px solid var(--border2);
+        padding: 24px 24px 20px;
         position: relative;
         overflow: hidden;
+        transition: border-color .25s;
       }
+      .stage-card:hover { border-color: var(--border); }
+      .stage-card.done { border-left: 2px solid var(--green); }
+      .stage-card.next { border-left: 2px solid var(--gold); }
+      .stage-card.planned { border-left: 2px solid var(--muted2); }
 
-      .content-card::before {
+      /* top shimmer */
+      .stage-card::before {
         content: "";
-        position: absolute;
-        top: 0; left: 0; right: 0;
-        height: 2px;
-        background: linear-gradient(90deg, transparent, var(--gold), var(--gold-light), var(--gold), transparent);
+        position: absolute; top: 0; left: 0; right: 0; height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(200,164,90,0.3), transparent);
       }
 
-      .content-inner {
-        padding: 40px 48px 48px;
+      .stage-header {
+        display: flex; align-items: flex-start; justify-content: space-between;
+        margin-bottom: 14px; gap: 8px;
       }
-
-      /* ── Markdown styles ── */
-      .content-inner h1 {
+      .stage-num {
+        font-family: "DM Mono", monospace;
+        font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase;
+        color: var(--muted); margin-bottom: 4px;
+      }
+      .stage-name {
         font-family: "Playfair Display", serif;
-        font-size: 2rem;
-        font-weight: 700;
-        color: var(--text);
-        margin: 0 0 6px;
-        padding-bottom: 16px;
-        border-bottom: 1px solid var(--border);
+        font-size: 16px; font-weight: 700; color: var(--text);
         line-height: 1.2;
       }
-
-      .content-inner h2 {
+      .status-badge {
         font-family: "DM Mono", monospace;
-        font-size: 9px;
-        letter-spacing: 0.22em;
-        text-transform: uppercase;
-        color: var(--gold);
-        margin: 40px 0 16px;
-        display: flex;
-        align-items: center;
-        gap: 10px;
+        font-size: 8.5px; letter-spacing: 0.12em; text-transform: uppercase;
+        padding: 3px 9px; flex-shrink: 0; margin-top: 2px;
       }
+      .status-badge.done { background: var(--green-dim); color: var(--green); border: 1px solid rgba(74,222,128,.2); }
+      .status-badge.next { background: var(--gold-dim); color: var(--gold); border: 1px solid rgba(200,164,90,.25); }
+      .status-badge.planned { background: rgba(90,78,66,.12); color: var(--muted); border: 1px solid rgba(90,78,66,.2); }
 
-      .content-inner h2::after {
-        content: "";
-        flex: 1;
-        height: 1px;
-        background: var(--border);
+      /* Progress bar */
+      .progress-track {
+        height: 3px; background: var(--surface3);
+        margin-bottom: 16px; overflow: hidden;
       }
-
-      .content-inner h3 {
-        font-family: "Plus Jakarta Sans", sans-serif;
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--gold-light);
-        margin: 20px 0 8px;
-        letter-spacing: 0.02em;
+      .progress-fill {
+        height: 100%; width: 0%;
+        background: linear-gradient(90deg, var(--gold), var(--gold-light));
+        transition: width 1.2s cubic-bezier(.4,0,.2,1);
       }
+      .stage-card.done .progress-fill { background: linear-gradient(90deg, var(--green), #86efac); }
+      .stage-card.planned .progress-fill { background: var(--muted2); }
 
-      .content-inner p {
-        font-size: 13.5px;
-        color: rgba(240,232,216,0.8);
-        line-height: 1.75;
-        margin-bottom: 12px;
+      /* Feature list */
+      .feature-list { list-style: none; }
+      .feature-list li {
+        display: flex; align-items: flex-start; gap: 9px;
+        font-size: 12.5px; color: rgba(240,232,216,.7);
+        padding: 5px 0;
+        border-bottom: 1px solid var(--border2);
+        line-height: 1.45;
       }
-
-      .content-inner ul, .content-inner ol {
-        padding-left: 0;
-        list-style: none;
-        margin-bottom: 12px;
+      .feature-list li:last-child { border-bottom: none; }
+      .feat-icon {
+        width: 14px; height: 14px; flex-shrink: 0; margin-top: 1px;
       }
+      .feat-icon.done { color: var(--green); }
+      .feat-icon.pending { color: var(--muted2); }
+      .feat-icon.next { color: var(--gold); }
 
-      .content-inner ul li, .content-inner ol li {
-        font-size: 13px;
-        color: rgba(240,232,216,0.75);
-        line-height: 1.7;
-        padding: 5px 0 5px 20px;
-        position: relative;
-        border-bottom: 1px solid rgba(200,164,90,0.06);
+      /* ── Timeline ── */
+      .timeline { margin-bottom: 48px; }
+      .timeline-row {
+        display: flex; gap: 0; align-items: stretch;
+        margin-bottom: 0;
       }
-
-      .content-inner ul li::before {
-        content: "—";
-        position: absolute;
-        left: 0;
-        color: var(--gold);
+      .timeline-col-date {
+        width: 90px; flex-shrink: 0;
         font-family: "DM Mono", monospace;
-        font-size: 11px;
+        font-size: 10px; color: var(--muted2);
+        padding: 14px 16px 14px 0;
+        text-align: right; line-height: 1.4;
       }
-
-      .content-inner ol {
-        counter-reset: li;
+      .timeline-col-dot {
+        width: 32px; flex-shrink: 0;
+        display: flex; flex-direction: column; align-items: center;
       }
-
-      .content-inner ol li {
-        counter-increment: li;
+      .tl-dot {
+        width: 10px; height: 10px; border-radius: 50%;
+        flex-shrink: 0; margin-top: 18px; position: relative; z-index: 1;
       }
-
-      .content-inner ol li::before {
-        content: counter(li, decimal-leading-zero);
-        position: absolute;
-        left: 0;
-        color: var(--gold);
+      .tl-dot.done { background: var(--green); box-shadow: 0 0 0 3px rgba(74,222,128,.15); }
+      .tl-dot.next { background: var(--gold); box-shadow: 0 0 0 3px rgba(200,164,90,.15); }
+      .tl-dot.planned { background: var(--muted2); }
+      .tl-line {
+        flex: 1; width: 1px; background: var(--border);
+        margin: 0 auto;
+      }
+      .timeline-row:last-child .tl-line { display: none; }
+      .timeline-col-content {
+        flex: 1; padding: 12px 0 24px 16px;
+      }
+      .tl-label {
         font-family: "DM Mono", monospace;
-        font-size: 10px;
-        top: 7px;
+        font-size: 9px; letter-spacing: 0.15em; text-transform: uppercase;
+        margin-bottom: 4px;
+      }
+      .tl-label.done { color: var(--green); }
+      .tl-label.next { color: var(--gold); }
+      .tl-label.planned { color: var(--muted); }
+      .tl-title {
+        font-family: "Playfair Display", serif;
+        font-size: 15px; font-weight: 700; color: var(--text);
+        margin-bottom: 4px;
+      }
+      .tl-desc {
+        font-size: 12.5px; color: rgba(240,232,216,.55); line-height: 1.6;
       }
 
-      .content-inner code {
+      /* ── Technical section ── */
+      .technical-section { margin-bottom: 40px; }
+      .technical-toggle {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 14px 20px;
+        background: var(--surface);
+        border: 1px solid var(--border2);
+        cursor: pointer;
+        user-select: none;
+        transition: background .2s;
+      }
+      .technical-toggle:hover { background: var(--surface2); }
+      .technical-toggle-left {
+        display: flex; align-items: center; gap: 10px;
+      }
+      .technical-toggle-label {
         font-family: "DM Mono", monospace;
-        font-size: 11.5px;
-        background: rgba(200,164,90,0.08);
-        color: var(--gold-light);
-        padding: 2px 6px;
-        border: 1px solid rgba(200,164,90,0.15);
+        font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
+        color: var(--muted);
       }
+      .toggle-arrow {
+        font-size: 10px; color: var(--muted2);
+        transition: transform .25s;
+      }
+      .toggle-arrow.open { transform: rotate(180deg); }
 
-      .content-inner pre {
-        background: #0d0b08;
-        border: 1px solid rgba(200,164,90,0.12);
+      .technical-content {
+        display: none;
+        background: var(--surface);
+        border: 1px solid var(--border2);
+        border-top: none;
+      }
+      .technical-content.open { display: block; }
+      .technical-inner { padding: 32px 36px 36px; }
+
+      /* Markdown inside technical */
+      .technical-inner h1 {
+        font-family: "Playfair Display", serif;
+        font-size: 1.6rem; font-weight: 700; color: var(--text);
+        padding-bottom: 14px; border-bottom: 1px solid var(--border);
+        margin-bottom: 20px;
+      }
+      .technical-inner h2 {
+        font-family: "DM Mono", monospace;
+        font-size: 8.5px; letter-spacing: 0.22em; text-transform: uppercase;
+        color: var(--gold); margin: 32px 0 12px;
+        display: flex; align-items: center; gap: 10px;
+      }
+      .technical-inner h2::after { content:""; flex:1; height:1px; background: var(--border); }
+      .technical-inner h3 {
+        font-size: 13px; font-weight: 600; color: var(--gold-light);
+        margin: 18px 0 8px;
+      }
+      .technical-inner p {
+        font-size: 13px; color: rgba(240,232,216,.72);
+        line-height: 1.72; margin-bottom: 10px;
+      }
+      .technical-inner ul, .technical-inner ol {
+        padding-left: 0; list-style: none; margin-bottom: 10px;
+      }
+      .technical-inner li {
+        font-size: 12.5px; color: rgba(240,232,216,.68);
+        padding: 4px 0 4px 18px; position: relative;
+        border-bottom: 1px solid var(--border2); line-height: 1.65;
+      }
+      .technical-inner li::before {
+        content: "—"; position: absolute; left: 0;
+        color: var(--gold); font-family: "DM Mono", monospace; font-size: 11px;
+      }
+      .technical-inner code {
+        font-family: "DM Mono", monospace; font-size: 11px;
+        background: rgba(200,164,90,.07); color: var(--gold-light);
+        padding: 2px 5px; border: 1px solid rgba(200,164,90,.13);
+      }
+      .technical-inner pre {
+        background: #0d0b08; border: 1px solid rgba(200,164,90,.1);
         border-left: 2px solid var(--gold);
-        padding: 16px 20px;
-        overflow-x: auto;
-        margin-bottom: 16px;
+        padding: 14px 18px; overflow-x: auto; margin-bottom: 14px;
       }
-
-      .content-inner pre code {
-        background: none;
-        border: none;
-        padding: 0;
-        font-size: 12px;
-        color: rgba(240,232,216,0.8);
-      }
-
-      .content-inner strong {
-        color: var(--text);
-        font-weight: 600;
-      }
-
-      .content-inner em {
-        color: var(--gold-light);
-        font-style: italic;
-      }
-
-      .content-inner hr {
-        border: none;
-        border-top: 1px solid var(--border);
-        margin: 28px 0;
-      }
-
-      .content-inner a {
-        color: var(--gold);
-        text-decoration: none;
-        border-bottom: 1px solid rgba(200,164,90,0.3);
-        transition: border-color 0.2s;
-      }
-
-      .content-inner a:hover {
-        border-color: var(--gold);
-      }
-
-      /* ── Stage badges ── */
-      .content-inner p strong:first-child {
-        display: inline-block;
-      }
-
-      /* ── Skeleton ── */
-      .skeleton-block {
-        background: linear-gradient(90deg, var(--surface2) 25%, rgba(200,164,90,0.04) 50%, var(--surface2) 75%);
-        background-size: 400% 100%;
-        animation: shimmer 1.5s ease-in-out infinite;
-        border-radius: 2px;
-        margin-bottom: 12px;
-      }
-
-      @keyframes shimmer {
-        0% { background-position: 100% 0; }
-        100% { background-position: -100% 0; }
-      }
+      .technical-inner pre code { background: none; border: none; padding: 0; color: rgba(240,232,216,.78); }
+      .technical-inner strong { color: var(--text); font-weight: 600; }
+      .technical-inner em { color: var(--gold-light); font-style: italic; }
+      .technical-inner hr { border: none; border-top: 1px solid var(--border); margin: 22px 0; }
 
       /* ── Footer ── */
       .page-footer {
-        margin-top: 40px;
-        padding-top: 20px;
-        border-top: 1px solid var(--border);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        flex-wrap: wrap;
-        gap: 12px;
+        padding-top: 20px; border-top: 1px solid var(--border);
+        display: flex; align-items: center; justify-content: space-between;
+        flex-wrap: wrap; gap: 12px;
       }
+      .footer-brand { font-family: "Playfair Display", serif; font-size: 13px; color: var(--gold); }
+      .footer-note { font-family: "DM Mono", monospace; font-size: 10px; color: var(--muted2); }
 
-      .footer-brand {
-        font-family: "Playfair Display", serif;
-        font-size: 13px;
-        color: var(--gold);
-      }
+      /* ── Flash ── */
+      @keyframes flashIn { 0%{background:rgba(200,164,90,.09)} 100%{background:transparent} }
+      .flash { animation: flashIn 1.4s ease-out; }
 
-      .footer-note {
-        font-family: "DM Mono", monospace;
-        font-size: 10px;
-        color: var(--muted2);
-      }
-
-      @media (max-width: 640px) {
-        .wrapper { padding: 36px 18px 60px; }
-        .content-inner { padding: 24px 20px 32px; }
-        .brand-row { flex-direction: column; align-items: flex-start; gap: 8px; }
-        .meta-row { text-align: left; }
+      @media (max-width: 600px) {
+        .wrapper { padding: 32px 16px 60px; }
+        .hero { flex-direction: column; }
+        .hero-right { flex-direction: row; gap: 20px; align-items: center; }
+        .technical-inner { padding: 20px 18px 24px; }
+        .stages-grid { grid-template-columns: 1fr; }
       }
     </style>
   </head>
   <body>
-    <!-- Info banner -->
-    <div class="dev-banner">
-      <div class="dev-banner-left">
-        <span class="dev-tag">Live</span>
-        <span class="dev-banner-text">
-          <strong>Virtual Art Space — Technical Changelog</strong>
-          &nbsp;·&nbsp; This page reflects the current project state and architecture record.
-          It updates automatically in real time whenever the changelog is modified.
+
+    <!-- Top bar -->
+    <div class="topbar">
+      <div class="topbar-left">
+        <span class="tag">Live Updates</span>
+        <span class="topbar-text">
+          <strong>Virtual Art Space</strong> &nbsp;·&nbsp;
+          Project progress &amp; changelog — updates automatically in real time
         </span>
       </div>
       <div id="livePill" class="live-pill">
@@ -493,103 +450,312 @@
     </div>
 
     <div class="wrapper">
-      <!-- Page header -->
-      <div class="page-header">
-        <div class="brand-row">
+
+      <!-- ── Hero ── -->
+      <div class="hero">
+        <div class="hero-left">
           <div class="brand">Virtual Art Space</div>
-          <div class="meta-row" id="metaRow">
-            <div style="color:var(--gold);font-size:9px;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:3px">Changelog</div>
-            Amman · Jordan · 2026
-          </div>
-        </div>
-        <div class="gold-line"></div>
-        <h1 class="page-title">Technical <em>Changelog</em></h1>
-        <div class="page-subtitle">Live project state &amp; architecture record</div>
-        <div class="action-row">
+          <div class="gold-rule"></div>
+          <h1 class="hero-title">Project <em>Progress</em></h1>
+          <div class="hero-sub">Amman Art Scene · Jordan · 2026</div>
+          <p class="hero-desc">
+            An immersive virtual reality art exhibition platform — artists create and share
+            3D gallery rooms, visitors walk through them in the browser on any device.
+          </p>
           <a class="btn-download" href="/api/changelog/download" download="technical_changelog.md">
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
               <path d="M8 2v8M5 8l3 3 3-3M2 12v1a1 1 0 001 1h10a1 1 0 001-1v-1"/>
             </svg>
             Download technical_changelog.md
           </a>
-          <span class="last-updated" id="lastUpdated">—</span>
+        </div>
+
+        <!-- Overall completion ring -->
+        <div class="hero-right">
+          <div class="ring-wrap">
+            <svg width="130" height="130" viewBox="0 0 130 130">
+              <defs>
+                <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#c8a45a"/>
+                  <stop offset="100%" stop-color="#e0c876"/>
+                </linearGradient>
+              </defs>
+              <circle class="ring-bg" cx="65" cy="65" r="54"/>
+              <circle class="ring-fill" id="ringFill" cx="65" cy="65" r="54"/>
+            </svg>
+            <div class="ring-label">
+              <div class="ring-pct" id="ringPct">—</div>
+              <div class="ring-caption">Complete</div>
+            </div>
+          </div>
+          <div class="ring-note" id="lastUpdated">—</div>
         </div>
       </div>
 
-      <!-- Content card -->
-      <div class="content-card" id="contentCard">
-        <div class="content-inner" id="contentInner">
-          <!-- Skeleton loader -->
-          <div class="skeleton-block" style="height:32px;width:55%;margin-bottom:24px;"></div>
-          <div class="skeleton-block" style="height:9px;width:30%;margin-bottom:40px;"></div>
-          <div class="skeleton-block" style="height:13px;width:90%;"></div>
-          <div class="skeleton-block" style="height:13px;width:78%;"></div>
-          <div class="skeleton-block" style="height:13px;width:84%;"></div>
-          <div class="skeleton-block" style="height:13px;width:60%;margin-bottom:32px;"></div>
-          <div class="skeleton-block" style="height:9px;width:25%;margin-bottom:16px;"></div>
-          <div class="skeleton-block" style="height:13px;width:88%;"></div>
-          <div class="skeleton-block" style="height:13px;width:72%;"></div>
+      <!-- ── Stage cards ── -->
+      <div class="section-label">Development Stages</div>
+      <div class="stages-grid">
+
+        <!-- Stage 1 -->
+        <div class="stage-card done">
+          <div class="stage-header">
+            <div>
+              <div class="stage-num">Stage 01</div>
+              <div class="stage-name">Core Platform</div>
+            </div>
+            <span class="status-badge done">Complete</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" data-pct="100"></div>
+          </div>
+          <ul class="feature-list">
+            <li>
+              <svg class="feat-icon done" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l3.5 3.5L13 4.5"/></svg>
+              Artist registration &amp; login (Google OAuth + email)
+            </li>
+            <li>
+              <svg class="feat-icon done" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l3.5 3.5L13 4.5"/></svg>
+              Artist dashboard with live stats
+            </li>
+            <li>
+              <svg class="feat-icon done" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l3.5 3.5L13 4.5"/></svg>
+              Gallery creation, editing &amp; publishing
+            </li>
+            <li>
+              <svg class="feat-icon done" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l3.5 3.5L13 4.5"/></svg>
+              Artwork upload with full metadata
+            </li>
+            <li>
+              <svg class="feat-icon done" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l3.5 3.5L13 4.5"/></svg>
+              Profile editing &amp; public gallery browsing
+            </li>
+          </ul>
+        </div>
+
+        <!-- Stage 2 -->
+        <div class="stage-card done">
+          <div class="stage-header">
+            <div>
+              <div class="stage-num">Stage 02</div>
+              <div class="stage-name">3D Gallery Viewer</div>
+            </div>
+            <span class="status-badge done">Complete</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" data-pct="100"></div>
+          </div>
+          <ul class="feature-list">
+            <li>
+              <svg class="feat-icon done" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l3.5 3.5L13 4.5"/></svg>
+              Immersive first-person 3D gallery room (React Three Fiber)
+            </li>
+            <li>
+              <svg class="feat-icon done" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l3.5 3.5L13 4.5"/></svg>
+              Desktop controls (WASD + mouse look)
+            </li>
+            <li>
+              <svg class="feat-icon done" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l3.5 3.5L13 4.5"/></svg>
+              Mobile controls (touch + virtual joystick)
+            </li>
+            <li>
+              <svg class="feat-icon done" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l3.5 3.5L13 4.5"/></svg>
+              Artworks displayed as framed images on walls
+            </li>
+            <li>
+              <svg class="feat-icon done" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l3.5 3.5L13 4.5"/></svg>
+              Artwork detail modal — click any piece to view info
+            </li>
+            <li>
+              <svg class="feat-icon done" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l3.5 3.5L13 4.5"/></svg>
+              5 room themes (Dark Void, Neon Grid, Concrete, and more)
+            </li>
+          </ul>
+        </div>
+
+        <!-- Stage 3 -->
+        <div class="stage-card next">
+          <div class="stage-header">
+            <div>
+              <div class="stage-num">Stage 03</div>
+              <div class="stage-name">Advanced Features</div>
+            </div>
+            <span class="status-badge next">Up Next</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" data-pct="0"></div>
+          </div>
+          <ul class="feature-list">
+            <li>
+              <svg class="feat-icon next" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>
+              Artwork upload to cloud storage (any file size)
+            </li>
+            <li>
+              <svg class="feat-icon next" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>
+              VR / WebXR headset support (Meta Quest, Vision Pro)
+            </li>
+            <li>
+              <svg class="feat-icon next" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>
+              Social features — follows, likes, comments
+            </li>
+            <li>
+              <svg class="feat-icon next" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>
+              Custom room theme builder
+            </li>
+            <li>
+              <svg class="feat-icon next" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>
+              Drag-to-place artwork floor plan editor
+            </li>
+          </ul>
+        </div>
+
+      </div>
+
+      <!-- ── Timeline ── -->
+      <div class="section-label">Delivery Timeline</div>
+      <div class="timeline" style="margin-bottom:52px;">
+
+        <div class="timeline-row">
+          <div class="timeline-col-date">May 2026</div>
+          <div class="timeline-col-dot">
+            <div class="tl-dot done"></div>
+            <div class="tl-line"></div>
+          </div>
+          <div class="timeline-col-content">
+            <div class="tl-label done">Delivered</div>
+            <div class="tl-title">Stage 1 — Core Platform</div>
+            <div class="tl-desc">Auth, dashboard, gallery management, artwork upload, public browsing — fully live.</div>
+          </div>
+        </div>
+
+        <div class="timeline-row">
+          <div class="timeline-col-date">May 2026</div>
+          <div class="timeline-col-dot">
+            <div class="tl-dot done"></div>
+            <div class="tl-line"></div>
+          </div>
+          <div class="timeline-col-content">
+            <div class="tl-label done">Delivered</div>
+            <div class="tl-title">Stage 2 — 3D Gallery Viewer</div>
+            <div class="tl-desc">First-person 3D room, desktop &amp; mobile controls, wall-mounted artworks, detail modal, room themes.</div>
+          </div>
+        </div>
+
+        <div class="timeline-row">
+          <div class="timeline-col-date">TBD</div>
+          <div class="timeline-col-dot">
+            <div class="tl-dot next"></div>
+            <div class="tl-line"></div>
+          </div>
+          <div class="timeline-col-content">
+            <div class="tl-label next">Up Next</div>
+            <div class="tl-title">Stage 3 — Advanced Features</div>
+            <div class="tl-desc">Cloud artwork storage, VR headset support, social features, custom room themes.</div>
+          </div>
+        </div>
+
+        <div class="timeline-row">
+          <div class="timeline-col-date">TBD</div>
+          <div class="timeline-col-dot">
+            <div class="tl-dot planned"></div>
+          </div>
+          <div class="timeline-col-content" style="padding-bottom:0">
+            <div class="tl-label planned">Planned</div>
+            <div class="tl-title">Full Launch</div>
+            <div class="tl-desc">Public launch of Virtual Art Space to the Amman art community.</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ── Technical details (collapsible) ── -->
+      <div class="technical-section">
+        <div class="section-label">Technical Details</div>
+        <div class="technical-toggle" id="techToggle" onclick="toggleTech()">
+          <div class="technical-toggle-left">
+            <span class="tag" style="font-size:8px;">Live</span>
+            <span class="technical-toggle-label">Architecture &amp; Changelog — auto-synced from project</span>
+          </div>
+          <span class="toggle-arrow" id="toggleArrow">▼</span>
+        </div>
+        <div class="technical-content" id="techContent">
+          <div class="technical-inner" id="techInner">
+            <div style="color:var(--muted);font-family:'DM Mono',monospace;font-size:11px;padding:20px 0;">Loading…</div>
+          </div>
         </div>
       </div>
 
+      <!-- Footer -->
       <div class="page-footer">
         <div class="footer-brand">Virtual Art Space</div>
-        <div class="footer-note">development environment · auto-generated from replit.md</div>
+        <div class="footer-note">Amman · Jordan · 2026 &nbsp;·&nbsp; <span id="footerUpdated"></span></div>
       </div>
+
     </div>
 
     <script>
-      const contentInner = document.getElementById("contentInner");
-      const livePill     = document.getElementById("livePill");
-      const liveLabel    = document.getElementById("liveLabel");
-      const lastUpdated  = document.getElementById("lastUpdated");
-      const contentCard  = document.getElementById("contentCard");
+      const livePill    = document.getElementById("livePill");
+      const liveLabel   = document.getElementById("liveLabel");
+      const ringFill    = document.getElementById("ringFill");
+      const ringPct     = document.getElementById("ringPct");
+      const lastUpdated = document.getElementById("lastUpdated");
+      const footerUpd   = document.getElementById("footerUpdated");
+      const techInner   = document.getElementById("techInner");
+      const techContent = document.getElementById("techContent");
+      const toggleArrow = document.getElementById("toggleArrow");
 
-      function formatTime(d) {
+      // ── Ring animation ──
+      const TOTAL_PCT = 67; // Stage 1 + 2 done out of 3 stages
+      const circumference = 2 * Math.PI * 54; // 339.3
+      function animateRing() {
+        const offset = circumference - (TOTAL_PCT / 100) * circumference;
+        ringFill.style.strokeDashoffset = offset;
+        ringPct.textContent = TOTAL_PCT + "%";
+      }
+      setTimeout(animateRing, 300);
+
+      // ── Progress bars ──
+      document.querySelectorAll(".progress-fill[data-pct]").forEach(el => {
+        const pct = el.getAttribute("data-pct");
+        setTimeout(() => { el.style.width = pct + "%"; }, 400);
+      });
+
+      // ── Time helper ──
+      function fmt(d) {
         return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
       }
 
-      function renderMarkdown(raw) {
-        contentInner.innerHTML = marked.parse(raw);
-        lastUpdated.textContent = "Last updated " + formatTime(new Date());
-
-        // Flash the card
-        contentCard.classList.remove("flash");
-        void contentCard.offsetWidth;
-        contentCard.classList.add("flash");
+      function onUpdate(raw) {
+        techInner.innerHTML = marked.parse(raw);
+        const t = "Updated " + fmt(new Date());
+        lastUpdated.textContent = t;
+        footerUpd.textContent = t;
       }
 
-      function setLive(connected) {
-        if (connected) {
-          livePill.classList.remove("disconnected");
-          liveLabel.textContent = "Live";
-        } else {
-          livePill.classList.add("disconnected");
-          liveLabel.textContent = "Disconnected";
-        }
+      // ── Toggle ──
+      function toggleTech() {
+        const open = techContent.classList.toggle("open");
+        toggleArrow.classList.toggle("open", open);
       }
 
       // ── SSE ──
+      function setLive(on) {
+        livePill.classList.toggle("off", !on);
+        liveLabel.textContent = on ? "Live" : "Disconnected";
+      }
+
       let es;
       function connect() {
         es = new EventSource("/api/changelog/stream");
-
         es.onopen = () => setLive(true);
-
         es.onmessage = (e) => {
-          try {
-            const raw = JSON.parse(e.data);
-            renderMarkdown(raw);
-          } catch {}
+          try { onUpdate(JSON.parse(e.data)); } catch {}
         };
-
         es.onerror = () => {
           setLive(false);
           es.close();
           setTimeout(connect, 4000);
         };
       }
-
       connect();
     </script>
   </body>
