@@ -235,7 +235,8 @@ export function ArtworkFrame({
         <Text
           position={[0, -(FRAME_H / 2 + 0.32), 0.02]}
           fontSize={0.07}
-          color={labelColor + "bb"}
+          color={labelColor}
+          fillOpacity={0.73}
           anchorX="center"
           anchorY="top"
           maxWidth={FRAME_W + 0.8}

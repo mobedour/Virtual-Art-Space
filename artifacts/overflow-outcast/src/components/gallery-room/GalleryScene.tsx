@@ -446,14 +446,26 @@ export function GalleryScene({
       <ambientLight intensity={theme.ambientIntensity} color={isLight ? "#ffffff" : "#fff8f0"} />
 
       {/* ── Central overhead fill ── */}
-      <pointLight position={[0, halfH - 0.3, 0]} intensity={theme.spotIntensity * 90}
-        color={theme.accentLight} distance={30 * fogScale} decay={2} />
+      <pointLight position={[0, halfH - 0.3, 0]} intensity={theme.spotIntensity * 140}
+        color={theme.accentLight} distance={35 * fogScale} decay={2} />
 
       {/* ── Corner fill lights ── */}
       {([[-1,-1],[-1,1],[1,-1],[1,1]] as [number,number][]).map(([sx,sz], i) => (
         <pointLight key={i}
           position={[sx * halfW * 0.55, halfH - 1.2, sz * halfD * 0.55]}
-          intensity={theme.spotIntensity * 28} color={fillColor} distance={22 * fogScale} decay={2} />
+          intensity={theme.spotIntensity * 48} color={fillColor} distance={28 * fogScale} decay={2} />
+      ))}
+
+      {/* ── Mid-height wall-wash fills (one per wall face) ── */}
+      {([
+        [0,           0, -(halfD * 0.78)],
+        [0,           0,  (halfD * 0.78)],
+        [-(halfW * 0.78), 0, 0],
+        [ (halfW * 0.78), 0, 0],
+      ] as [number,number,number][]).map((pos, i) => (
+        <pointLight key={`ww-${i}`}
+          position={pos}
+          intensity={theme.spotIntensity * 32} color={fillColor} distance={18 * fogScale} decay={2} />
       ))}
 
       {/* ── Per-artwork museum spotlights ── */}

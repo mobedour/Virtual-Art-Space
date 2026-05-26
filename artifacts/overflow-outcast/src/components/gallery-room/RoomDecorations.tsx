@@ -1,7 +1,20 @@
 import { useMemo } from "react";
-import { createRng, rngFloat } from "./seeded-rng";
+import * as THREE from "three";
+import { createRng, rngFloat, rngInt } from "./seeded-rng";
 import type { RoomDims } from "./room-dimensions";
 import type { ThemeConfig } from "./theme-config";
+
+/**
+ * Scale reference:
+ *   Camera eye at y=0, floor at y=-halfH (default -4.5).
+ *   Eye-to-floor = 4.5u ≈ 1.65m  →  1 real metre ≈ 2.73 units.
+ *
+ *   Bench seat:     0.45m → 1.23u  (top of seat)
+ *   Plinth top:     1.10m → 3.00u
+ *   Floor lamp tip: 1.80m → 4.91u  (shade at roughly eye level)
+ *   Tall plant:     1.50m → 4.09u
+ *   Placard top:    1.40m → 3.82u
+ */
 
 interface RoomDecorationsProps {
   seed: number;
@@ -17,11 +30,15 @@ function decoCount(level: number, min: number, max: number): number {
 
 type Occupied = { x: number; z: number; r: number };
 
+function snap(v: number, grid = 0.5): number {
+  return Math.round(v / grid) * grid;
+}
+
 function isClear(x: number, z: number, occupied: Occupied[], r: number): boolean {
   for (const p of occupied) {
     const dx = x - p.x;
     const dz = z - p.z;
-    if (Math.sqrt(dx * dx + dz * dz) < r + p.r) return false;
+    if (dx * dx + dz * dz < (r + p.r) * (r + p.r)) return false;
   }
   return true;
 }
@@ -32,11 +49,12 @@ function tryPlace(
   r: number,
   xMin: number, xMax: number,
   zMin: number, zMax: number,
-  tries = 30
+  tries = 40,
+  gridSize = 0.5,
 ): [number, number] | null {
   for (let i = 0; i < tries; i++) {
-    const x = rngFloat(rng, xMin, xMax);
-    const z = rngFloat(rng, zMin, zMax);
+    const x = snap(rngFloat(rng, xMin, xMax), gridSize);
+    const z = snap(rngFloat(rng, zMin, zMax), gridSize);
     if (isClear(x, z, occupied, r)) {
       occupied.push({ x, z, r });
       return [x, z];
@@ -45,211 +63,422 @@ function tryPlace(
   return null;
 }
 
-type BenchData     = { x: number; z: number; rotY: number };
-type PlinthData    = { x: number; z: number };
-type PlantData     = { x: number; z: number };
-type PlacardData   = { x: number; z: number; rotY: number };
-type SpotRigData   = { x: number; z: number; rotY: number };
+// ─── Bench ────────────────────────────────────────────────────────────────────
+function GalleryBench({ x, z, rotY, color }: { x: number; z: number; rotY: number; color: string }) {
+  return (
+    <group position={[x, 0, z]} rotation={[0, rotY, 0]} userData={{ decorProp: true }}>
+      {/* Seat */}
+      <mesh position={[0, 1.22, 0]} castShadow>
+        <boxGeometry args={[3.4, 0.12, 0.75]} />
+        <meshStandardMaterial color={color} roughness={0.68} metalness={0.04} />
+      </mesh>
+      {/* Seat front bevel strip */}
+      <mesh position={[0, 1.16, 0.34]}>
+        <boxGeometry args={[3.4, 0.07, 0.04]} />
+        <meshStandardMaterial color={color} roughness={0.60} />
+      </mesh>
+      {/* Four legs */}
+      {([-1.4, 1.4] as const).map((lx) =>
+        ([-0.29, 0.29] as const).map((lz, li) => (
+          <mesh key={`${lx}-${li}`} position={[lx, 0.61, lz]} castShadow>
+            <boxGeometry args={[0.10, 1.22, 0.10]} />
+            <meshStandardMaterial color={color} roughness={0.68} />
+          </mesh>
+        ))
+      )}
+      {/* Cross stretcher */}
+      <mesh position={[0, 0.36, 0]}>
+        <boxGeometry args={[2.95, 0.07, 0.07]} />
+        <meshStandardMaterial color={color} roughness={0.68} />
+      </mesh>
+    </group>
+  );
+}
 
+// ─── Plinth / Pedestal ────────────────────────────────────────────────────────
+function Plinth({ x, z, color }: { x: number; z: number; color: string }) {
+  return (
+    <group position={[x, 0, z]} userData={{ decorProp: true }}>
+      {/* Column body */}
+      <mesh position={[0, 1.52, 0]} castShadow>
+        <cylinderGeometry args={[0.28, 0.32, 3.04, 20]} />
+        <meshStandardMaterial color={color} roughness={0.38} metalness={0.05} />
+      </mesh>
+      {/* Base slab */}
+      <mesh position={[0, 0.05, 0]}>
+        <boxGeometry args={[0.82, 0.10, 0.82]} />
+        <meshStandardMaterial color={color} roughness={0.42} metalness={0.04} />
+      </mesh>
+      {/* Top cap */}
+      <mesh position={[0, 3.08, 0]}>
+        <boxGeometry args={[0.72, 0.09, 0.72]} />
+        <meshStandardMaterial color={color} roughness={0.32} metalness={0.06} />
+      </mesh>
+    </group>
+  );
+}
+
+// ─── Floor Lamp ───────────────────────────────────────────────────────────────
+function FloorLamp({ x, z, accentColor, metalColor }: {
+  x: number; z: number; accentColor: string; metalColor: string;
+}) {
+  return (
+    <group position={[x, 0, z]} userData={{ decorProp: true }}>
+      {/* Weighted base */}
+      <mesh position={[0, 0.05, 0]}>
+        <cylinderGeometry args={[0.30, 0.34, 0.10, 20]} />
+        <meshStandardMaterial color={metalColor} roughness={0.28} metalness={0.78} />
+      </mesh>
+      {/* Pole — 4.75u tall, reaching just above eye height */}
+      <mesh position={[0, 2.43, 0]}>
+        <cylinderGeometry args={[0.040, 0.044, 4.75, 10]} />
+        <meshStandardMaterial color={metalColor} roughness={0.22} metalness={0.82} />
+      </mesh>
+      {/* Arm jutting out */}
+      <mesh position={[0.28, 4.76, 0]} rotation={[0, 0, -Math.PI / 2]}>
+        <cylinderGeometry args={[0.034, 0.034, 0.56, 10]} />
+        <meshStandardMaterial color={metalColor} roughness={0.22} metalness={0.82} />
+      </mesh>
+      {/* Shade (cone, open end down) */}
+      <mesh position={[0.56, 4.60, 0]} rotation={[Math.PI, 0, 0]}>
+        <cylinderGeometry args={[0.0, 0.52, 0.40, 20, 1, true]} />
+        <meshStandardMaterial color={metalColor} roughness={0.30} metalness={0.75} side={THREE.DoubleSide} />
+      </mesh>
+      {/* Inner emissive disc */}
+      <mesh position={[0.56, 4.41, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[0.38, 20]} />
+        <meshStandardMaterial
+          color={accentColor}
+          emissive={accentColor}
+          emissiveIntensity={1.8}
+          roughness={0.1}
+        />
+      </mesh>
+      {/* Point light spilling down from shade */}
+      <pointLight
+        position={[0.56, 4.35, 0]}
+        color={accentColor}
+        intensity={60}
+        distance={10}
+        decay={2}
+      />
+    </group>
+  );
+}
+
+// ─── Potted Plant ─────────────────────────────────────────────────────────────
+function PottedPlant({ x, z, potColor }: { x: number; z: number; potColor: string }) {
+  return (
+    <group position={[x, 0, z]} userData={{ decorProp: true }}>
+      {/* Pot */}
+      <mesh position={[0, 0.46, 0]}>
+        <cylinderGeometry args={[0.40, 0.28, 0.92, 16]} />
+        <meshStandardMaterial color={potColor} roughness={0.80} metalness={0.02} />
+      </mesh>
+      {/* Soil top */}
+      <mesh position={[0, 0.93, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[0.38, 16]} />
+        <meshStandardMaterial color="#2a1f14" roughness={0.95} />
+      </mesh>
+      {/* Main stem */}
+      <mesh position={[0, 1.90, 0]}>
+        <cylinderGeometry args={[0.042, 0.055, 1.94, 8]} />
+        <meshStandardMaterial color="#3a5030" roughness={0.88} />
+      </mesh>
+      {/* Foliage cluster (3 overlapping spheres) */}
+      <mesh position={[0, 3.30, 0]}>
+        <sphereGeometry args={[0.82, 12, 10]} />
+        <meshStandardMaterial color="#2d4a28" roughness={0.92} />
+      </mesh>
+      <mesh position={[0.44, 2.95, 0.18]}>
+        <sphereGeometry args={[0.54, 10, 8]} />
+        <meshStandardMaterial color="#345530" roughness={0.92} />
+      </mesh>
+      <mesh position={[-0.36, 3.00, -0.22]}>
+        <sphereGeometry args={[0.50, 10, 8]} />
+        <meshStandardMaterial color="#2a4226" roughness={0.92} />
+      </mesh>
+    </group>
+  );
+}
+
+// ─── Placard Stand ────────────────────────────────────────────────────────────
+function PlacardStand({ x, z, rotY, metalColor, cardColor }: {
+  x: number; z: number; rotY: number; metalColor: string; cardColor: string;
+}) {
+  return (
+    <group position={[x, 0, z]} rotation={[0, rotY, 0]} userData={{ decorProp: true }}>
+      {/* Pole */}
+      <mesh position={[0, 1.96, 0]}>
+        <cylinderGeometry args={[0.028, 0.028, 3.92, 10]} />
+        <meshStandardMaterial color={metalColor} roughness={0.35} metalness={0.70} />
+      </mesh>
+      {/* Base weight */}
+      <mesh position={[0, 0.06, 0]}>
+        <cylinderGeometry args={[0.20, 0.22, 0.12, 16]} />
+        <meshStandardMaterial color={metalColor} roughness={0.30} metalness={0.72} />
+      </mesh>
+      {/* Plaque card */}
+      <mesh position={[0, 3.50, 0.04]} rotation={[-0.18, 0, 0]}>
+        <boxGeometry args={[0.95, 0.68, 0.022]} />
+        <meshStandardMaterial color={cardColor} roughness={0.55} />
+      </mesh>
+      {/* Card text lines (decorative stripes) */}
+      {[3.65, 3.52, 3.41].map((y, i) => (
+        <mesh key={i} position={[0, y, 0.052]} rotation={[-0.18, 0, 0]}>
+          <boxGeometry args={[0.60 - i * 0.10, 0.028, 0.002]} />
+          <meshStandardMaterial color={metalColor} roughness={0.5} metalness={0.3} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+// ─── Ceiling Pendant Installation ─────────────────────────────────────────────
+function CeilingInstallation({ seed, halfW, halfH, halfD, theme }: {
+  seed: number; halfW: number; halfH: number; halfD: number; theme: ThemeConfig;
+}) {
+  const pendants = useMemo(() => {
+    const rng = createRng((seed ^ 0xc0ffee) >>> 0);
+    const count = 5 + rngInt(rng, 0, 4); // 5-8 pendants
+    const isLight = theme.floorPattern === "marble";
+    const barColor = isLight ? "#c8c4bc" : "#1e1a16";
+
+    const result: Array<{
+      x: number; z: number;
+      dropLen: number;
+      barW: number;
+      barColor: string;
+    }> = [];
+
+    // Distribute along two axes for a cross/grid feel
+    const span = Math.min(halfW * 0.7, halfD * 0.7);
+    for (let i = 0; i < count; i++) {
+      const t = (i / (count - 1) - 0.5) * span * 1.8;
+      const x = snap(t, 0.5);
+      const z = snap(rngFloat(rng, -halfD * 0.15, halfD * 0.15), 0.5);
+      const dropLen = 0.9 + rngFloat(rng, 0, 1.8); // 0.9 – 2.7u drop
+      const barW = 1.2 + rngFloat(rng, 0, 2.0);    // 1.2 – 3.2u wide bar
+      result.push({ x, z, dropLen, barW, barColor });
+    }
+    return result;
+  }, [seed, halfW, halfH, halfD, theme]);
+
+  const isLight = theme.floorPattern === "marble";
+  const metalCol = isLight ? "#b8b4ac" : "#2a2520";
+  const ceilY = halfH;
+
+  return (
+    <group>
+      {pendants.map((p, i) => {
+        const barY = ceilY - p.dropLen - 0.06;
+        return (
+          <group key={i} position={[p.x, 0, p.z]} userData={{ decorProp: true }}>
+            {/* Ceiling rose/mount */}
+            <mesh position={[0, ceilY - 0.04, 0]}>
+              <cylinderGeometry args={[0.10, 0.10, 0.08, 16]} />
+              <meshStandardMaterial color={metalCol} roughness={0.30} metalness={0.70} />
+            </mesh>
+            {/* Suspension cable */}
+            <mesh position={[0, ceilY - p.dropLen / 2, 0]}>
+              <cylinderGeometry args={[0.012, 0.012, p.dropLen, 6]} />
+              <meshStandardMaterial color={metalCol} roughness={0.40} metalness={0.65} />
+            </mesh>
+            {/* LED bar body */}
+            <mesh position={[0, barY, 0]}>
+              <boxGeometry args={[p.barW, 0.10, 0.18]} />
+              <meshStandardMaterial color={metalCol} roughness={0.25} metalness={0.80} />
+            </mesh>
+            {/* Emissive diffuser strip */}
+            <mesh position={[0, barY - 0.055, 0]}>
+              <boxGeometry args={[p.barW - 0.06, 0.014, 0.12]} />
+              <meshStandardMaterial
+                color={theme.accentLight}
+                emissive={theme.accentLight}
+                emissiveIntensity={isLight ? 1.2 : 2.2}
+                roughness={0.1}
+              />
+            </mesh>
+            {/* Light cast downward */}
+            <pointLight
+              position={[0, barY - 0.15, 0]}
+              color={theme.accentLight}
+              intensity={55 + p.barW * 18}
+              distance={halfH * 2.2}
+              decay={2}
+            />
+          </group>
+        );
+      })}
+    </group>
+  );
+}
+
+// ─── Main export ──────────────────────────────────────────────────────────────
 export function RoomDecorations({ seed, decorationLevel, dims, theme, artworkPositions }: RoomDecorationsProps) {
   const { halfW, halfH, halfD } = dims;
+  const floorY = -halfH;
 
-  const { benches, plinths, plants, placards, spotRigs } = useMemo(() => {
+  const { benches, plinths, plants, placards, lamps } = useMemo(() => {
     const rng = createRng(seed === 0 ? 42 : seed);
-    const occupied: Occupied[] = artworkPositions.map(p => ({ x: p.x, z: p.z, r: 1.2 }));
+    const occupied: Occupied[] = artworkPositions.map(p => ({ x: p.x, z: p.z, r: 1.5 }));
 
-    const numBenches  = decoCount(decorationLevel, 0, 4);
-    const numPlinths  = decoCount(decorationLevel, 0, 8);
-    const numPlants   = Math.min(4, decoCount(decorationLevel, 0, 4));
-    const numPlacards = decoCount(decorationLevel, 0, 6);
-    const numSpots    = decoCount(decorationLevel, 0, 8);
+    const numBenches  = decoCount(decorationLevel, 0, 3);
+    const numPlinths  = decoCount(decorationLevel, 0, 6);
+    const numPlants   = Math.min(4, decoCount(decorationLevel, 1, 4));
+    const numPlacards = decoCount(decorationLevel, 0, 4);
+    const numLamps    = decoCount(decorationLevel, 1, 5);
 
-    // ── Benches (centre floor) ────────────────────────────────────────────────
-    const benches: BenchData[] = [];
+    // ── Benches — centre floor zone ──────────────────────────────────────────
+    const benches: Array<{ x: number; z: number; rotY: number }> = [];
     for (let i = 0; i < numBenches; i++) {
-      const pos = tryPlace(rng, occupied, 1.5,
-        -(halfW * 0.35), halfW * 0.35,
-        -(halfD * 0.45), halfD * 0.45);
-      if (pos) benches.push({ x: pos[0], z: pos[1], rotY: rngFloat(rng, 0, Math.PI) });
+      const pos = tryPlace(rng, occupied, 2.2,
+        -(halfW * 0.38), halfW * 0.38,
+        -(halfD * 0.48), halfD * 0.48);
+      if (pos) {
+        const rotY = (Math.round(rng() * 4) * Math.PI) / 2; // snap to 90° increments
+        benches.push({ x: pos[0], z: pos[1], rotY });
+      }
     }
 
-    // ── Plinths / pedestals (near walls) ─────────────────────────────────────
-    const plinths: PlinthData[] = [];
-    const minDist = 0.5, maxDist = 2.0;
+    // ── Plinths — near walls ──────────────────────────────────────────────────
+    const plinths: Array<{ x: number; z: number }> = [];
+    const wallBand = 1.8;
+    const wallSetback = 0.65;
     for (let i = 0; i < numPlinths; i++) {
       const side = Math.floor(rng() * 4);
       let xMin: number, xMax: number, zMin: number, zMax: number;
-      if (side === 0) {
-        xMin = -(halfW - 1.5); xMax = halfW - 1.5;
-        zMin = -(halfD - minDist); zMax = -(halfD - maxDist);
-        if (zMin > zMax) { const t = zMin; zMin = zMax; zMax = t; }
-      } else if (side === 1) {
-        xMin = halfW - maxDist; xMax = halfW - minDist;
-        zMin = -(halfD - 1.5); zMax = halfD - 1.5;
-      } else if (side === 2) {
-        xMin = -(halfW - 1.5); xMax = halfW - 1.5;
-        zMin = halfD - maxDist; zMax = halfD - minDist;
-      } else {
-        xMin = -(halfW - minDist); xMax = -(halfW - maxDist);
-        if (xMin > xMax) { const t = xMin; xMin = xMax; xMax = t; }
-        zMin = -(halfD - 1.5); zMax = halfD - 1.5;
+      if (side === 0) { // north wall
+        xMin = -(halfW - 2.0); xMax = halfW - 2.0;
+        zMin = -(halfD - wallBand); zMax = -(halfD - wallSetback);
+      } else if (side === 1) { // east wall
+        xMin = halfW - wallBand; xMax = halfW - wallSetback;
+        zMin = -(halfD - 2.0); zMax = halfD - 2.0;
+      } else if (side === 2) { // south wall
+        xMin = -(halfW - 2.0); xMax = halfW - 2.0;
+        zMin = halfD - wallBand; zMax = halfD - wallSetback;
+      } else { // west wall
+        xMin = -(halfW - wallSetback); xMax = -(halfW - wallBand);
+        zMin = -(halfD - 2.0); zMax = halfD - 2.0;
       }
-      const pos = tryPlace(rng, occupied, 0.8, xMin, xMax, zMin, zMax);
+      if (xMin > xMax) [xMin, xMax] = [xMax, xMin];
+      if (zMin > zMax) [zMin, zMax] = [zMax, zMin];
+      const pos = tryPlace(rng, occupied, 0.9, xMin, xMax, zMin, zMax);
       if (pos) plinths.push({ x: pos[0], z: pos[1] });
     }
 
-    // ── Potted plants (corners) ───────────────────────────────────────────────
-    const cornerCandidates = [
-      { x: -(halfW - 1.2), z: -(halfD - 1.2) },
-      { x:  (halfW - 1.2), z: -(halfD - 1.2) },
-      { x: -(halfW - 1.2), z:  (halfD - 1.2) },
-      { x:  (halfW - 1.2), z:  (halfD - 1.2) },
+    // ── Plants — corners ──────────────────────────────────────────────────────
+    const corners = [
+      { x: -(halfW - 1.4), z: -(halfD - 1.4) },
+      { x:  (halfW - 1.4), z: -(halfD - 1.4) },
+      { x: -(halfW - 1.4), z:  (halfD - 1.4) },
+      { x:  (halfW - 1.4), z:  (halfD - 1.4) },
     ].sort(() => rng() - 0.5);
-    const plants: PlantData[] = [];
-    for (const corner of cornerCandidates.slice(0, numPlants)) {
-      if (isClear(corner.x, corner.z, occupied, 0.8)) {
-        occupied.push({ x: corner.x, z: corner.z, r: 0.8 });
-        plants.push(corner);
+    const plants: Array<{ x: number; z: number }> = [];
+    for (const corner of corners.slice(0, numPlants)) {
+      const sx = snap(corner.x, 0.5);
+      const sz = snap(corner.z, 0.5);
+      if (isClear(sx, sz, occupied, 1.0)) {
+        occupied.push({ x: sx, z: sz, r: 1.0 });
+        plants.push({ x: sx, z: sz });
       }
     }
 
-    // ── Placard stands (near artwork positions) ───────────────────────────────
-    const placards: PlacardData[] = [];
-    const artworkPool = [...artworkPositions];
-    for (let i = 0; i < Math.min(numPlacards, artworkPool.length); i++) {
-      const idx = Math.floor(rng() * artworkPool.length);
-      const art = artworkPool.splice(idx, 1)[0];
-      const px = art.x + rngFloat(rng, -0.9, 0.9);
-      const pz = art.z + rngFloat(rng, -0.3, 0.3);
-      if (isClear(px, pz, occupied, 0.4)) {
-        occupied.push({ x: px, z: pz, r: 0.4 });
-        placards.push({ x: px, z: pz, rotY: rngFloat(rng, -0.4, 0.4) });
+    // ── Placard stands — beside artworks ─────────────────────────────────────
+    const placards: Array<{ x: number; z: number; rotY: number }> = [];
+    const artPool = [...artworkPositions];
+    for (let i = 0; i < Math.min(numPlacards, artPool.length); i++) {
+      const idx = Math.floor(rng() * artPool.length);
+      const art = artPool.splice(idx, 1)[0];
+      const offset = rngFloat(rng, 0.6, 1.0) * (rng() > 0.5 ? 1 : -1);
+      const px = snap(art.x + offset, 0.5);
+      const pz = snap(art.z + rngFloat(rng, -0.3, 0.3), 0.5);
+      const rotY = rngFloat(rng, -0.5, 0.5);
+      if (isClear(px, pz, occupied, 0.5)) {
+        occupied.push({ x: px, z: pz, r: 0.5 });
+        placards.push({ x: px, z: pz, rotY });
       }
     }
 
-    // ── Floor spotlight rigs (near walls) ────────────────────────────────────
-    const spotRigs: SpotRigData[] = [];
-    for (let i = 0; i < numSpots; i++) {
+    // ── Floor lamps — near walls ──────────────────────────────────────────────
+    const lamps: Array<{ x: number; z: number }> = [];
+    for (let i = 0; i < numLamps; i++) {
       const side = Math.floor(rng() * 4);
-      let xMin: number, xMax: number, zMin: number, zMax: number, rotY: number;
-      const band = 1.0;
+      let xMin: number, xMax: number, zMin: number, zMax: number;
+      const lampBand = 1.6;
+      const lampSet = 0.50;
       if (side === 0) {
-        xMin = -(halfW * 0.8); xMax = halfW * 0.8;
-        zMin = -(halfD - band); zMax = -(halfD - band * 0.3);
-        if (zMin > zMax) { const t = zMin; zMin = zMax; zMax = t; }
-        rotY = Math.PI;
+        xMin = -(halfW * 0.75); xMax = halfW * 0.75;
+        zMin = -(halfD - lampBand); zMax = -(halfD - lampSet);
       } else if (side === 1) {
-        xMin = halfW - band; xMax = halfW - band * 0.3;
-        zMin = -(halfD * 0.8); zMax = halfD * 0.8;
-        rotY = -Math.PI / 2;
+        xMin = halfW - lampBand; xMax = halfW - lampSet;
+        zMin = -(halfD * 0.75); zMax = halfD * 0.75;
       } else if (side === 2) {
-        xMin = -(halfW * 0.8); xMax = halfW * 0.8;
-        zMin = halfD - band * 0.3; zMax = halfD - band * 0.3 + 0.5;
-        rotY = 0;
+        xMin = -(halfW * 0.75); xMax = halfW * 0.75;
+        zMin = halfD - lampBand; zMax = halfD - lampSet;
       } else {
-        xMin = -(halfW - band * 0.3); xMax = -(halfW - band);
-        if (xMin > xMax) { const t = xMin; xMin = xMax; xMax = t; }
-        zMin = -(halfD * 0.8); zMax = halfD * 0.8;
-        rotY = Math.PI / 2;
+        xMin = -(halfW - lampSet); xMax = -(halfW - lampBand);
+        zMin = -(halfD * 0.75); zMax = halfD * 0.75;
       }
-      const pos = tryPlace(rng, occupied, 0.6, xMin, xMax, zMin, zMax);
-      if (pos) spotRigs.push({ x: pos[0], z: pos[1], rotY: rotY + rngFloat(rng, -0.25, 0.25) });
+      if (xMin > xMax) [xMin, xMax] = [xMax, xMin];
+      if (zMin > zMax) [zMin, zMax] = [zMax, zMin];
+      const pos = tryPlace(rng, occupied, 0.8, xMin, xMax, zMin, zMax);
+      if (pos) lamps.push({ x: pos[0], z: pos[1] });
     }
 
-    return { benches, plinths, plants, placards, spotRigs };
+    return { benches, plinths, plants, placards, lamps };
   }, [seed, decorationLevel, halfW, halfD, artworkPositions]);
 
   const isLight  = theme.floorPattern === "marble";
-  const benchCol = isLight ? "#7a7265" : "#1a1510";
-  const plinthCol = isLight ? "#d4d0c8" : "#e2ddd0";
-  const metalCol  = isLight ? "#909090" : "#888680";
-  const potCol    = isLight ? "#8a7460" : "#3a2e24";
-  const floorY    = -halfH;
+  const benchCol  = isLight ? "#6a6055" : "#16120d";
+  const plinthCol = isLight ? "#c8c4bc" : "#d8d4cc";
+  const metalCol  = isLight ? "#909090" : "#888070";
+  const potCol    = isLight ? "#7a6450" : "#3a2818";
+  const cardCol   = isLight ? "#f0eee8" : "#181410";
 
   return (
     <>
-      {/* ── Gallery benches ── */}
+      {/* ── Ceiling pendant installation ── */}
+      <CeilingInstallation
+        seed={seed}
+        halfW={halfW}
+        halfH={halfH}
+        halfD={halfD}
+        theme={theme}
+      />
+
+      {/* ── Benches ── */}
       {benches.map((b, i) => (
-        <group key={`bench-${i}`} position={[b.x, floorY, b.z]} rotation={[0, b.rotY, 0]} userData={{ decorProp: true }}>
-          <mesh position={[0, 0.4, 0]}>
-            <boxGeometry args={[2.4, 0.07, 0.52]} />
-            <meshStandardMaterial color={benchCol} roughness={0.72} metalness={0.04} />
-          </mesh>
-          {([-0.95, 0.95] as const).map((lx, li) => (
-            <mesh key={li} position={[lx, 0.2, 0]}>
-              <boxGeometry args={[0.07, 0.4, 0.46]} />
-              <meshStandardMaterial color={benchCol} roughness={0.72} />
-            </mesh>
-          ))}
+        <group key={`bench-${i}`} position={[b.x, floorY, b.z]}>
+          <GalleryBench x={0} z={0} rotY={b.rotY} color={benchCol} />
         </group>
       ))}
 
-      {/* ── Plinths / pedestals ── */}
+      {/* ── Plinths ── */}
       {plinths.map((p, i) => (
-        <group key={`plinth-${i}`} position={[p.x, floorY, p.z]} userData={{ decorProp: true }}>
-          <mesh position={[0, 0.5, 0]}>
-            <cylinderGeometry args={[0.21, 0.24, 1.0, 16]} />
-            <meshStandardMaterial color={plinthCol} roughness={0.42} metalness={0.04} />
-          </mesh>
-          <mesh position={[0, 1.03, 0]}>
-            <boxGeometry args={[0.5, 0.035, 0.5]} />
-            <meshStandardMaterial color={plinthCol} roughness={0.38} metalness={0.05} />
-          </mesh>
+        <group key={`plinth-${i}`} position={[p.x, floorY, p.z]}>
+          <Plinth x={0} z={0} color={plinthCol} />
         </group>
       ))}
 
-      {/* ── Potted plants ── */}
+      {/* ── Plants ── */}
       {plants.map((p, i) => (
-        <group key={`plant-${i}`} position={[p.x, floorY, p.z]} userData={{ decorProp: true }}>
-          <mesh position={[0, 0.19, 0]}>
-            <cylinderGeometry args={[0.17, 0.13, 0.38, 12]} />
-            <meshStandardMaterial color={potCol} roughness={0.82} />
-          </mesh>
-          <mesh position={[0, 0.64, 0]}>
-            <sphereGeometry args={[0.42, 10, 8]} />
-            <meshStandardMaterial color="#2a4428" roughness={0.92} />
-          </mesh>
+        <group key={`plant-${i}`} position={[p.x, floorY, p.z]}>
+          <PottedPlant x={0} z={0} potColor={potCol} />
         </group>
       ))}
 
       {/* ── Placard stands ── */}
       {placards.map((p, i) => (
-        <group key={`placard-${i}`} position={[p.x, floorY, p.z]} rotation={[0, p.rotY, 0]} userData={{ decorProp: true }}>
-          <mesh position={[0, 0.72, 0]}>
-            <cylinderGeometry args={[0.022, 0.022, 1.44, 8]} />
-            <meshStandardMaterial color={metalCol} roughness={0.38} metalness={0.65} />
-          </mesh>
-          <mesh position={[0, 1.28, 0.04]} rotation={[-0.18, 0, 0]}>
-            <boxGeometry args={[0.38, 0.25, 0.014]} />
-            <meshStandardMaterial color={isLight ? "#f0eee8" : "#1e1a14"} roughness={0.6} />
-          </mesh>
+        <group key={`placard-${i}`} position={[p.x, floorY, p.z]}>
+          <PlacardStand x={0} z={0} rotY={p.rotY} metalColor={metalCol} cardColor={cardCol} />
         </group>
       ))}
 
-      {/* ── Floor spotlight rigs ── */}
-      {spotRigs.map((s, i) => (
-        <group key={`spot-${i}`} position={[s.x, floorY, s.z]} rotation={[0, s.rotY, 0]} userData={{ decorProp: true }}>
-          {/* Three legs */}
-          {([[-0.17, 0.14, 0.16], [0.17, 0.14, 0.16], [0, 0.14, -0.22]] as [number,number,number][]).map(([lx, ly, lz], li) => (
-            <mesh key={li} position={[lx, ly, lz]}>
-              <cylinderGeometry args={[0.018, 0.018, 0.88, 6]} />
-              <meshStandardMaterial color={metalCol} roughness={0.32} metalness={0.72} />
-            </mesh>
-          ))}
-          {/* Lamp cone */}
-          <mesh position={[0, 0.94, 0]} rotation={[0.55, 0, 0]}>
-            <cylinderGeometry args={[0.04, 0.13, 0.22, 10]} />
-            <meshStandardMaterial color={metalCol} roughness={0.22} metalness={0.82} />
-          </mesh>
-          {/* Emissive bulb */}
-          <mesh position={[0, 0.9, 0]}>
-            <sphereGeometry args={[0.038, 6, 6]} />
-            <meshStandardMaterial
-              color={theme.accentLight}
-              emissive={theme.accentLight}
-              emissiveIntensity={1.6}
-            />
-          </mesh>
+      {/* ── Floor lamps ── */}
+      {lamps.map((l, i) => (
+        <group key={`lamp-${i}`} position={[l.x, floorY, l.z]}>
+          <FloorLamp x={0} z={0} accentColor={theme.accentLight} metalColor={metalCol} />
         </group>
       ))}
     </>
