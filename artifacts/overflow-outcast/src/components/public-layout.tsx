@@ -1,12 +1,14 @@
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { useAuth } from "@/lib/auth";
+import { useUser } from "@clerk/react";
 import { useScene } from "@/lib/scene-context";
+
+const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 const ROUTE_SCENES: Record<string, number> = {
   "/galleries": 4,
-  "/login": 2,
-  "/register": 2,
+  "/sign-in": 2,
+  "/sign-up": 2,
 };
 
 interface Props {
@@ -15,7 +17,7 @@ interface Props {
 }
 
 export function PublicLayout({ children, snapSections }: Props) {
-  const { user } = useAuth();
+  const { user } = useUser();
   const { setScene } = useScene();
   const [location] = useLocation();
   const [scrolled, setScrolled] = useState(false);
@@ -109,8 +111,7 @@ export function PublicLayout({ children, snapSections }: Props) {
               </Link>
             ) : (
               <>
-                {/* Sign In: hidden on mobile to save space */}
-                <Link href="/login">
+                <Link href="/sign-in">
                   <span
                     className="hidden sm:inline"
                     style={linkStyle}
@@ -120,7 +121,7 @@ export function PublicLayout({ children, snapSections }: Props) {
                     Sign In
                   </span>
                 </Link>
-                <Link href="/register">
+                <Link href="/sign-up">
                   <button
                     style={{
                       fontFamily: "'DM Mono', monospace",

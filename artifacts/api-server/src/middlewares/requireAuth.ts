@@ -1,25 +1,68 @@
 import { Request, Response, NextFunction } from "express";
-import { verifyToken, JwtPayload } from "../lib/auth";
+import { getAuth, clerkClient } from "@clerk/express";
+import { eq } from "drizzle-orm";
+import { db, usersTable, profilesTable } from "@workspace/db";
+
+export interface LocalUser {
+  userId: number;
+  email: string;
+  username: string;
+}
 
 declare global {
   namespace Express {
     interface Request {
-      user?: JwtPayload;
+      user?: LocalUser;
     }
   }
 }
 
-export function requireAuth(req: Request, res: Response, next: NextFunction): void {
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith("Bearer ")) {
+export async function requireAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
+  const auth = getAuth(req);
+  const clerkUserId = auth?.userId;
+
+  if (!clerkUserId) {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
-  const token = authHeader.slice(7);
+
   try {
-    req.user = verifyToken(token);
+    let [user] = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.clerkUserId, clerkUserId));
+
+    if (!user) {
+      const clerkUser = await clerkClient.users.getUser(clerkUserId);
+      const email =
+        clerkUser.emailAddresses[0]?.emailAddress ?? `${clerkUserId}@clerk.local`;
+      const base =
+        clerkUser.username ??
+        clerkUser.firstName ??
+        email.split("@")[0];
+      const username = `${base.slice(0, 20)}_${clerkUserId.slice(-6)}`;
+
+      try {
+        [user] = await db
+          .insert(usersTable)
+          .values({ email, username, clerkUserId })
+          .returning();
+        await db.insert(profilesTable).values({ userId: user.id });
+      } catch {
+        [user] = await db
+          .select()
+          .from(usersTable)
+          .where(eq(usersTable.clerkUserId, clerkUserId));
+        if (!user) {
+          res.status(500).json({ error: "Failed to provision user" });
+          return;
+        }
+      }
+    }
+
+    req.user = { userId: user.id, email: user.email, username: user.username };
     next();
   } catch {
-    res.status(401).json({ error: "Invalid or expired token" });
+    res.status(401).json({ error: "Unauthorized" });
   }
 }

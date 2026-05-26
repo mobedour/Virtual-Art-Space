@@ -20,24 +20,6 @@ export interface User {
   createdAt: string;
 }
 
-export interface RegisterInput {
-  email: string;
-  /** @minLength 3 */
-  username: string;
-  /** @minLength 6 */
-  password: string;
-}
-
-export interface LoginInput {
-  email: string;
-  password: string;
-}
-
-export interface AuthResponse {
-  token: string;
-  user: User;
-}
-
 export interface Profile {
   id: number;
   userId: number;

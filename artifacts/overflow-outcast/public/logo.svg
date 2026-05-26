@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 60" fill="none">
+  <rect x="0" y="24" width="36" height="36" rx="2" fill="hsl(38,92%,50%)" opacity="0.15"/>
+  <rect x="4" y="28" width="28" height="28" rx="1" fill="none" stroke="hsl(38,92%,50%)" stroke-width="1.5" opacity="0.6"/>
+  <rect x="10" y="34" width="16" height="16" rx="1" fill="hsl(38,92%,50%)" opacity="0.3"/>
+  <line x1="18" y1="28" x2="18" y2="56" stroke="hsl(38,92%,50%)" stroke-width="0.75" opacity="0.4"/>
+  <line x1="4" y1="42" x2="32" y2="42" stroke="hsl(38,92%,50%)" stroke-width="0.75" opacity="0.4"/>
+  <text x="46" y="50" font-family="'Playfair Display', Georgia, serif" font-style="italic" font-size="22" font-weight="600" fill="hsl(38,92%,50%)">Virtual Art Space</text>
+</svg>

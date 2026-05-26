@@ -1,0 +1,1 @@
+- [Clerk auth migration](clerk-auth-migration.md) — full JWT→Clerk migration pattern with JIT user provisioning and Tailwind v4 layer ordering.

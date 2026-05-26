@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useListGalleries, useToggleGalleryPublish, useDeleteGallery, getListGalleriesQueryKey, getGetDashboardStatsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "@/lib/auth";
+import { useUser } from "@clerk/react";
 import { DashboardLayout } from "@/components/layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,13 +16,13 @@ import { GalleryThumbnail } from "@/components/GalleryThumbnail";
 
 export default function Galleries() {
   const [, setLocation] = useLocation();
-  const { user, isLoading: isAuthLoading } = useAuth();
+  const { user, isLoaded } = useUser();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    if (!isAuthLoading && !user) setLocation("/login");
-  }, [user, isAuthLoading, setLocation]);
+    if (isLoaded && !user) setLocation("/sign-in");
+  }, [user, isLoaded, setLocation]);
 
   const { data: galleries, isLoading: isGalleriesLoading } = useListGalleries({
     query: { queryKey: getListGalleriesQueryKey(), enabled: !!user }
@@ -64,7 +64,7 @@ export default function Galleries() {
     );
   };
 
-  if (isAuthLoading || (user && isGalleriesLoading)) {
+  if (!isLoaded || (user && isGalleriesLoading)) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-[50vh]">

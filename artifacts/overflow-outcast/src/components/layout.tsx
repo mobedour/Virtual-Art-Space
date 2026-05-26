@@ -1,14 +1,16 @@
 import { ReactNode, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { useAuth } from "@/lib/auth";
+import { useClerk } from "@clerk/react";
 import { useScene } from "@/lib/scene-context";
 import { LogOut, LayoutDashboard, Image as ImageIcon, User, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
+const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
+
 export function DashboardLayout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
-  const { logout } = useAuth();
+  const { signOut } = useClerk();
   const { setScene } = useScene();
 
   useEffect(() => {
@@ -111,7 +113,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
             </nav>
             <div className="mt-auto">
               <button
-                onClick={logout}
+                onClick={() => signOut({ redirectUrl: basePath || "/" })}
                 className="w-full flex items-center gap-3 px-4 py-3 text-white/40 hover:text-red-400 hover:bg-red-900/10 transition-colors rounded-sm"
               >
                 <LogOut className="w-4 h-4" />
@@ -155,7 +157,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
         </nav>
         <div className="mt-auto pt-6" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
           <button
-            onClick={logout}
+            onClick={() => signOut({ redirectUrl: basePath || "/" })}
             className="w-full flex items-center gap-3 px-4 py-3 text-white/35 hover:text-red-400 hover:bg-red-900/10 transition-colors rounded-sm"
           >
             <LogOut className="w-4 h-4" />

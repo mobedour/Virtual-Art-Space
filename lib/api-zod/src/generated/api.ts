@@ -17,52 +17,6 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
- * @summary Register a new artist account
- */
-export const registerBodyUsernameMin = 3;
-
-export const registerBodyPasswordMin = 6;
-
-
-
-export const RegisterBody = zod.object({
-  "email": zod.string().email(),
-  "username": zod.string().min(registerBodyUsernameMin),
-  "password": zod.string().min(registerBodyPasswordMin)
-})
-
-
-/**
- * @summary Login with email and password
- */
-export const LoginBody = zod.object({
-  "email": zod.string().email(),
-  "password": zod.string()
-})
-
-export const LoginResponse = zod.object({
-  "token": zod.string(),
-  "user": zod.object({
-  "id": zod.number(),
-  "email": zod.string(),
-  "username": zod.string(),
-  "createdAt": zod.string()
-})
-})
-
-
-/**
- * @summary Get current authenticated user
- */
-export const GetMeResponse = zod.object({
-  "id": zod.number(),
-  "email": zod.string(),
-  "username": zod.string(),
-  "createdAt": zod.string()
-})
-
-
-/**
  * @summary Get authenticated artist's profile
  */
 export const GetProfileResponse = zod.object({

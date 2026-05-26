@@ -14,7 +14,7 @@ import {
   getGetDashboardStatsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "@/lib/auth";
+import { useUser } from "@clerk/react";
 import { DashboardLayout } from "@/components/layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -1007,7 +1007,7 @@ function ArtworkFormDialog({
 export default function DashboardGalleryArtworks() {
   const [, setLocation] = useLocation();
   const params = useParams();
-  const { user, isLoading: isAuthLoading } = useAuth();
+  const { user, isLoaded } = useUser();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -1017,10 +1017,10 @@ export default function DashboardGalleryArtworks() {
   const [editingArtwork, setEditingArtwork] = useState<Artwork | null>(null);
 
   useEffect(() => {
-    if (!isAuthLoading && !user) {
-      setLocation("/login");
+    if (isLoaded && !user) {
+      setLocation("/sign-in");
     }
-  }, [user, isAuthLoading, setLocation]);
+  }, [user, isLoaded, setLocation]);
 
   const { data: gallery, isLoading: isGalleryLoading } = useGetGallery(galleryId, {
     query: { queryKey: getGetGalleryQueryKey(galleryId), enabled: !!user && galleryId > 0 },
@@ -1059,7 +1059,7 @@ export default function DashboardGalleryArtworks() {
     );
   }
 
-  const isLoading = isAuthLoading || isGalleryLoading || isArtworksLoading;
+  const isLoading = !isLoaded || isGalleryLoading || isArtworksLoading;
 
   if (isLoading) {
     return (

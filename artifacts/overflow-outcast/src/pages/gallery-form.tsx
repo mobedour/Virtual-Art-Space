@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useCreateGallery, useUpdateGallery, useGetGallery, getListGalleriesQueryKey, getGetGalleryQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "@/lib/auth";
+import { useUser } from "@clerk/react";
 import { DashboardLayout } from "@/components/layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -58,7 +58,7 @@ function randomSeed(): number {
 export default function GalleryForm() {
   const [, setLocation] = useLocation();
   const params = useParams();
-  const { user, isLoading: isAuthLoading } = useAuth();
+  const { user, isLoaded } = useUser();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -68,8 +68,8 @@ export default function GalleryForm() {
   const galleryId = isEdit ? parseInt(params.id!) : 0;
 
   useEffect(() => {
-    if (!isAuthLoading && !user) setLocation("/login");
-  }, [user, isAuthLoading, setLocation]);
+    if (isLoaded && !user) setLocation("/sign-in");
+  }, [user, isLoaded, setLocation]);
 
   const { data: gallery, isLoading: isGalleryLoading } = useGetGallery(galleryId, {
     query: { queryKey: getGetGalleryQueryKey(galleryId), enabled: isEdit && !!user }
@@ -160,7 +160,7 @@ export default function GalleryForm() {
     }
   }
 
-  if (isAuthLoading || (isEdit && isGalleryLoading)) {
+  if (!isLoaded || (isEdit && isGalleryLoading)) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-[50vh]">

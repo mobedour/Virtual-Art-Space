@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useGetProfile, useUpdateProfile, getGetProfileQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "@/lib/auth";
+import { useUser } from "@clerk/react";
 import { DashboardLayout } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,14 +33,14 @@ const profileSchema = z.object({
 
 export default function Profile() {
   const [, setLocation] = useLocation();
-  const { user, isLoading: isAuthLoading } = useAuth();
+  const { user, isLoaded } = useUser();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
-    if (!isAuthLoading && !user) setLocation("/login");
-  }, [user, isAuthLoading, setLocation]);
+    if (isLoaded && !user) setLocation("/sign-in");
+  }, [user, isLoaded, setLocation]);
 
   const { data: profile, isLoading: isProfileLoading } = useGetProfile({
     query: { queryKey: getGetProfileQueryKey(), enabled: !!user }
@@ -80,7 +80,7 @@ export default function Profile() {
     );
   }
 
-  if (isAuthLoading || (user && isProfileLoading)) {
+  if (!isLoaded || (user && isProfileLoading)) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-[50vh]">
@@ -112,7 +112,7 @@ export default function Profile() {
                 </motion.div>
                 <div>
                   <CardTitle className="font-display text-xl mb-1">{user?.username}</CardTitle>
-                  <CardDescription className="font-sans text-sm">{user?.email}</CardDescription>
+                  <CardDescription className="font-sans text-sm">{user?.primaryEmailAddress?.emailAddress}</CardDescription>
                 </div>
               </div>
             </CardHeader>
