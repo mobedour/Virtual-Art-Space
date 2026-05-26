@@ -1,6 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Link, useLocation } from "wouter";
-import { useUser } from "@clerk/react";
+import { Link } from "wouter";
 import { PublicLayout } from "@/components/public-layout";
 import { useScene } from "@/lib/scene-context";
 import { ArrowRight, Box, Globe, Palette } from "lucide-react";
@@ -12,13 +11,7 @@ const SECTION_SCENES = [0, 1, 2, 4];
 
 export default function Home() {
   const { setScene } = useScene();
-  const [, setLocation] = useLocation();
-  const { user, isLoaded } = useUser();
   const sectionRefs = useRef<(HTMLElement | null)[]>([]);
-
-  useEffect(() => {
-    if (isLoaded && user) setLocation("/galleries");
-  }, [user, isLoaded, setLocation]);
 
   useEffect(() => {
     setScene(0);
