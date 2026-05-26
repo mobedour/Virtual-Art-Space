@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 import { Link, useLocation, useParams } from "wouter";
 import { useGetPublicGallery, getGetPublicGalleryQueryKey } from "@workspace/api-client-react";
 import { PublicLayout } from "@/components/public-layout";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowLeft, Maximize2, Minimize2 } from "lucide-react";
+import { Loader2, ArrowLeft } from "lucide-react";
 import { GalleryRoom } from "@/components/gallery-room/GalleryRoom";
 
 const THEME_LABELS: Record<string, string> = {
@@ -17,38 +17,10 @@ const THEME_LABELS: Record<string, string> = {
 export default function PublicGalleryDetail() {
   const { slug } = useParams();
   const [, setLocation] = useLocation();
-  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const { data: gallery, isLoading, error } = useGetPublicGallery(slug || "", {
     query: { queryKey: getGetPublicGalleryQueryKey(slug || ""), enabled: !!slug },
   });
-
-  // Track fullscreen state changes from any source (Esc key, etc.)
-  useEffect(() => {
-    const handler = () => setIsFullscreen(!!document.fullscreenElement);
-    document.addEventListener("fullscreenchange", handler);
-    document.addEventListener("webkitfullscreenchange", handler);
-    return () => {
-      document.removeEventListener("fullscreenchange", handler);
-      document.removeEventListener("webkitfullscreenchange", handler);
-    };
-  }, []);
-
-  const toggleFullscreen = useCallback(async () => {
-    try {
-      const el = document.documentElement as HTMLElement & {
-        webkitRequestFullscreen?: () => Promise<void>;
-      };
-      const doc = document as Document & {
-        webkitExitFullscreen?: () => Promise<void>;
-      };
-      if (!document.fullscreenElement) {
-        await (el.requestFullscreen?.() ?? el.webkitRequestFullscreen?.());
-      } else {
-        await (doc.exitFullscreen?.() ?? doc.webkitExitFullscreen?.());
-      }
-    } catch { /* denied or unsupported */ }
-  }, []);
 
   const handleExit = useCallback(() => setLocation("/galleries"), [setLocation]);
 
@@ -68,11 +40,7 @@ export default function PublicGalleryDetail() {
         <div className="container mx-auto px-6 py-32 text-center">
           <h1 className="text-6xl font-display font-black text-white mb-4">404</h1>
           <p className="font-sans text-muted-foreground mb-8">Gallery not found</p>
-          <Button
-            asChild
-            variant="outline"
-            className="rounded-sm border-primary/50 font-sans"
-          >
+          <Button asChild variant="outline" className="rounded-sm border-primary/50 font-sans">
             <Link href="/galleries">
               <ArrowLeft className="w-4 h-4 mr-2" /> Back to exhibitions
             </Link>
@@ -88,29 +56,17 @@ export default function PublicGalleryDetail() {
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       {/* Immersive overlay header */}
       <header className="absolute top-0 w-full z-50 p-4 flex justify-between items-start pointer-events-none">
-        {/* Left — Exit + Fullscreen */}
-        <div className="flex items-center gap-2 pointer-events-auto">
-          <Button
-            asChild
-            variant="outline"
-            size="sm"
-            className="rounded-sm border-white/20 bg-black/50 backdrop-blur-md text-white hover:bg-white hover:text-black font-sans text-xs"
-          >
-            <Link href="/galleries">
-              <ArrowLeft className="w-4 h-4 mr-1.5" /> Exit
-            </Link>
-          </Button>
-
-          <button
-            onClick={toggleFullscreen}
-            aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-            className="w-8 h-8 flex items-center justify-center rounded-sm bg-black/50 backdrop-blur-md border border-white/20 text-white/60 hover:text-white hover:bg-black/70 transition-all"
-          >
-            {isFullscreen
-              ? <Minimize2 className="w-3.5 h-3.5" />
-              : <Maximize2 className="w-3.5 h-3.5" />}
-          </button>
-        </div>
+        {/* Left — Exit */}
+        <Button
+          asChild
+          variant="outline"
+          size="sm"
+          className="pointer-events-auto rounded-sm border-white/20 bg-black/50 backdrop-blur-md text-white hover:bg-white hover:text-black font-sans text-xs"
+        >
+          <Link href="/galleries">
+            <ArrowLeft className="w-4 h-4 mr-1.5" /> Exit
+          </Link>
+        </Button>
 
         {/* Right — Theme + Title */}
         <div className="pointer-events-none text-right">

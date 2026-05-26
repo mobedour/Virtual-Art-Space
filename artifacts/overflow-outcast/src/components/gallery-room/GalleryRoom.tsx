@@ -6,6 +6,7 @@ import { ArtworkDetailModal } from "./ArtworkDetailModal";
 import { VirtualJoystick, type JoystickState } from "./VirtualJoystick";
 import type { ArtworkData } from "./ArtworkFrame";
 import { useIsMobile } from "../../hooks/use-mobile";
+import { toast } from "sonner";
 
 type GalleryRoomData = {
   artworks: ArtworkData[];
@@ -27,6 +28,13 @@ function checkWebGLSupport(): boolean {
   } catch {
     return false;
   }
+}
+
+function isIOS(): boolean {
+  return (
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+  );
 }
 
 class CanvasErrorBoundary extends Component<
@@ -61,28 +69,22 @@ function ControlBtn({
   symbol,
   label,
   accent,
-  size = "md",
   onClick,
   disabled = false,
 }: {
   symbol: string;
   label: string;
   accent: string;
-  size?: "sm" | "md" | "lg";
   onClick: () => void;
   disabled?: boolean;
 }) {
-  const dim =
-    size === "lg" ? "w-14 h-14 text-xl"
-    : size === "sm" ? "w-9 h-9 text-sm"
-    : "w-11 h-11 text-base";
   return (
     <button
       aria-label={label}
       onClick={onClick}
       disabled={disabled}
       style={{ borderColor: accent, color: accent }}
-      className={`${dim} rounded-full border-2 bg-black/60 backdrop-blur-md flex items-center justify-center font-bold transition-all duration-150 active:scale-90 active:bg-white/10 select-none touch-manipulation ${
+      className={`w-11 h-11 rounded-full border-2 bg-black/60 backdrop-blur-md flex items-center justify-center text-base font-bold transition-all duration-150 active:scale-90 active:bg-white/10 select-none touch-manipulation ${
         disabled ? "opacity-30" : "opacity-80 hover:opacity-100"
       }`}
     >
@@ -91,15 +93,85 @@ function ControlBtn({
   );
 }
 
+// ── Fullscreen helper (handles iOS gracefully) ─────────────────────────────────
+async function requestFullscreen(): Promise<boolean> {
+  const el = document.documentElement as HTMLElement & {
+    webkitRequestFullscreen?: () => Promise<void>;
+    mozRequestFullScreen?: () => Promise<void>;
+  };
+  try {
+    if (el.requestFullscreen) { await el.requestFullscreen(); return true; }
+    if (el.webkitRequestFullscreen) { await el.webkitRequestFullscreen(); return true; }
+    if (el.mozRequestFullScreen) { await el.mozRequestFullScreen(); return true; }
+  } catch { /* denied */ }
+  return false;
+}
+
+async function exitFullscreen(): Promise<void> {
+  const doc = document as Document & {
+    webkitExitFullscreen?: () => Promise<void>;
+    mozCancelFullScreen?: () => Promise<void>;
+  };
+  try {
+    if (doc.exitFullscreen) await doc.exitFullscreen();
+    else if (doc.webkitExitFullscreen) await doc.webkitExitFullscreen();
+    else if (doc.mozCancelFullScreen) await doc.mozCancelFullScreen();
+  } catch { /* ignored */ }
+}
+
+function getFullscreenElement(): Element | null {
+  const doc = document as Document & {
+    webkitFullscreenElement?: Element;
+    mozFullScreenElement?: Element;
+  };
+  return doc.fullscreenElement ?? doc.webkitFullscreenElement ?? doc.mozFullScreenElement ?? null;
+}
+
 export function GalleryRoom({ gallery, onExit }: GalleryRoomProps) {
   const isMobile = useIsMobile();
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [showHints, setShowHints] = useState(true);
   const [isLocked, setIsLocked] = useState(false);
   const [selectedArtwork, setSelectedArtwork] = useState<ArtworkData | null>(null);
   const joystickRef = useRef<JoystickState>({ dx: 0, dy: 0 });
 
-  // GalleryScene populates this ref with its fireCenterRaycast so the × button can call it
+  // GalleryScene populates this with fireCenterRaycast
   const inspectRef = useRef<(() => void) | null>(null);
+
+  // Track fullscreen from any source (Esc key, etc.)
+  useEffect(() => {
+    const handler = () => setIsFullscreen(!!getFullscreenElement());
+    document.addEventListener("fullscreenchange", handler);
+    document.addEventListener("webkitfullscreenchange", handler);
+    document.addEventListener("mozfullscreenchange", handler);
+    return () => {
+      document.removeEventListener("fullscreenchange", handler);
+      document.removeEventListener("webkitfullscreenchange", handler);
+      document.removeEventListener("mozfullscreenchange", handler);
+    };
+  }, []);
+
+  const toggleFullscreen = useCallback(async () => {
+    if (getFullscreenElement()) {
+      await exitFullscreen();
+      return;
+    }
+    if (isIOS()) {
+      // iOS doesn't support the Fullscreen API — guide the user to the browser UI
+      toast("Fullscreen on iPhone", {
+        description: 'Tap the ⤢ icon in your browser toolbar, or use the "AA" menu → Hide Toolbar.',
+        duration: 5000,
+      });
+      return;
+    }
+    const ok = await requestFullscreen();
+    if (!ok) {
+      toast("Fullscreen unavailable", {
+        description: "Your browser doesn't support fullscreen mode.",
+        duration: 3000,
+      });
+    }
+  }, []);
 
   // Suppress pointer-lock errors (proxied iframe)
   useEffect(() => {
@@ -120,13 +192,12 @@ export function GalleryRoom({ gallery, onExit }: GalleryRoomProps) {
     };
   }, []);
 
-  const handleLock        = useCallback(() => setIsLocked(true), []);
-  const handleUnlock      = useCallback(() => setIsLocked(false), []);
+  const handleLock          = useCallback(() => setIsLocked(true), []);
+  const handleUnlock        = useCallback(() => setIsLocked(false), []);
   const handleArtworkSelect = useCallback((artwork: ArtworkData) => {
-    setSelectedArtwork(artwork);
-    setIsLocked(false);
+    setSelectedArtwork(artwork); setIsLocked(false);
   }, []);
-  const handleModalClose  = useCallback(() => setSelectedArtwork(null), []);
+  const handleModalClose    = useCallback(() => setSelectedArtwork(null), []);
   const handleMobileActivate = useCallback(() => {
     if (isMobile && !isLocked && !selectedArtwork) setIsLocked(true);
   }, [isMobile, isLocked, selectedArtwork]);
@@ -213,7 +284,7 @@ export function GalleryRoom({ gallery, onExit }: GalleryRoomProps) {
         </div>
       )}
 
-      {/* MOBILE — active: crosshair + joystick + controller buttons */}
+      {/* MOBILE — active: crosshair + joystick + controller face buttons */}
       {webglSupported && isMobile && mobileActive && (
         <>
           {/* Crosshair */}
@@ -221,11 +292,11 @@ export function GalleryRoom({ gallery, onExit }: GalleryRoomProps) {
             <div className="w-1.5 h-1.5 rounded-full bg-white/60 ring-1 ring-black/40" />
           </div>
 
-          {/* Hint strip (below page header) */}
+          {/* Hint strip */}
           {showHints && (
             <div className="absolute top-16 left-0 right-0 flex justify-center pointer-events-none">
               <p className="font-mono text-[9px] tracking-widest text-white/20">
-                × INSPECT · △ EXIT · □ HINTS
+                × INSPECT · ○ FULLSCREEN · △ EXIT · □ HINTS
               </p>
             </div>
           )}
@@ -235,27 +306,52 @@ export function GalleryRoom({ gallery, onExit }: GalleryRoomProps) {
             <VirtualJoystick stateRef={joystickRef} />
           </div>
 
-          {/* Controller button cluster — bottom right (PlayStation diamond layout) */}
+          {/*
+            Controller face-button cluster — bottom right
+            PlayStation diamond layout (all buttons same size w-11 h-11):
+
+                  △          ← top-center    (exit, red)
+               □     ○       ← mid-left/right (hints purple, fullscreen cyan)
+                  ×          ← bottom-center  (inspect, amber)
+
+            Container: 104 × 164 px
+            Button size: 44px. Gap between buttons: 16px.
+            Positions (top-left of each button):
+              △ → left=30, top=0
+              □ → left=0,  top=60
+              ○ → left=60, top=60
+              × → left=30, top=120
+          */}
           <div
             className="absolute bottom-8 right-6 z-10 select-none"
             data-controls
-            style={{ width: 100, height: 128 }}
+            style={{ width: 104, height: 164 }}
           >
-            {/* △  top-center — Exit gallery */}
-            <div className="absolute" style={{ top: 0, left: "50%", transform: "translateX(-50%)" }}>
-              <ControlBtn symbol="△" label="Exit gallery" accent="#ff6b6b" size="sm"
+            {/* △ — Exit gallery */}
+            <div className="absolute" style={{ top: 0, left: 30 }}>
+              <ControlBtn symbol="△" label="Exit gallery" accent="#ff6b6b"
                 onClick={() => onExit?.()} disabled={!onExit} />
             </div>
 
-            {/* □  middle-left — Toggle hints */}
-            <div className="absolute" style={{ top: 42, left: 0 }}>
-              <ControlBtn symbol="□" label="Toggle hints" accent="#a78bfa" size="sm"
+            {/* □ — Toggle hints */}
+            <div className="absolute" style={{ top: 60, left: 0 }}>
+              <ControlBtn symbol="□" label="Toggle hints" accent="#a78bfa"
                 onClick={() => setShowHints((h) => !h)} />
             </div>
 
-            {/* ×  bottom-center — Inspect artwork (primary) */}
-            <div className="absolute" style={{ bottom: 0, left: "50%", transform: "translateX(-50%)" }}>
-              <ControlBtn symbol="×" label="Inspect artwork" accent="#f59e0b" size="lg"
+            {/* ○ — Fullscreen */}
+            <div className="absolute" style={{ top: 60, left: 60 }}>
+              <ControlBtn
+                symbol={isFullscreen ? "⊠" : "○"}
+                label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+                accent="#22d3ee"
+                onClick={toggleFullscreen}
+              />
+            </div>
+
+            {/* × — Inspect artwork */}
+            <div className="absolute" style={{ top: 120, left: 30 }}>
+              <ControlBtn symbol="×" label="Inspect artwork" accent="#f59e0b"
                 onClick={() => inspectRef.current?.()} />
             </div>
           </div>
