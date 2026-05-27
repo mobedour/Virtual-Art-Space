@@ -82,13 +82,15 @@ function WebGLUnsupportedFallback() {
   );
 }
 
-function ControlBtn({ symbol, label, accent, onClick, disabled = false }: {
+function ControlBtn({ symbol, label, accent, onClick, disabled = false, size = "md" }: {
   symbol: string; label: string; accent: string; onClick: () => void; disabled?: boolean;
+  size?: "md" | "lg";
 }) {
+  const dim = size === "lg" ? "w-14 h-14 text-2xl" : "w-12 h-12 text-lg";
   return (
     <button aria-label={label} onClick={onClick} disabled={disabled}
       style={{ borderColor: accent, color: accent }}
-      className={`w-11 h-11 rounded-full border-2 bg-black/60 backdrop-blur-md flex items-center justify-center text-base font-bold transition-all duration-150 active:scale-90 active:bg-white/10 select-none touch-manipulation ${disabled ? "opacity-30" : "opacity-80 hover:opacity-100"}`}>
+      className={`${dim} rounded-full border-2 bg-black/65 backdrop-blur-md flex items-center justify-center font-bold transition-all duration-150 active:scale-90 active:bg-white/10 select-none touch-manipulation shadow-lg shadow-black/40 ${disabled ? "opacity-30" : "opacity-90 hover:opacity-100"}`}>
       {symbol}
     </button>
   );
@@ -422,9 +424,16 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner }: Gallery
         window.history.pushState({ vasImmersive: true }, "");
         return;
       }
-      if (isPaused) { setIsPaused(false); setIsLocked(isMobile); window.history.pushState({ vasImmersive: true }, ""); return; }
-      // Nothing left — actually exit the gallery
-      onExit?.();
+      if (isPaused) {
+        // Back from pause menu → exit the gallery
+        onExit?.();
+        return;
+      }
+      // Walking with no overlays open → open the pause menu first (so the
+      // user gets a chance to confirm) instead of immediately exiting.
+      setIsPaused(true);
+      setIsLocked(false);
+      window.history.pushState({ vasImmersive: true }, "");
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
@@ -858,31 +867,55 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner }: Gallery
                 data-joystick
                 style={{
                   left: "max(1.5rem, env(safe-area-inset-left))",
-                  bottom: `calc(${isEditMode ? "8.5rem" : "2rem"} + env(safe-area-inset-bottom))`,
+                  bottom: `calc(${isEditMode ? "9rem" : "2rem"} + env(safe-area-inset-bottom))`,
                 }}
               >
                 <VirtualJoystick stateRef={joystickRef} />
               </div>
-              {/* Right-side compact controls */}
+              {/* Right-side control cluster — 2-column grid so it stays
+                  compact in both portrait and landscape orientations. */}
               <div
-                className="absolute z-20 flex flex-col gap-2 items-end select-none"
+                className="absolute z-20 grid grid-cols-2 gap-3 select-none"
                 data-controls
                 style={{
                   right: "max(1rem, env(safe-area-inset-right))",
-                  bottom: `calc(${isEditMode ? "8.5rem" : "2rem"} + env(safe-area-inset-bottom))`,
+                  bottom: `calc(${isEditMode ? "9rem" : "2rem"} + env(safe-area-inset-bottom))`,
                 }}
               >
                 <ControlBtn
                   symbol="☰"
                   label="Menu"
                   accent="#f5c060"
+                  size="lg"
                   onClick={() => { setIsLocked(false); setIsPaused(true); }}
+                />
+                <ControlBtn
+                  symbol={inAnyFullscreen ? "⊠" : "⛶"}
+                  label="Fullscreen"
+                  accent="#22d3ee"
+                  size="lg"
+                  onClick={toggleFullscreen}
+                />
+                <ControlBtn
+                  symbol={audioMuted ? "🔇" : "🔊"}
+                  label="Audio"
+                  accent="#a78bfa"
+                  size="lg"
+                  onClick={handleToggleAudio}
+                />
+                <ControlBtn
+                  symbol={showHints ? "ⓘ" : "ⓘ"}
+                  label="Toggle hints"
+                  accent={showHints ? "#f5c060" : "#71717a"}
+                  size="lg"
+                  onClick={() => setShowHints((h) => !h)}
                 />
                 {!isEditMode && (
                   <ControlBtn
                     symbol="◎"
                     label="Inspect artwork"
                     accent="#f59e0b"
+                    size="lg"
                     onClick={() => inspectRef.current?.()}
                   />
                 )}
@@ -891,8 +924,8 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner }: Gallery
                     symbol="✓"
                     label="Pick / Drop"
                     accent="#f5c060"
+                    size="lg"
                     onClick={() => {
-                      // Fire a synthetic click on the canvas to trigger pick/drop
                       const canvas = document.querySelector("canvas");
                       canvas?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
                     }}
