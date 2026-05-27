@@ -508,8 +508,11 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner }: Gallery
   const handleLock       = useCallback(() => setIsLocked(true), []);
   const handleUnlock     = useCallback(() => {
     setIsLocked(false);
-    if (!selectedArtwork) setIsPaused(true);
-  }, [selectedArtwork]);
+    // In edit mode the pointer is intentionally unlocked so the user can
+    // use the toolbar — don't auto-show the pause overlay (it would hide
+    // edit mode and swallow the next canvas click meant for drop).
+    if (!selectedArtwork && !isEditMode) setIsPaused(true);
+  }, [selectedArtwork, isEditMode]);
 
   const handleArtworkSelect = useCallback((artwork: ArtworkData) => {
     if (isEditMode) return; // in edit mode, drag instead of select
