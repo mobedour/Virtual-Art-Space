@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, count, sql } from "drizzle-orm";
-import { db, galleriesTable, artworksTable, profilesTable } from "@workspace/db";
+import { db, galleriesTable, artworksTable, profilesTable, galleryDecorationsTable } from "@workspace/db";
 
 const router: IRouter = Router();
 
@@ -64,7 +64,9 @@ router.get("/public/galleries/:slug", async (req, res): Promise<void> => {
       roomSeed: galleriesTable.roomSeed,
       roomMode: galleriesTable.roomMode,
       roomSize: galleriesTable.roomSize,
+      roomHeight: galleriesTable.roomHeight,
       decorationLevel: galleriesTable.decorationLevel,
+      lightingMood: galleriesTable.lightingMood,
       userId: galleriesTable.userId,
       artistName: profilesTable.displayName,
     })
@@ -84,6 +86,7 @@ router.get("/public/galleries/:slug", async (req, res): Promise<void> => {
 
   res.json({
     id: gallery.id,
+    userId: gallery.userId,
     title: gallery.title,
     description: gallery.description,
     slug: gallery.slug,
@@ -91,7 +94,9 @@ router.get("/public/galleries/:slug", async (req, res): Promise<void> => {
     roomSeed: gallery.roomSeed,
     roomMode: gallery.roomMode,
     roomSize: gallery.roomSize,
+    roomHeight: gallery.roomHeight,
     decorationLevel: gallery.decorationLevel,
+    lightingMood: gallery.lightingMood,
     artistName: gallery.artistName,
     artworks: artworks.map((a) => ({
       id: a.id,
@@ -112,6 +117,38 @@ router.get("/public/galleries/:slug", async (req, res): Promise<void> => {
       createdAt: a.createdAt.toISOString(),
     })),
   });
+});
+
+router.get("/public/galleries/:slug/decorations", async (req, res): Promise<void> => {
+  const { slug } = req.params;
+  const rawSlug = Array.isArray(slug) ? slug[0] : slug;
+
+  const [gallery] = await db
+    .select({ id: galleriesTable.id })
+    .from(galleriesTable)
+    .where(eq(galleriesTable.slug, rawSlug));
+
+  if (!gallery) {
+    res.status(404).json({ error: "Gallery not found" });
+    return;
+  }
+
+  const decorations = await db
+    .select()
+    .from(galleryDecorationsTable)
+    .where(eq(galleryDecorationsTable.galleryId, gallery.id));
+
+  res.json(
+    decorations.map((d) => ({
+      id: d.id,
+      galleryId: d.galleryId,
+      type: d.type,
+      x: d.x,
+      z: d.z,
+      rotY: d.rotY,
+      createdAt: d.createdAt.toISOString(),
+    }))
+  );
 });
 
 export default router;

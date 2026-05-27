@@ -21,4 +21,6 @@ export interface Gallery {
   roomMode: string;
   roomSize: number;
   decorationLevel: number;
+  roomHeight: number;
+  lightingMood: number;
 }

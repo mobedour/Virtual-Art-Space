@@ -244,6 +244,168 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /galleries/{id}/room:
+    patch:
+      operationId: patchGalleryRoom
+      tags: [galleries]
+      summary: Update gallery room settings (theme, size, lighting, etc.)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GalleryRoomPatch"
+      responses:
+        "200":
+          description: Updated gallery
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Gallery"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /galleries/{id}/decorations:
+    get:
+      operationId: listGalleryDecorations
+      tags: [galleries]
+      summary: List manual decorations for a gallery
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of decorations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GalleryDecoration"
+    post:
+      operationId: createGalleryDecoration
+      tags: [galleries]
+      summary: Place a decoration in the gallery
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GalleryDecorationInput"
+      responses:
+        "201":
+          description: Created decoration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GalleryDecoration"
+        "404":
+          description: Gallery not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /galleries/{id}/decorations/{decorId}:
+    patch:
+      operationId: updateGalleryDecoration
+      tags: [galleries]
+      summary: Update a placed decoration
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: decorId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GalleryDecorationPatch"
+      responses:
+        "200":
+          description: Updated decoration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GalleryDecoration"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteGalleryDecoration
+      tags: [galleries]
+      summary: Remove a placed decoration
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: decorId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /galleries/{id}/decorations/reset:
+    delete:
+      operationId: resetGalleryDecorations
+      tags: [galleries]
+      summary: Remove all manual decorations (restore seeded-RNG layout)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: All decorations removed
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /artworks/gallery/{galleryId}:
     get:
       operationId: listArtworks
@@ -346,6 +508,36 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /artworks/{id}/placement:
+    patch:
+      operationId: patchArtworkPlacement
+      tags: [artworks]
+      summary: Update artwork placement in room (owner only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ArtworkPlacementPatch"
+      responses:
+        "200":
+          description: Updated artwork
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Artwork"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /public/galleries:
     get:
@@ -380,6 +572,33 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PublicGalleryDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /public/galleries/{slug}/decorations:
+    get:
+      operationId: getPublicGalleryDecorations
+      tags: [public]
+      summary: Get manual decorations for a published gallery
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of decorations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GalleryDecoration"
         "404":
           description: Not found
           content:
@@ -497,6 +716,10 @@ components:
           type: integer
         decorationLevel:
           type: integer
+        roomHeight:
+          type: integer
+        lightingMood:
+          type: number
       required:
         - id
         - userId
@@ -510,6 +733,8 @@ components:
         - roomMode
         - roomSize
         - decorationLevel
+        - roomHeight
+        - lightingMood
 
     GalleryInput:
       type: object
@@ -557,6 +782,30 @@ components:
           minimum: 1
           maximum: 10
 
+    GalleryRoomPatch:
+      type: object
+      properties:
+        roomTheme:
+          type: string
+        roomSize:
+          type: integer
+          minimum: 1
+          maximum: 10
+        roomHeight:
+          type: integer
+          minimum: 1
+          maximum: 10
+        decorationLevel:
+          type: integer
+          minimum: 1
+          maximum: 10
+        lightingMood:
+          type: number
+          minimum: 0.5
+          maximum: 2.0
+        roomMode:
+          type: string
+
     PublishToggle:
       type: object
       properties:
@@ -564,6 +813,59 @@ components:
           type: boolean
       required:
         - published
+
+    GalleryDecoration:
+      type: object
+      properties:
+        id:
+          type: integer
+        galleryId:
+          type: integer
+        type:
+          type: string
+        x:
+          type: number
+        z:
+          type: number
+        rotY:
+          type: number
+        createdAt:
+          type: string
+      required:
+        - id
+        - galleryId
+        - type
+        - x
+        - z
+        - rotY
+        - createdAt
+
+    GalleryDecorationInput:
+      type: object
+      properties:
+        type:
+          type: string
+        x:
+          type: number
+        z:
+          type: number
+        rotY:
+          type: number
+      required:
+        - type
+        - x
+        - z
+        - rotY
+
+    GalleryDecorationPatch:
+      type: object
+      properties:
+        x:
+          type: number
+        z:
+          type: number
+        rotY:
+          type: number
 
     Artwork:
       type: object
@@ -680,6 +982,22 @@ components:
         isManuallyPlaced:
           type: boolean
 
+    ArtworkPlacementPatch:
+      type: object
+      properties:
+        xPosition:
+          type: number
+        yPosition:
+          type: number
+        zPosition:
+          type: number
+        rotation:
+          type: number
+        scale:
+          type: number
+        isManuallyPlaced:
+          type: boolean
+
     UploadResponse:
       type: object
       properties:
@@ -723,6 +1041,8 @@ components:
       properties:
         id:
           type: integer
+        userId:
+          type: integer
         title:
           type: string
         description:
@@ -737,8 +1057,12 @@ components:
           type: string
         roomSize:
           type: integer
+        roomHeight:
+          type: integer
         decorationLevel:
           type: integer
+        lightingMood:
+          type: number
         artistName:
           type: ["string", "null"]
         artworks:
@@ -747,13 +1071,16 @@ components:
             $ref: "#/components/schemas/Artwork"
       required:
         - id
+        - userId
         - title
         - slug
         - roomTheme
         - roomSeed
         - roomMode
         - roomSize
+        - roomHeight
         - decorationLevel
+        - lightingMood
         - artworks
 
     DashboardStats:

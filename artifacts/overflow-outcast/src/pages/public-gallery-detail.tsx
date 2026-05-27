@@ -1,18 +1,11 @@
 import { useCallback } from "react";
 import { Link, useLocation, useParams } from "wouter";
-import { useGetPublicGallery, getGetPublicGalleryQueryKey } from "@workspace/api-client-react";
+import { useGetPublicGallery, getGetPublicGalleryQueryKey, useGetMe } from "@workspace/api-client-react";
 import { PublicLayout } from "@/components/public-layout";
 import { Button } from "@/components/ui/button";
 import { Loader2, ArrowLeft } from "lucide-react";
 import { GalleryRoom } from "@/components/gallery-room/GalleryRoom";
-
-const THEME_LABELS: Record<string, string> = {
-  dark_void:       "Dark Void",
-  neon_grid:       "Neon Grid",
-  purple_mist:     "Purple Mist",
-  white_cube:      "White Cube",
-  concrete_bunker: "Concrete Bunker",
-};
+import { THEME_DISPLAY_NAMES } from "@/components/gallery-room/theme-config";
 
 export default function PublicGalleryDetail() {
   const { slug } = useParams();
@@ -21,6 +14,8 @@ export default function PublicGalleryDetail() {
   const { data: gallery, isLoading, error } = useGetPublicGallery(slug || "", {
     query: { queryKey: getGetPublicGalleryQueryKey(slug || ""), enabled: !!slug },
   });
+
+  const { data: me } = useGetMe({});
 
   const handleExit = useCallback(() => setLocation("/galleries"), [setLocation]);
 
@@ -50,7 +45,8 @@ export default function PublicGalleryDetail() {
     );
   }
 
-  const themeLabel = THEME_LABELS[gallery.roomTheme] ?? gallery.roomTheme;
+  const themeLabel = THEME_DISPLAY_NAMES[gallery.roomTheme] ?? gallery.roomTheme;
+  const isOwner = me != null && gallery.userId != null && me.id === gallery.userId;
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
@@ -94,8 +90,14 @@ export default function PublicGalleryDetail() {
             roomMode: gallery.roomMode,
             roomSize: gallery.roomSize,
             decorationLevel: gallery.decorationLevel,
+            roomHeight: gallery.roomHeight,
+            lightingMood: gallery.lightingMood,
+            galleryTitle: gallery.title,
+            artistName: gallery.artistName ?? undefined,
           }}
           onExit={handleExit}
+          isOwner={isOwner}
+          onEditRequest={isOwner ? () => setLocation(`/dashboard`) : undefined}
         />
       </main>
     </div>

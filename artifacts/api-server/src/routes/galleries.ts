@@ -11,8 +11,19 @@ import {
   ToggleGalleryPublishBody,
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/requireAuth";
+import { z } from "zod";
 
 const router: IRouter = Router();
+
+const PatchRoomParams = z.object({ id: z.coerce.number().int().positive() });
+const PatchRoomBody = z.object({
+  roomTheme: z.string().optional(),
+  roomSize: z.number().int().min(1).max(10).optional(),
+  roomHeight: z.number().int().min(1).max(10).optional(),
+  decorationLevel: z.number().int().min(1).max(10).optional(),
+  lightingMood: z.number().min(0.5).max(2.0).optional(),
+  roomMode: z.string().optional(),
+});
 
 function generateSlug(title: string): string {
   return (
@@ -43,6 +54,8 @@ async function galleryWithCount(gallery: typeof galleriesTable.$inferSelect) {
     roomMode: gallery.roomMode,
     roomSize: gallery.roomSize,
     decorationLevel: gallery.decorationLevel,
+    roomHeight: gallery.roomHeight,
+    lightingMood: gallery.lightingMood,
     artworkCount: Number(artworkCount),
     createdAt: gallery.createdAt.toISOString(),
   };
@@ -116,6 +129,33 @@ router.put("/galleries/:id", requireAuth, async (req, res): Promise<void> => {
     return;
   }
   const parsed = UpdateGalleryBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const userId = req.user!.userId;
+
+  const [gallery] = await db
+    .update(galleriesTable)
+    .set(parsed.data)
+    .where(and(eq(galleriesTable.id, params.data.id), eq(galleriesTable.userId, userId)))
+    .returning();
+
+  if (!gallery) {
+    res.status(404).json({ error: "Gallery not found" });
+    return;
+  }
+
+  res.json(await galleryWithCount(gallery));
+});
+
+router.patch("/galleries/:id/room", requireAuth, async (req, res): Promise<void> => {
+  const params = PatchRoomParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const parsed = PatchRoomBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;

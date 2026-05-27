@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useFrame } from "@react-three/fiber";
 import { Text } from "@react-three/drei";
 import * as THREE from "three";
 
@@ -25,8 +26,12 @@ export type ArtworkData = {
   yPosition?: number;
   zPosition?: number;
   rotation?: number;
+  scale?: number;
   isManuallyPlaced?: boolean;
 };
+
+const GLOW_DISTANCE = 3.5;
+const GLOW_MAX = 0.18;
 
 interface ArtworkFrameProps {
   artwork: ArtworkData;
@@ -107,6 +112,18 @@ export function ArtworkFrame({
   const [texture, setTexture] = useState<THREE.Texture | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const cancelRef = useRef(false);
+  const matEdgeRef = useRef<THREE.MeshStandardMaterial>(null);
+  const glowRef = useRef(0);
+
+  // Proximity glow on the mat edge — lerps emissiveIntensity toward GLOW_MAX
+  // when camera is within GLOW_DISTANCE units of the artwork position.
+  useFrame(({ camera }) => {
+    if (!matEdgeRef.current) return;
+    const dist = camera.position.distanceTo(new THREE.Vector3(...position));
+    const target = dist < GLOW_DISTANCE ? GLOW_MAX * (1 - dist / GLOW_DISTANCE) : 0;
+    glowRef.current = THREE.MathUtils.lerp(glowRef.current, target, 0.12);
+    matEdgeRef.current.emissiveIntensity = glowRef.current;
+  });
 
   const placeholderTexture = useMemo(
     () => makePlaceholderTexture(artwork.title, frameColor),
@@ -182,10 +199,16 @@ export function ArtworkFrame({
         <meshStandardMaterial color="#0a0806" roughness={1} />
       </mesh>
 
-      {/* Mat board — cream */}
+      {/* Mat board — cream with proximity glow */}
       <mesh position={[0, 0, 0.016]}>
         <planeGeometry args={[IMAGE_W + MAT_INSET * 2 - 0.01, IMAGE_H + MAT_INSET * 2 - 0.01]} />
-        <meshStandardMaterial color="#f0ebe0" roughness={0.98} />
+        <meshStandardMaterial
+          ref={matEdgeRef}
+          color="#f0ebe0"
+          roughness={0.98}
+          emissive="#f5c060"
+          emissiveIntensity={0}
+        />
       </mesh>
 
       {/* Artwork canvas */}

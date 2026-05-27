@@ -22,11 +22,16 @@ import type {
 import type {
   Artwork,
   ArtworkInput,
+  ArtworkPlacementPatch,
   ArtworkUpdate,
   DashboardStats,
   ErrorResponse,
   Gallery,
+  GalleryDecoration,
+  GalleryDecorationInput,
+  GalleryDecorationPatch,
   GalleryInput,
+  GalleryRoomPatch,
   GalleryUpdate,
   HealthStatus,
   Profile,
@@ -790,6 +795,443 @@ export const useToggleGalleryPublish = <TError = ErrorType<ErrorResponse>,
       return useMutation(getToggleGalleryPublishMutationOptions(options));
     }
 
+export const getPatchGalleryRoomUrl = (id: number,) => {
+
+
+
+
+  return `/api/galleries/${id}/room`
+}
+
+/**
+ * @summary Update gallery room settings (theme, size, lighting, etc.)
+ */
+export const patchGalleryRoom = async (id: number,
+    galleryRoomPatch: GalleryRoomPatch, options?: RequestInit): Promise<Gallery> => {
+
+  return customFetch<Gallery>(getPatchGalleryRoomUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      galleryRoomPatch,)
+  }
+);}
+
+
+
+
+export const getPatchGalleryRoomMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchGalleryRoom>>, TError,{id: number;data: BodyType<GalleryRoomPatch>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof patchGalleryRoom>>, TError,{id: number;data: BodyType<GalleryRoomPatch>}, TContext> => {
+
+const mutationKey = ['patchGalleryRoom'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof patchGalleryRoom>>, {id: number;data: BodyType<GalleryRoomPatch>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  patchGalleryRoom(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PatchGalleryRoomMutationResult = NonNullable<Awaited<ReturnType<typeof patchGalleryRoom>>>
+    export type PatchGalleryRoomMutationBody = BodyType<GalleryRoomPatch>
+    export type PatchGalleryRoomMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Update gallery room settings (theme, size, lighting, etc.)
+ */
+export const usePatchGalleryRoom = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchGalleryRoom>>, TError,{id: number;data: BodyType<GalleryRoomPatch>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof patchGalleryRoom>>,
+        TError,
+        {id: number;data: BodyType<GalleryRoomPatch>},
+        TContext
+      > => {
+      return useMutation(getPatchGalleryRoomMutationOptions(options));
+    }
+
+export const getListGalleryDecorationsUrl = (id: number,) => {
+
+
+
+
+  return `/api/galleries/${id}/decorations`
+}
+
+/**
+ * @summary List manual decorations for a gallery
+ */
+export const listGalleryDecorations = async (id: number, options?: RequestInit): Promise<GalleryDecoration[]> => {
+
+  return customFetch<GalleryDecoration[]>(getListGalleryDecorationsUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListGalleryDecorationsQueryKey = (id: number,) => {
+    return [
+    `/api/galleries/${id}/decorations`
+    ] as const;
+    }
+
+
+export const getListGalleryDecorationsQueryOptions = <TData = Awaited<ReturnType<typeof listGalleryDecorations>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listGalleryDecorations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListGalleryDecorationsQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listGalleryDecorations>>> = ({ signal }) => listGalleryDecorations(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listGalleryDecorations>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListGalleryDecorationsQueryResult = NonNullable<Awaited<ReturnType<typeof listGalleryDecorations>>>
+export type ListGalleryDecorationsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List manual decorations for a gallery
+ */
+
+export function useListGalleryDecorations<TData = Awaited<ReturnType<typeof listGalleryDecorations>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listGalleryDecorations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListGalleryDecorationsQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCreateGalleryDecorationUrl = (id: number,) => {
+
+
+
+
+  return `/api/galleries/${id}/decorations`
+}
+
+/**
+ * @summary Place a decoration in the gallery
+ */
+export const createGalleryDecoration = async (id: number,
+    galleryDecorationInput: GalleryDecorationInput, options?: RequestInit): Promise<GalleryDecoration> => {
+
+  return customFetch<GalleryDecoration>(getCreateGalleryDecorationUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      galleryDecorationInput,)
+  }
+);}
+
+
+
+
+export const getCreateGalleryDecorationMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createGalleryDecoration>>, TError,{id: number;data: BodyType<GalleryDecorationInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createGalleryDecoration>>, TError,{id: number;data: BodyType<GalleryDecorationInput>}, TContext> => {
+
+const mutationKey = ['createGalleryDecoration'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createGalleryDecoration>>, {id: number;data: BodyType<GalleryDecorationInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  createGalleryDecoration(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateGalleryDecorationMutationResult = NonNullable<Awaited<ReturnType<typeof createGalleryDecoration>>>
+    export type CreateGalleryDecorationMutationBody = BodyType<GalleryDecorationInput>
+    export type CreateGalleryDecorationMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Place a decoration in the gallery
+ */
+export const useCreateGalleryDecoration = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createGalleryDecoration>>, TError,{id: number;data: BodyType<GalleryDecorationInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createGalleryDecoration>>,
+        TError,
+        {id: number;data: BodyType<GalleryDecorationInput>},
+        TContext
+      > => {
+      return useMutation(getCreateGalleryDecorationMutationOptions(options));
+    }
+
+export const getUpdateGalleryDecorationUrl = (id: number,
+    decorId: number,) => {
+
+
+
+
+  return `/api/galleries/${id}/decorations/${decorId}`
+}
+
+/**
+ * @summary Update a placed decoration
+ */
+export const updateGalleryDecoration = async (id: number,
+    decorId: number,
+    galleryDecorationPatch: GalleryDecorationPatch, options?: RequestInit): Promise<GalleryDecoration> => {
+
+  return customFetch<GalleryDecoration>(getUpdateGalleryDecorationUrl(id,decorId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      galleryDecorationPatch,)
+  }
+);}
+
+
+
+
+export const getUpdateGalleryDecorationMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateGalleryDecoration>>, TError,{id: number;decorId: number;data: BodyType<GalleryDecorationPatch>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateGalleryDecoration>>, TError,{id: number;decorId: number;data: BodyType<GalleryDecorationPatch>}, TContext> => {
+
+const mutationKey = ['updateGalleryDecoration'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateGalleryDecoration>>, {id: number;decorId: number;data: BodyType<GalleryDecorationPatch>}> = (props) => {
+          const {id,decorId,data} = props ?? {};
+
+          return  updateGalleryDecoration(id,decorId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateGalleryDecorationMutationResult = NonNullable<Awaited<ReturnType<typeof updateGalleryDecoration>>>
+    export type UpdateGalleryDecorationMutationBody = BodyType<GalleryDecorationPatch>
+    export type UpdateGalleryDecorationMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Update a placed decoration
+ */
+export const useUpdateGalleryDecoration = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateGalleryDecoration>>, TError,{id: number;decorId: number;data: BodyType<GalleryDecorationPatch>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateGalleryDecoration>>,
+        TError,
+        {id: number;decorId: number;data: BodyType<GalleryDecorationPatch>},
+        TContext
+      > => {
+      return useMutation(getUpdateGalleryDecorationMutationOptions(options));
+    }
+
+export const getDeleteGalleryDecorationUrl = (id: number,
+    decorId: number,) => {
+
+
+
+
+  return `/api/galleries/${id}/decorations/${decorId}`
+}
+
+/**
+ * @summary Remove a placed decoration
+ */
+export const deleteGalleryDecoration = async (id: number,
+    decorId: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteGalleryDecorationUrl(id,decorId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteGalleryDecorationMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteGalleryDecoration>>, TError,{id: number;decorId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteGalleryDecoration>>, TError,{id: number;decorId: number}, TContext> => {
+
+const mutationKey = ['deleteGalleryDecoration'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteGalleryDecoration>>, {id: number;decorId: number}> = (props) => {
+          const {id,decorId} = props ?? {};
+
+          return  deleteGalleryDecoration(id,decorId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteGalleryDecorationMutationResult = NonNullable<Awaited<ReturnType<typeof deleteGalleryDecoration>>>
+
+    export type DeleteGalleryDecorationMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Remove a placed decoration
+ */
+export const useDeleteGalleryDecoration = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteGalleryDecoration>>, TError,{id: number;decorId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteGalleryDecoration>>,
+        TError,
+        {id: number;decorId: number},
+        TContext
+      > => {
+      return useMutation(getDeleteGalleryDecorationMutationOptions(options));
+    }
+
+export const getResetGalleryDecorationsUrl = (id: number,) => {
+
+
+
+
+  return `/api/galleries/${id}/decorations/reset`
+}
+
+/**
+ * @summary Remove all manual decorations (restore seeded-RNG layout)
+ */
+export const resetGalleryDecorations = async (id: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getResetGalleryDecorationsUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getResetGalleryDecorationsMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resetGalleryDecorations>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resetGalleryDecorations>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['resetGalleryDecorations'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resetGalleryDecorations>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  resetGalleryDecorations(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResetGalleryDecorationsMutationResult = NonNullable<Awaited<ReturnType<typeof resetGalleryDecorations>>>
+
+    export type ResetGalleryDecorationsMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Remove all manual decorations (restore seeded-RNG layout)
+ */
+export const useResetGalleryDecorations = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resetGalleryDecorations>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof resetGalleryDecorations>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getResetGalleryDecorationsMutationOptions(options));
+    }
+
 export const getListArtworksUrl = (galleryId: number,) => {
 
 
@@ -1080,6 +1522,78 @@ export const useDeleteArtwork = <TError = ErrorType<ErrorResponse>,
       return useMutation(getDeleteArtworkMutationOptions(options));
     }
 
+export const getPatchArtworkPlacementUrl = (id: number,) => {
+
+
+
+
+  return `/api/artworks/${id}/placement`
+}
+
+/**
+ * @summary Update artwork placement in room (owner only)
+ */
+export const patchArtworkPlacement = async (id: number,
+    artworkPlacementPatch: ArtworkPlacementPatch, options?: RequestInit): Promise<Artwork> => {
+
+  return customFetch<Artwork>(getPatchArtworkPlacementUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      artworkPlacementPatch,)
+  }
+);}
+
+
+
+
+export const getPatchArtworkPlacementMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchArtworkPlacement>>, TError,{id: number;data: BodyType<ArtworkPlacementPatch>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof patchArtworkPlacement>>, TError,{id: number;data: BodyType<ArtworkPlacementPatch>}, TContext> => {
+
+const mutationKey = ['patchArtworkPlacement'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof patchArtworkPlacement>>, {id: number;data: BodyType<ArtworkPlacementPatch>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  patchArtworkPlacement(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PatchArtworkPlacementMutationResult = NonNullable<Awaited<ReturnType<typeof patchArtworkPlacement>>>
+    export type PatchArtworkPlacementMutationBody = BodyType<ArtworkPlacementPatch>
+    export type PatchArtworkPlacementMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Update artwork placement in room (owner only)
+ */
+export const usePatchArtworkPlacement = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchArtworkPlacement>>, TError,{id: number;data: BodyType<ArtworkPlacementPatch>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof patchArtworkPlacement>>,
+        TError,
+        {id: number;data: BodyType<ArtworkPlacementPatch>},
+        TContext
+      > => {
+      return useMutation(getPatchArtworkPlacementMutationOptions(options));
+    }
+
 export const getListPublicGalleriesUrl = () => {
 
 
@@ -1222,6 +1736,83 @@ export function useGetPublicGallery<TData = Awaited<ReturnType<typeof getPublicG
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetPublicGalleryQueryOptions(slug,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetPublicGalleryDecorationsUrl = (slug: string,) => {
+
+
+
+
+  return `/api/public/galleries/${slug}/decorations`
+}
+
+/**
+ * @summary Get manual decorations for a published gallery
+ */
+export const getPublicGalleryDecorations = async (slug: string, options?: RequestInit): Promise<GalleryDecoration[]> => {
+
+  return customFetch<GalleryDecoration[]>(getGetPublicGalleryDecorationsUrl(slug),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPublicGalleryDecorationsQueryKey = (slug: string,) => {
+    return [
+    `/api/public/galleries/${slug}/decorations`
+    ] as const;
+    }
+
+
+export const getGetPublicGalleryDecorationsQueryOptions = <TData = Awaited<ReturnType<typeof getPublicGalleryDecorations>>, TError = ErrorType<ErrorResponse>>(slug: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPublicGalleryDecorations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPublicGalleryDecorationsQueryKey(slug);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPublicGalleryDecorations>>> = ({ signal }) => getPublicGalleryDecorations(slug, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(slug), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPublicGalleryDecorations>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPublicGalleryDecorationsQueryResult = NonNullable<Awaited<ReturnType<typeof getPublicGalleryDecorations>>>
+export type GetPublicGalleryDecorationsQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get manual decorations for a published gallery
+ */
+
+export function useGetPublicGalleryDecorations<TData = Awaited<ReturnType<typeof getPublicGalleryDecorations>>, TError = ErrorType<ErrorResponse>>(
+ slug: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPublicGalleryDecorations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPublicGalleryDecorationsQueryOptions(slug,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

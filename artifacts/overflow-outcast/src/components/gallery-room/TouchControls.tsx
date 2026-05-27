@@ -4,7 +4,7 @@ import * as THREE from "three";
 import type { JoystickState } from "./VirtualJoystick";
 
 const EYE_Y = 0;
-const LOOK_SENSITIVITY = 0.004;
+const BASE_LOOK_SENSITIVITY = 0.004;
 const MOVE_SPEED = 7;
 const TAP_MOVE_THRESHOLD = 12; // pixels — below this counts as a tap
 
@@ -14,6 +14,8 @@ interface TouchControlsProps {
   onArtworkTap: () => void;
   halfW: number;
   halfD: number;
+  lookSensitivity?: number;
+  walkSpeed?: number;
 }
 
 export function TouchControls({
@@ -22,6 +24,8 @@ export function TouchControls({
   onArtworkTap,
   halfW,
   halfD,
+  lookSensitivity = 1.0,
+  walkSpeed = MOVE_SPEED,
 }: TouchControlsProps) {
   const { gl, camera } = useThree();
 
@@ -90,8 +94,8 @@ export function TouchControls({
         }
 
         if (enabled) {
-          yawRef.current -= dx * LOOK_SENSITIVITY;
-          pitchRef.current -= dy * LOOK_SENSITIVITY;
+          yawRef.current -= dx * BASE_LOOK_SENSITIVITY * lookSensitivity;
+          pitchRef.current -= dy * BASE_LOOK_SENSITIVITY * lookSensitivity;
           pitchRef.current = Math.max(
             -Math.PI / 2 + 0.05,
             Math.min(Math.PI / 2 - 0.05, pitchRef.current)
@@ -157,7 +161,7 @@ export function TouchControls({
     move.addScaledVector(right, joy.dx); // joystick right = strafe right
 
     if (move.lengthSq() > 0.0001) {
-      move.normalize().multiplyScalar(MOVE_SPEED * delta);
+      move.normalize().multiplyScalar(walkSpeed * delta);
       camera.position.add(move);
       camera.position.x = Math.max(
         -(halfW - 0.6),

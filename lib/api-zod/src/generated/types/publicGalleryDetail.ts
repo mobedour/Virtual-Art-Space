@@ -9,6 +9,7 @@ import type { Artwork } from './artwork';
 
 export interface PublicGalleryDetail {
   id: number;
+  userId: number;
   title: string;
   /** @nullable */
   description?: string | null;
@@ -17,7 +18,9 @@ export interface PublicGalleryDetail {
   roomSeed: number;
   roomMode: string;
   roomSize: number;
+  roomHeight: number;
   decorationLevel: number;
+  lightingMood: number;
   /** @nullable */
   artistName?: string | null;
   artworks: Artwork[];

@@ -73,7 +73,9 @@ export const ListGalleriesResponseItem = zod.object({
   "roomSeed": zod.number(),
   "roomMode": zod.string(),
   "roomSize": zod.number(),
-  "decorationLevel": zod.number()
+  "decorationLevel": zod.number(),
+  "roomHeight": zod.number(),
+  "lightingMood": zod.number()
 })
 export const ListGalleriesResponse = zod.array(ListGalleriesResponseItem)
 
@@ -119,7 +121,9 @@ export const GetGalleryResponse = zod.object({
   "roomSeed": zod.number(),
   "roomMode": zod.string(),
   "roomSize": zod.number(),
-  "decorationLevel": zod.number()
+  "decorationLevel": zod.number(),
+  "roomHeight": zod.number(),
+  "lightingMood": zod.number()
 })
 
 
@@ -159,7 +163,9 @@ export const UpdateGalleryResponse = zod.object({
   "roomSeed": zod.number(),
   "roomMode": zod.string(),
   "roomSize": zod.number(),
-  "decorationLevel": zod.number()
+  "decorationLevel": zod.number(),
+  "roomHeight": zod.number(),
+  "lightingMood": zod.number()
 })
 
 
@@ -195,7 +201,131 @@ export const ToggleGalleryPublishResponse = zod.object({
   "roomSeed": zod.number(),
   "roomMode": zod.string(),
   "roomSize": zod.number(),
-  "decorationLevel": zod.number()
+  "decorationLevel": zod.number(),
+  "roomHeight": zod.number(),
+  "lightingMood": zod.number()
+})
+
+
+/**
+ * @summary Update gallery room settings (theme, size, lighting, etc.)
+ */
+export const PatchGalleryRoomParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const patchGalleryRoomBodyRoomSizeMax = 10;
+
+export const patchGalleryRoomBodyRoomHeightMax = 10;
+
+export const patchGalleryRoomBodyDecorationLevelMax = 10;
+
+export const patchGalleryRoomBodyLightingMoodMin = 0.5;
+export const patchGalleryRoomBodyLightingMoodMax = 2;
+
+
+
+export const PatchGalleryRoomBody = zod.object({
+  "roomTheme": zod.string().optional(),
+  "roomSize": zod.number().min(1).max(patchGalleryRoomBodyRoomSizeMax).optional(),
+  "roomHeight": zod.number().min(1).max(patchGalleryRoomBodyRoomHeightMax).optional(),
+  "decorationLevel": zod.number().min(1).max(patchGalleryRoomBodyDecorationLevelMax).optional(),
+  "lightingMood": zod.number().min(patchGalleryRoomBodyLightingMoodMin).max(patchGalleryRoomBodyLightingMoodMax).optional(),
+  "roomMode": zod.string().optional()
+})
+
+export const PatchGalleryRoomResponse = zod.object({
+  "id": zod.number(),
+  "userId": zod.number(),
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "roomTheme": zod.string(),
+  "published": zod.boolean(),
+  "slug": zod.string(),
+  "artworkCount": zod.number(),
+  "createdAt": zod.string(),
+  "roomSeed": zod.number(),
+  "roomMode": zod.string(),
+  "roomSize": zod.number(),
+  "decorationLevel": zod.number(),
+  "roomHeight": zod.number(),
+  "lightingMood": zod.number()
+})
+
+
+/**
+ * @summary List manual decorations for a gallery
+ */
+export const ListGalleryDecorationsParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ListGalleryDecorationsResponseItem = zod.object({
+  "id": zod.number(),
+  "galleryId": zod.number(),
+  "type": zod.string(),
+  "x": zod.number(),
+  "z": zod.number(),
+  "rotY": zod.number(),
+  "createdAt": zod.string()
+})
+export const ListGalleryDecorationsResponse = zod.array(ListGalleryDecorationsResponseItem)
+
+
+/**
+ * @summary Place a decoration in the gallery
+ */
+export const CreateGalleryDecorationParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const CreateGalleryDecorationBody = zod.object({
+  "type": zod.string(),
+  "x": zod.number(),
+  "z": zod.number(),
+  "rotY": zod.number()
+})
+
+
+/**
+ * @summary Update a placed decoration
+ */
+export const UpdateGalleryDecorationParams = zod.object({
+  "id": zod.coerce.number(),
+  "decorId": zod.coerce.number()
+})
+
+export const UpdateGalleryDecorationBody = zod.object({
+  "x": zod.number().optional(),
+  "z": zod.number().optional(),
+  "rotY": zod.number().optional()
+})
+
+export const UpdateGalleryDecorationResponse = zod.object({
+  "id": zod.number(),
+  "galleryId": zod.number(),
+  "type": zod.string(),
+  "x": zod.number(),
+  "z": zod.number(),
+  "rotY": zod.number(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Remove a placed decoration
+ */
+export const DeleteGalleryDecorationParams = zod.object({
+  "id": zod.coerce.number(),
+  "decorId": zod.coerce.number()
+})
+
+
+/**
+ * @summary Remove all manual decorations (restore seeded-RNG layout)
+ */
+export const ResetGalleryDecorationsParams = zod.object({
+  "id": zod.coerce.number()
 })
 
 
@@ -303,6 +433,42 @@ export const DeleteArtworkParams = zod.object({
 
 
 /**
+ * @summary Update artwork placement in room (owner only)
+ */
+export const PatchArtworkPlacementParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const PatchArtworkPlacementBody = zod.object({
+  "xPosition": zod.number().optional(),
+  "yPosition": zod.number().optional(),
+  "zPosition": zod.number().optional(),
+  "rotation": zod.number().optional(),
+  "scale": zod.number().optional(),
+  "isManuallyPlaced": zod.boolean().optional()
+})
+
+export const PatchArtworkPlacementResponse = zod.object({
+  "id": zod.number(),
+  "galleryId": zod.number(),
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "imageUrl": zod.string(),
+  "artistName": zod.string().nullish(),
+  "year": zod.string().nullish(),
+  "medium": zod.string().nullish(),
+  "dimensions": zod.string().nullish(),
+  "xPosition": zod.number(),
+  "yPosition": zod.number(),
+  "zPosition": zod.number(),
+  "rotation": zod.number(),
+  "scale": zod.number(),
+  "isManuallyPlaced": zod.boolean(),
+  "createdAt": zod.string()
+})
+
+
+/**
  * @summary Browse all published galleries
  */
 export const ListPublicGalleriesResponseItem = zod.object({
@@ -328,6 +494,7 @@ export const GetPublicGalleryParams = zod.object({
 
 export const GetPublicGalleryResponse = zod.object({
   "id": zod.number(),
+  "userId": zod.number(),
   "title": zod.string(),
   "description": zod.string().nullish(),
   "slug": zod.string(),
@@ -335,7 +502,9 @@ export const GetPublicGalleryResponse = zod.object({
   "roomSeed": zod.number(),
   "roomMode": zod.string(),
   "roomSize": zod.number(),
+  "roomHeight": zod.number(),
   "decorationLevel": zod.number(),
+  "lightingMood": zod.number(),
   "artistName": zod.string().nullish(),
   "artworks": zod.array(zod.object({
   "id": zod.number(),
@@ -359,6 +528,25 @@ export const GetPublicGalleryResponse = zod.object({
 
 
 /**
+ * @summary Get manual decorations for a published gallery
+ */
+export const GetPublicGalleryDecorationsParams = zod.object({
+  "slug": zod.coerce.string()
+})
+
+export const GetPublicGalleryDecorationsResponseItem = zod.object({
+  "id": zod.number(),
+  "galleryId": zod.number(),
+  "type": zod.string(),
+  "x": zod.number(),
+  "z": zod.number(),
+  "rotY": zod.number(),
+  "createdAt": zod.string()
+})
+export const GetPublicGalleryDecorationsResponse = zod.array(GetPublicGalleryDecorationsResponseItem)
+
+
+/**
  * @summary Get artist dashboard summary stats
  */
 export const GetDashboardStatsResponse = zod.object({
@@ -378,7 +566,9 @@ export const GetDashboardStatsResponse = zod.object({
   "roomSeed": zod.number(),
   "roomMode": zod.string(),
   "roomSize": zod.number(),
-  "decorationLevel": zod.number()
+  "decorationLevel": zod.number(),
+  "roomHeight": zod.number(),
+  "lightingMood": zod.number()
 }))
 })
 

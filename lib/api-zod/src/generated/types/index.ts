@@ -8,11 +8,16 @@
 
 export * from './artwork';
 export * from './artworkInput';
+export * from './artworkPlacementPatch';
 export * from './artworkUpdate';
 export * from './dashboardStats';
 export * from './errorResponse';
 export * from './gallery';
+export * from './galleryDecoration';
+export * from './galleryDecorationInput';
+export * from './galleryDecorationPatch';
 export * from './galleryInput';
+export * from './galleryRoomPatch';
 export * from './galleryUpdate';
 export * from './healthStatus';
 export * from './profile';

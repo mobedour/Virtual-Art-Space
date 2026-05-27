@@ -12,7 +12,7 @@ export type ThemeConfig = {
   floorGrid: string
   baseboardColor: string
   accentLight: string
-  /** one of: parquet | neon | marble | slate | concrete */
+  /** one of: parquet | neon | marble | slate | concrete | terracotta */
   floorPattern: string
 }
 
@@ -97,6 +97,22 @@ const THEMES: Record<string, ThemeConfig> = {
     accentLight: '#e0e0d0',
     floorPattern: 'concrete',
   },
+  amman_limestone: {
+    wallColor: '#c8b88a',
+    floorColor: '#b8936a',
+    ceilingColor: '#ede4d0',
+    fogColor: '#d4c8b0',
+    fogNear: 15,
+    fogFar: 54,
+    ambientIntensity: 2.6,
+    spotIntensity: 2.0,
+    frameColor: '#8b5e2a',
+    labelColor: '#5c3a1a',
+    floorGrid: '#a07850',
+    baseboardColor: '#a08060',
+    accentLight: '#f5c060',
+    floorPattern: 'terracotta',
+  },
   default: {
     wallColor: '#352c24',
     floorColor: '#221a14',
@@ -117,4 +133,19 @@ const THEMES: Record<string, ThemeConfig> = {
 
 export function getTheme(roomTheme: string): ThemeConfig {
   return THEMES[roomTheme] ?? THEMES.default
+}
+
+export function getAllThemes(): Array<{ key: string; config: ThemeConfig }> {
+  return Object.entries(THEMES)
+    .filter(([key]) => key !== 'default')
+    .map(([key, config]) => ({ key, config }))
+}
+
+export const THEME_DISPLAY_NAMES: Record<string, string> = {
+  dark_void: 'Dark Void',
+  neon_grid: 'Neon Grid',
+  purple_mist: 'Purple Mist',
+  white_cube: 'White Cube',
+  concrete_bunker: 'Concrete Bunker',
+  amman_limestone: 'Amman Limestone',
 }

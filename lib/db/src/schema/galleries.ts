@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, real, boolean, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
@@ -15,6 +15,8 @@ export const galleriesTable = pgTable("galleries", {
   roomMode: text("room_mode").notNull().default("basic"),
   roomSize: integer("room_size").notNull().default(5),
   decorationLevel: integer("decoration_level").notNull().default(5),
+  roomHeight: integer("room_height").notNull().default(5),
+  lightingMood: real("lighting_mood").notNull().default(1.0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

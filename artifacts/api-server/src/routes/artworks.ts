@@ -9,8 +9,19 @@ import {
   ListArtworksParams,
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/requireAuth";
+import { z } from "zod";
 
 const router: IRouter = Router();
+
+const PatchArtworkPlacementParams = z.object({ id: z.coerce.number().int().positive() });
+const PatchArtworkPlacementBody = z.object({
+  xPosition: z.number().optional(),
+  yPosition: z.number().optional(),
+  zPosition: z.number().optional(),
+  rotation: z.number().optional(),
+  scale: z.number().optional(),
+  isManuallyPlaced: z.boolean().optional(),
+});
 
 function serializeArtwork(a: typeof artworksTable.$inferSelect) {
   return {
@@ -98,6 +109,39 @@ router.post("/artworks", requireAuth, async (req, res): Promise<void> => {
     .returning();
 
   res.status(201).json(serializeArtwork(artwork));
+});
+
+router.patch("/artworks/:id/placement", requireAuth, async (req, res): Promise<void> => {
+  const userId = req.user!.userId;
+  const params = PatchArtworkPlacementParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const parsed = PatchArtworkPlacementBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const [existing] = await db
+    .select({ id: artworksTable.id })
+    .from(artworksTable)
+    .innerJoin(galleriesTable, eq(artworksTable.galleryId, galleriesTable.id))
+    .where(and(eq(artworksTable.id, params.data.id), eq(galleriesTable.userId, userId)));
+
+  if (!existing) {
+    res.status(404).json({ error: "Artwork not found" });
+    return;
+  }
+
+  const [artwork] = await db
+    .update(artworksTable)
+    .set(parsed.data)
+    .where(eq(artworksTable.id, params.data.id))
+    .returning();
+
+  res.json(serializeArtwork(artwork));
 });
 
 router.put("/artworks/:id", requireAuth, async (req, res): Promise<void> => {

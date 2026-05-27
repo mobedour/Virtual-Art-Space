@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { PointerLockControls } from "@react-three/drei";
 import * as THREE from "three";
@@ -8,16 +8,22 @@ import { TouchControls } from "./TouchControls";
 import type { JoystickState } from "./VirtualJoystick";
 import { getRoomDims } from "./room-dimensions";
 import { RoomDecorations } from "./RoomDecorations";
+import { EditDragController } from "./GalleryEditMode";
 
-const EYE_Y = 0;
+export const EYE_Y = 0;
 const WALL_INSET = 0.12;
 const HANG_Y = 0.8;
+const WALK_SPEED = 5.5;
+const SPRINT_SPEED = 11;
+const BOB_AMP = 0.035;
 
 type PlacedArtwork = {
   artwork: ArtworkData;
   position: [number, number, number];
   rotationY: number;
 };
+
+export type HoverState = "idle" | "artwork" | "decoration";
 
 function getWallInfo(x: number, z: number, halfW: number, halfD: number): { wallIdx: number; along: number } | null {
   const THRESH = 0.6;
@@ -81,6 +87,54 @@ function placeArtworks(artworks: ArtworkData[], halfW: number, halfD: number): P
     });
   }
   return result;
+}
+
+// ─── Terracotta octagonal floor tile (Amman Limestone theme) ──────────────────
+function makeTerracottaFloor(baseColor: string, size = 512): THREE.Texture {
+  const canvas = document.createElement("canvas");
+  canvas.width = size; canvas.height = size;
+  const ctx = canvas.getContext("2d")!;
+  const TILE = size / 4;
+  const INSET = TILE * 0.29;
+  ctx.fillStyle = baseColor;
+  ctx.fillRect(0, 0, size, size);
+  for (let row = 0; row < 4; row++) {
+    for (let col = 0; col < 4; col++) {
+      const tx = col * TILE; const ty = row * TILE;
+      // alternating warm terracotta shades
+      const alt = (row + col) % 2;
+      ctx.fillStyle = alt ? "#b8805a" : "#c8906a";
+      // Octagon clipping
+      ctx.save();
+      ctx.translate(tx + TILE/2, ty + TILE/2);
+      ctx.beginPath();
+      const r = TILE/2 - 2;
+      const cut = INSET / 1.41;
+      ctx.moveTo(-r + cut, -r);
+      ctx.lineTo( r - cut, -r);
+      ctx.lineTo( r,  -r + cut);
+      ctx.lineTo( r,   r - cut);
+      ctx.lineTo( r - cut,  r);
+      ctx.lineTo(-r + cut,  r);
+      ctx.lineTo(-r,  r - cut);
+      ctx.lineTo(-r, -r + cut);
+      ctx.closePath();
+      ctx.fill();
+      // Inner square detail
+      ctx.fillStyle = alt ? "#a07050" : "#b07860";
+      const sq = TILE * 0.18;
+      ctx.fillRect(-sq, -sq, sq * 2, sq * 2);
+      ctx.restore();
+      // Grout lines
+      ctx.strokeStyle = "#7a5030";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(tx + 1, ty + 1, TILE - 2, TILE - 2);
+    }
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(2.5, 2.5);
+  return tex;
 }
 
 // ─── Themed floor textures ────────────────────────────────────────────────────
@@ -271,9 +325,20 @@ function makeWallTexture(baseColor: string, size = 512): THREE.Texture {
   return tex;
 }
 
-// ─── WASD movement ────────────────────────────────────────────────────────────
-function MovementController({ enabled, halfW, halfD }: { enabled: boolean; halfW: number; halfD: number }) {
+// ─── Smooth WASD movement ─────────────────────────────────────────────────────
+function MovementController({
+  enabled, halfW, halfD, onMoved, onHoverState, walkSpeed = WALK_SPEED,
+}: {
+  enabled: boolean; halfW: number; halfD: number;
+  onMoved?: (moving: boolean) => void;
+  onHoverState?: (state: HoverState) => void;
+  walkSpeed?: number;
+}) {
   const keys = useRef(new Set<string>());
+  const velocityRef = useRef(new THREE.Vector3());
+  const bobPhaseRef = useRef(0);
+  const headBobEnabled = localStorage.getItem("vas_headBob") !== "false";
+
   useEffect(() => {
     const onDown = (e: KeyboardEvent) => { keys.current.add(e.code); if (["ArrowUp","ArrowDown","Space"].includes(e.code)) e.preventDefault(); };
     const onUp   = (e: KeyboardEvent) => keys.current.delete(e.code);
@@ -281,21 +346,60 @@ function MovementController({ enabled, halfW, halfD }: { enabled: boolean; halfW
     window.addEventListener("keyup", onUp);
     return () => { window.removeEventListener("keydown", onDown); window.removeEventListener("keyup", onUp); };
   }, []);
-  useFrame(({ camera }, delta) => {
-    if (!enabled) return;
+
+  useFrame(({ camera, scene }, delta) => {
     const forward = new THREE.Vector3(); camera.getWorldDirection(forward); forward.y = 0; forward.normalize();
     const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0,1,0)).normalize();
-    const move = new THREE.Vector3();
-    if (keys.current.has("KeyW") || keys.current.has("ArrowUp"))    move.addScaledVector(forward,  1);
-    if (keys.current.has("KeyS") || keys.current.has("ArrowDown"))  move.addScaledVector(forward, -1);
-    if (keys.current.has("KeyA") || keys.current.has("ArrowLeft"))  move.addScaledVector(right,   -1);
-    if (keys.current.has("KeyD") || keys.current.has("ArrowRight")) move.addScaledVector(right,    1);
-    if (move.lengthSq() > 0.001) {
-      const SPEED = 7; move.normalize().multiplyScalar(SPEED * delta);
-      camera.position.add(move);
+
+    const isSprinting = keys.current.has("ShiftLeft") || keys.current.has("ShiftRight");
+    const speed = isSprinting ? Math.min(walkSpeed * 2, SPRINT_SPEED) : walkSpeed;
+
+    const target = new THREE.Vector3();
+    if (enabled) {
+      if (keys.current.has("KeyW") || keys.current.has("ArrowUp"))    target.addScaledVector(forward,  1);
+      if (keys.current.has("KeyS") || keys.current.has("ArrowDown"))  target.addScaledVector(forward, -1);
+      if (keys.current.has("KeyA") || keys.current.has("ArrowLeft"))  target.addScaledVector(right,   -1);
+      if (keys.current.has("KeyD") || keys.current.has("ArrowRight")) target.addScaledVector(right,    1);
+      if (target.lengthSq() > 0.001) target.normalize().multiplyScalar(speed);
+    }
+
+    velocityRef.current.lerp(target, 1 - Math.exp(-12 * delta));
+
+    const isMoving = velocityRef.current.lengthSq() > 0.01;
+    onMoved?.(isMoving && enabled);
+
+    if (isMoving && enabled) {
+      camera.position.addScaledVector(velocityRef.current, delta);
       camera.position.x = Math.max(-(halfW - 0.6), Math.min(halfW - 0.6, camera.position.x));
       camera.position.z = Math.max(-(halfD - 0.6), Math.min(halfD - 0.6, camera.position.z));
-      camera.position.y = EYE_Y;
+    }
+
+    // Head bob
+    if (headBobEnabled && isMoving && enabled) {
+      const bobFreq = 2.2 * (velocityRef.current.length() / WALK_SPEED);
+      bobPhaseRef.current += delta * bobFreq * Math.PI * 2;
+      camera.position.y = EYE_Y + Math.sin(bobPhaseRef.current) * BOB_AMP;
+    } else {
+      camera.position.y = THREE.MathUtils.lerp(camera.position.y, EYE_Y, 1 - Math.exp(-8 * delta));
+      if (!isMoving) bobPhaseRef.current = 0;
+    }
+
+    // Hover state raycast
+    if (enabled && onHoverState) {
+      const raycaster = new THREE.Raycaster();
+      raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+      const intersects = raycaster.intersectObjects(scene.children, true);
+      let found: HoverState = "idle";
+      for (const hit of intersects) {
+        let obj: THREE.Object3D | null = hit.object;
+        while (obj) {
+          if (obj.userData.decorProp) { found = "decoration"; break; }
+          if (obj.userData.artworkId !== undefined) { found = "artwork"; break; }
+          obj = obj.parent;
+        }
+        if (found !== "idle") break;
+      }
+      onHoverState(found);
     }
   });
   return null;
@@ -326,22 +430,42 @@ interface GallerySceneProps {
   onLock: () => void;
   onUnlock: () => void;
   onArtworkSelect: (artwork: ArtworkData) => void;
+  onHoverStateChange?: (state: HoverState) => void;
+  onMovingChange?: (moving: boolean) => void;
   inspectCallbackRef?: React.MutableRefObject<(() => void) | null>;
   roomSize?: number;
   roomMode?: string;
   roomSeed?: number;
   decorationLevel?: number;
+  roomHeight?: number;
+  lightingMood?: number;
+  onSceneReady?: () => void;
+  isEditMode?: boolean;
+  onArtworkMoved?: (id: number, patch: Partial<ArtworkData>) => void;
+  onArtworkDropped?: () => void;
+  onArtworkSelected?: (id: number | null) => void;
+  walkSpeed?: number;
+  lookSensitivity?: number;
 }
 
 export function GalleryScene({
-  artworks, roomTheme, isLocked, isMobile, joystickRef, onLock, onUnlock, onArtworkSelect, inspectCallbackRef,
+  artworks, roomTheme, isLocked, isMobile, joystickRef, onLock, onUnlock, onArtworkSelect,
+  onHoverStateChange, onMovingChange, inspectCallbackRef,
   roomSize = 5, roomMode = "basic", roomSeed = 0, decorationLevel = 5,
+  roomHeight = 5, lightingMood = 1.0, onSceneReady,
+  isEditMode = false, onArtworkMoved, onArtworkDropped, onArtworkSelected,
+  walkSpeed = 5.5, lookSensitivity = 1.0,
 }: GallerySceneProps) {
   const theme = getTheme(roomTheme);
   const controlsRef = useRef<any>(null);
   const { camera, gl, scene } = useThree();
+  const [sceneReadyFired, setSceneReadyFired] = useState(false);
 
   const { halfW, halfH, halfD } = getRoomDims(roomSize);
+
+  // roomHeight overrides halfH on ceiling only (floor stays)
+  const ceilHalfH = halfH * (0.5 + roomHeight * 0.1);
+
   const fogScale = halfW / 9;
 
   const placedArtworks = useMemo(
@@ -361,11 +485,12 @@ export function GalleryScene({
 
   const floorTexture = useMemo(() => {
     switch (theme.floorPattern) {
-      case 'neon':     return makeNeonFloor(theme.floorColor, theme.floorGrid);
-      case 'marble':   return makeMarbleFloor(theme.floorColor, theme.floorGrid);
-      case 'slate':    return makeSlateTiles(theme.floorColor, theme.floorGrid);
-      case 'concrete': return makeConcreteFloor(theme.floorColor);
-      default:         return makeParquetFloor(theme.floorColor, theme.floorGrid);
+      case 'neon':        return makeNeonFloor(theme.floorColor, theme.floorGrid);
+      case 'marble':      return makeMarbleFloor(theme.floorColor, theme.floorGrid);
+      case 'slate':       return makeSlateTiles(theme.floorColor, theme.floorGrid);
+      case 'concrete':    return makeConcreteFloor(theme.floorColor);
+      case 'terracotta':  return makeTerracottaFloor(theme.floorColor);
+      default:            return makeParquetFloor(theme.floorColor, theme.floorGrid);
     }
   }, [theme]);
 
@@ -382,6 +507,14 @@ export function GalleryScene({
     controls.addEventListener("unlock", handleUnlock);
     return () => { controls.removeEventListener("lock", handleLock); controls.removeEventListener("unlock", handleUnlock); };
   }, [isMobile]);
+
+  // Signal scene ready on first frame
+  useFrame(() => {
+    if (!sceneReadyFired) {
+      setSceneReadyFired(true);
+      onSceneReady?.();
+    }
+  });
 
   const fireCenterRaycast = useCallback(() => {
     const raycaster = new THREE.Raycaster();
@@ -413,17 +546,18 @@ export function GalleryScene({
     return () => canvas.removeEventListener("click", handleClick);
   }, [gl, isMobile, fireCenterRaycast]);
 
+  const ambientMood = lightingMood;
   const fogColor = new THREE.Color(theme.fogColor);
   const BASEBOARD_H = 0.22;
   const BASEBOARD_Y = -halfH + BASEBOARD_H / 2;
   const CORNICE_H   = 0.16;
-  const CORNICE_Y   = halfH - CORNICE_H / 2;
+  const CORNICE_Y   = ceilHalfH - CORNICE_H / 2;
 
   const artworkSpots = placedArtworks.slice(0, 10).map(({ position, rotationY }) => {
     const lx = position[0] + Math.sin(rotationY) * 3;
     const lz = position[2] + Math.cos(rotationY) * 3;
     return {
-      lightPos: [lx, halfH - 0.8, lz] as [number,number,number],
+      lightPos: [lx, ceilHalfH - 0.8, lz] as [number,number,number],
       targetPos: position,
     };
   });
@@ -443,20 +577,20 @@ export function GalleryScene({
       <fog attach="fog" args={[fogColor, theme.fogNear * fogScale, theme.fogFar * fogScale]} />
 
       {/* ── Ambient ── */}
-      <ambientLight intensity={theme.ambientIntensity} color={isLight ? "#ffffff" : "#fff8f0"} />
+      <ambientLight intensity={theme.ambientIntensity * ambientMood} color={isLight ? "#ffffff" : "#fff8f0"} />
 
       {/* ── Central overhead fill ── */}
-      <pointLight position={[0, halfH - 0.3, 0]} intensity={theme.spotIntensity * 140}
+      <pointLight position={[0, ceilHalfH - 0.3, 0]} intensity={theme.spotIntensity * 140 * ambientMood}
         color={theme.accentLight} distance={35 * fogScale} decay={2} />
 
       {/* ── Corner fill lights ── */}
       {([[-1,-1],[-1,1],[1,-1],[1,1]] as [number,number][]).map(([sx,sz], i) => (
         <pointLight key={i}
-          position={[sx * halfW * 0.55, halfH - 1.2, sz * halfD * 0.55]}
-          intensity={theme.spotIntensity * 48} color={fillColor} distance={28 * fogScale} decay={2} />
+          position={[sx * halfW * 0.55, ceilHalfH - 1.2, sz * halfD * 0.55]}
+          intensity={theme.spotIntensity * 48 * ambientMood} color={fillColor} distance={28 * fogScale} decay={2} />
       ))}
 
-      {/* ── Mid-height wall-wash fills (one per wall face) ── */}
+      {/* ── Mid-height wall-wash fills ── */}
       {([
         [0,           0, -(halfD * 0.78)],
         [0,           0,  (halfD * 0.78)],
@@ -465,13 +599,13 @@ export function GalleryScene({
       ] as [number,number,number][]).map((pos, i) => (
         <pointLight key={`ww-${i}`}
           position={pos}
-          intensity={theme.spotIntensity * 32} color={fillColor} distance={18 * fogScale} decay={2} />
+          intensity={theme.spotIntensity * 32 * ambientMood} color={fillColor} distance={18 * fogScale} decay={2} />
       ))}
 
       {/* ── Per-artwork museum spotlights ── */}
       {artworkSpots.map(({ lightPos, targetPos }, i) => (
         <ArtworkSpot key={i} position={lightPos} targetPos={targetPos}
-          color={theme.accentLight} intensity={theme.spotIntensity * 55} />
+          color={theme.accentLight} intensity={theme.spotIntensity * 55 * ambientMood} />
       ))}
 
       {/* ── Floor ── */}
@@ -483,14 +617,14 @@ export function GalleryScene({
       </mesh>
 
       {/* ── Ceiling ── */}
-      <mesh position={[0, halfH, 0]} rotation={[Math.PI / 2, 0, 0]}>
+      <mesh position={[0, ceilHalfH, 0]} rotation={[Math.PI / 2, 0, 0]}>
         <planeGeometry args={[halfW * 2, halfD * 2]} />
         <meshStandardMaterial color={theme.ceilingColor} roughness={0.95} />
       </mesh>
 
       {/* ── Ceiling fixtures ── */}
       {fixturePositions.map(([x, z], i) => (
-        <group key={i} position={[x, halfH - 0.01, z]}>
+        <group key={i} position={[x, ceilHalfH - 0.01, z]}>
           <mesh rotation={[Math.PI / 2, 0, 0]}>
             <cylinderGeometry args={[0.28, 0.28, 0.06, 20]} />
             <meshStandardMaterial color={isLight ? "#d8d6d0" : "#2a2520"} roughness={0.4} metalness={0.3} />
@@ -510,20 +644,20 @@ export function GalleryScene({
       ))}
 
       {/* ── Walls ── */}
-      <mesh position={[0, 0, -halfD]} receiveShadow>
-        <planeGeometry args={[halfW * 2, halfH * 2]} />
+      <mesh position={[0, (ceilHalfH - halfH) / 2, -halfD]} receiveShadow>
+        <planeGeometry args={[halfW * 2, ceilHalfH + halfH]} />
         <meshStandardMaterial map={wallTexture} roughness={0.88} />
       </mesh>
-      <mesh position={[0, 0, halfD]} rotation={[0, Math.PI, 0]} receiveShadow>
-        <planeGeometry args={[halfW * 2, halfH * 2]} />
+      <mesh position={[0, (ceilHalfH - halfH) / 2, halfD]} rotation={[0, Math.PI, 0]} receiveShadow>
+        <planeGeometry args={[halfW * 2, ceilHalfH + halfH]} />
         <meshStandardMaterial map={wallTexture} roughness={0.88} />
       </mesh>
-      <mesh position={[-halfW, 0, 0]} rotation={[0, Math.PI / 2, 0]} receiveShadow>
-        <planeGeometry args={[halfD * 2, halfH * 2]} />
+      <mesh position={[-halfW, (ceilHalfH - halfH) / 2, 0]} rotation={[0, Math.PI / 2, 0]} receiveShadow>
+        <planeGeometry args={[halfD * 2, ceilHalfH + halfH]} />
         <meshStandardMaterial map={wallTexture} roughness={0.88} />
       </mesh>
-      <mesh position={[halfW, 0, 0]} rotation={[0, -Math.PI / 2, 0]} receiveShadow>
-        <planeGeometry args={[halfD * 2, halfH * 2]} />
+      <mesh position={[halfW, (ceilHalfH - halfH) / 2, 0]} rotation={[0, -Math.PI / 2, 0]} receiveShadow>
+        <planeGeometry args={[halfD * 2, ceilHalfH + halfH]} />
         <meshStandardMaterial map={wallTexture} roughness={0.88} />
       </mesh>
 
@@ -572,8 +706,41 @@ export function GalleryScene({
       ))}
 
       {!isMobile && <PointerLockControls ref={controlsRef} makeDefault />}
-      {!isMobile && <MovementController enabled={isLocked} halfW={halfW} halfD={halfD} />}
-      {isMobile && <TouchControls enabled={isLocked} joystickRef={joystickRef} onArtworkTap={fireCenterRaycast} halfW={halfW} halfD={halfD} />}
+      {!isMobile && (
+        <MovementController
+          enabled={isLocked}
+          halfW={halfW}
+          halfD={halfD}
+          onMoved={onMovingChange}
+          onHoverState={onHoverStateChange}
+          walkSpeed={walkSpeed}
+        />
+      )}
+      {isMobile && (
+        <TouchControls
+          enabled={isLocked}
+          joystickRef={joystickRef}
+          onArtworkTap={fireCenterRaycast}
+          halfW={halfW}
+          halfD={halfD}
+          lookSensitivity={lookSensitivity}
+          walkSpeed={walkSpeed}
+        />
+      )}
+
+      {/* Edit drag controller — active when isEditMode is true */}
+      {isEditMode && onArtworkMoved && (
+        <EditDragController
+          isEditing={isEditMode}
+          artworks={artworks}
+          halfW={halfW}
+          halfD={halfD}
+          halfH={halfH}
+          onArtworkMoved={onArtworkMoved}
+          onDrop={onArtworkDropped}
+          onArtworkSelected={onArtworkSelected}
+        />
+      )}
     </>
   );
 }

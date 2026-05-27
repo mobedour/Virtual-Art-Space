@@ -52,6 +52,8 @@ export interface Gallery {
   roomMode: string;
   roomSize: number;
   decorationLevel: number;
+  roomHeight: number;
+  lightingMood: number;
 }
 
 export interface GalleryInput {
@@ -91,8 +93,56 @@ export interface GalleryUpdate {
   decorationLevel?: number;
 }
 
+export interface GalleryRoomPatch {
+  roomTheme?: string;
+  /**
+     * @minimum 1
+     * @maximum 10
+     */
+  roomSize?: number;
+  /**
+     * @minimum 1
+     * @maximum 10
+     */
+  roomHeight?: number;
+  /**
+     * @minimum 1
+     * @maximum 10
+     */
+  decorationLevel?: number;
+  /**
+     * @minimum 0.5
+     * @maximum 2
+     */
+  lightingMood?: number;
+  roomMode?: string;
+}
+
 export interface PublishToggle {
   published: boolean;
+}
+
+export interface GalleryDecoration {
+  id: number;
+  galleryId: number;
+  type: string;
+  x: number;
+  z: number;
+  rotY: number;
+  createdAt: string;
+}
+
+export interface GalleryDecorationInput {
+  type: string;
+  x: number;
+  z: number;
+  rotY: number;
+}
+
+export interface GalleryDecorationPatch {
+  x?: number;
+  z?: number;
+  rotY?: number;
 }
 
 export interface Artwork {
@@ -153,6 +203,15 @@ export interface ArtworkUpdate {
   isManuallyPlaced?: boolean;
 }
 
+export interface ArtworkPlacementPatch {
+  xPosition?: number;
+  yPosition?: number;
+  zPosition?: number;
+  rotation?: number;
+  scale?: number;
+  isManuallyPlaced?: boolean;
+}
+
 export interface UploadResponse {
   url: string;
 }
@@ -173,6 +232,7 @@ export interface PublicGallery {
 
 export interface PublicGalleryDetail {
   id: number;
+  userId: number;
   title: string;
   /** @nullable */
   description?: string | null;
@@ -181,7 +241,9 @@ export interface PublicGalleryDetail {
   roomSeed: number;
   roomMode: string;
   roomSize: number;
+  roomHeight: number;
   decorationLevel: number;
+  lightingMood: number;
   /** @nullable */
   artistName?: string | null;
   artworks: Artwork[];
