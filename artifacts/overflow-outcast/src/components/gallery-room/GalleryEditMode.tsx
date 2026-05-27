@@ -190,11 +190,34 @@ export function EditDragController({
       }
     };
 
+    // Programmatic trigger fired by the on-screen "✓ Pick / Drop" button.
+    // We use a custom event instead of synthesising a MouseEvent on the
+    // canvas because iOS Safari does not reliably bubble dispatched mouse
+    // events into window-level listeners from inside a React onClick.
+    const handlePickDropTrigger = () => {
+      if (!isEditing) return;
+      const artworkHit = findArtworkHit();
+      if (draggingRef.current) {
+        draggingRef.current = null;
+        pendingPatchRef.current = null;
+        onDraggingChange?.(false);
+        onDrop?.();
+      } else if (artworkHit) {
+        const wallIdx = getNearestWallPlane(artworkHit.point, halfW, halfD);
+        draggingRef.current = { artworkId: artworkHit.artworkId, wallIdx };
+        onDraggingChange?.(true);
+      } else {
+        onArtworkSelected?.(null);
+      }
+    };
+
     window.addEventListener("click", handleClick);
     window.addEventListener("contextmenu", handleContextMenu);
+    window.addEventListener("vas:pick-drop", handlePickDropTrigger);
     return () => {
       window.removeEventListener("click", handleClick);
       window.removeEventListener("contextmenu", handleContextMenu);
+      window.removeEventListener("vas:pick-drop", handlePickDropTrigger);
     };
   }, [isEditing, camera, scene, halfW, halfD, onDrop, onArtworkSelected, onDraggingChange]);
 

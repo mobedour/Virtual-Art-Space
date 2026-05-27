@@ -944,8 +944,7 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner }: Gallery
                     accent="#f5c060"
                     size="lg"
                     onClick={() => {
-                      const canvas = document.querySelector("canvas");
-                      canvas?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+                      window.dispatchEvent(new CustomEvent("vas:pick-drop"));
                     }}
                   />
                 )}
