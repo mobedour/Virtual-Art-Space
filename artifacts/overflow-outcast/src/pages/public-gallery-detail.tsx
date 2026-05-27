@@ -84,6 +84,7 @@ export default function PublicGalleryDetail() {
       <main className="flex-1 relative">
         <GalleryRoom
           gallery={{
+            id: gallery.id,
             artworks: gallery.artworks,
             roomTheme: gallery.roomTheme,
             roomSeed: gallery.roomSeed,

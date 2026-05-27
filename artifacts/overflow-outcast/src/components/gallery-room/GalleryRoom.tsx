@@ -186,8 +186,9 @@ function HoverHintStrip({ hoverState, editMode }: { hoverState: HoverState; edit
 }
 
 // ─── Gallery entrance overlay ──────────────────────────────────────────────────
-function EntranceOverlay({ galleryTitle, artistName, onEnter }: {
-  galleryTitle?: string; artistName?: string; onEnter: () => void;
+function EntranceOverlay({ galleryTitle, artistName, isOwner, onEnter, onEnterEditMode }: {
+  galleryTitle?: string; artistName?: string; isOwner?: boolean;
+  onEnter: () => void; onEnterEditMode?: () => void;
 }) {
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 backdrop-blur-sm z-20">
@@ -197,10 +198,18 @@ function EntranceOverlay({ galleryTitle, artistName, onEnter }: {
           <h1 className="font-display text-3xl italic text-white mb-2 leading-tight">{galleryTitle}</h1>
         )}
         {artistName && <p className="font-sans text-sm text-white/50 mb-8">{artistName}</p>}
-        <button onClick={onEnter}
-          className="inline-flex items-center gap-3 px-8 py-3 bg-amber-500/90 hover:bg-amber-400 text-black font-display text-base italic font-semibold rounded-sm transition-all duration-200 hover:scale-105">
-          Enter Gallery →
-        </button>
+        <div className="flex flex-col items-center gap-3">
+          <button onClick={onEnter}
+            className="inline-flex items-center gap-3 px-8 py-3 bg-amber-500/90 hover:bg-amber-400 text-black font-display text-base italic font-semibold rounded-sm transition-all duration-200 hover:scale-105">
+            Enter Gallery →
+          </button>
+          {isOwner && onEnterEditMode && (
+            <button onClick={onEnterEditMode}
+              className="inline-flex items-center gap-2 px-6 py-2 border border-amber-500/50 text-amber-400 hover:bg-amber-500/10 font-sans text-sm rounded-sm transition-all duration-200">
+              ✏ Edit Gallery
+            </button>
+          )}
+        </div>
         <p className="font-mono text-[9px] tracking-widest text-white/20 mt-6">
           WASD TO MOVE · DRAG TO LOOK · ESC TO PAUSE
         </p>
@@ -580,7 +589,9 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner }: Gallery
             <EntranceOverlay
               galleryTitle={gallery.galleryTitle}
               artistName={gallery.artistName}
+              isOwner={isOwner}
               onEnter={handleEnter}
+              onEnterEditMode={isOwner ? handleEnterEditMode : undefined}
             />
           )}
 
@@ -665,16 +676,43 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner }: Gallery
                 {gallery.artistName && (
                   <p className="font-sans text-sm text-white/50 mb-8">{gallery.artistName}</p>
                 )}
-                <button onClick={() => { setHasEntered(true); setIsLocked(true); }}
-                  className="inline-flex items-center gap-3 px-8 py-3 bg-amber-500/90 hover:bg-amber-400 text-black font-display text-base italic font-semibold rounded-sm transition-all">
-                  Enter Gallery →
-                </button>
+                <div className="flex flex-col items-center gap-3">
+                  <button onClick={() => { setHasEntered(true); setIsLocked(true); }}
+                    className="inline-flex items-center gap-3 px-8 py-3 bg-amber-500/90 hover:bg-amber-400 text-black font-display text-base italic font-semibold rounded-sm transition-all">
+                    Enter Gallery →
+                  </button>
+                  {isOwner && (
+                    <button onClick={handleEnterEditMode}
+                      className="inline-flex items-center gap-2 px-6 py-2 border border-amber-500/50 text-amber-400 hover:bg-amber-500/10 font-sans text-sm rounded-sm transition-all">
+                      ✏ Edit Gallery
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           )}
 
+          {/* Mobile pause overlay */}
+          {isPaused && !selectedArtwork && !isEditMode && (
+            <PauseOverlay
+              galleryTitle={gallery.galleryTitle}
+              artistName={gallery.artistName}
+              isOwner={isOwner}
+              audioMuted={audioMuted}
+              walkSpeed={walkSpeed}
+              onWalkSpeedChange={(v) => {
+                setWalkSpeed(v);
+                localStorage.setItem("vas_walkSpeed", String(v));
+              }}
+              onResume={handleResume}
+              onExit={onExit}
+              onEnterEditMode={isOwner ? handleEnterEditMode : undefined}
+              onToggleAudio={handleToggleAudio}
+            />
+          )}
+
           {/* Mobile sensitivity / speed strip — shown when active */}
-          {mobileActive && !selectedArtwork && (
+          {mobileActive && !selectedArtwork && !isPaused && (
             <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-3 bg-black/50 backdrop-blur-sm rounded-full px-4 py-1.5 pointer-events-auto">
               <span className="font-mono text-[9px] tracking-widest text-white/30">LOOK</span>
               <input
@@ -699,7 +737,7 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner }: Gallery
             </div>
           )}
 
-          {mobileActive && (
+          {mobileActive && !isPaused && (
             <>
               <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
                 <div className="w-1.5 h-1.5 rounded-full bg-white/60 ring-1 ring-black/40" />
@@ -709,7 +747,7 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner }: Gallery
               </div>
               <div className="absolute bottom-8 right-6 z-10 select-none" data-controls style={{ width: 104, height: 164 }}>
                 <div className="absolute" style={{ top: 0, left: 30 }}>
-                  <ControlBtn symbol="△" label="Exit gallery" accent="#ff6b6b" onClick={() => onExit?.()} disabled={!onExit} />
+                  <ControlBtn symbol="☰" label="Menu" accent="#f5c060" onClick={() => { setIsLocked(false); setIsPaused(true); }} />
                 </div>
                 <div className="absolute" style={{ top: 60, left: 0 }}>
                   <ControlBtn symbol="□" label="Toggle hints" accent="#a78bfa" onClick={() => setShowHints((h) => !h)} />
