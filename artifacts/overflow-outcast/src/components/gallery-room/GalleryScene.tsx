@@ -708,7 +708,14 @@ export function GalleryScene({
       {placedArtworks.map(({ artwork, position, rotationY }) => (
         <ArtworkFrame key={artwork.id} artwork={artwork} position={position} rotationY={rotationY}
           frameColor={theme.frameColor} labelColor={theme.labelColor}
-          onSelect={(a) => { if (!isMobile) controlsRef.current?.unlock(); onSelectRef.current(a); }} />
+          onSelect={(a) => {
+            // In edit mode, EditDragController owns artwork clicks
+            // (pick / drop). Don't unlock the pointer or open the modal
+            // here — both would break the drag.
+            if (isEditMode) return;
+            if (!isMobile) controlsRef.current?.unlock();
+            onSelectRef.current(a);
+          }} />
       ))}
 
       {!isMobile && <PointerLockControls ref={controlsRef} makeDefault />}
