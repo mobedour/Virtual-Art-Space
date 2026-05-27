@@ -25,9 +25,29 @@ export function ArtworkDetailModal({ artwork, onClose }: ArtworkDetailModalProps
   return (
     <div
       className="absolute inset-0 z-40 flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.72)" }}
+      style={{
+        background: "rgba(0,0,0,0.72)",
+        paddingTop: "max(1rem, env(safe-area-inset-top))",
+        paddingBottom: "max(1rem, env(safe-area-inset-bottom))",
+        paddingLeft: "max(1rem, env(safe-area-inset-left))",
+        paddingRight: "max(1rem, env(safe-area-inset-right))",
+      }}
       onClick={onClose}
     >
+      {/* Floating "Back" pill — always visible, large tap target for mobile */}
+      <button
+        onClick={(e) => { e.stopPropagation(); onClose(); }}
+        aria-label="Close artwork"
+        className="absolute z-50 flex items-center gap-2 px-4 h-11 rounded-full bg-black/80 backdrop-blur-md border border-white/20 text-white/90 hover:bg-black/90 active:scale-95 transition-all font-sans text-sm shadow-lg shadow-black/50 touch-manipulation"
+        style={{
+          top: "max(1rem, env(safe-area-inset-top))",
+          left: "max(1rem, env(safe-area-inset-left))",
+        }}
+      >
+        <span aria-hidden className="text-base leading-none">←</span>
+        <span>Back</span>
+      </button>
+
       <div
         className="relative w-full bg-[#1a1510] border border-[#c8a45a]/30 shadow-2xl flex flex-col"
         style={{ maxWidth: 560, maxHeight: "calc(100dvh - 2rem)", overflowY: "auto" }}
@@ -36,10 +56,11 @@ export function ArtworkDetailModal({ artwork, onClose }: ArtworkDetailModalProps
         {/* Amber top bar */}
         <div className="h-[2px] bg-gradient-to-r from-transparent via-[#c8a45a] to-transparent shrink-0" />
 
-        {/* Close button */}
+        {/* Close button — bigger tap target on mobile */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-white/40 hover:text-white transition-colors z-10"
+          aria-label="Close"
+          className="absolute top-2 right-2 w-10 h-10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 rounded-full transition-colors z-10 touch-manipulation"
         >
           <X className="w-5 h-5" />
         </button>
