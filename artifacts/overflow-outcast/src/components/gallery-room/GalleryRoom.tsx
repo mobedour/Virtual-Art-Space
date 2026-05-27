@@ -984,6 +984,33 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner }: Gallery
           0%, 100% { opacity: 0.7; }
           50%       { opacity: 1.0; }
         }
+        /* Landscape phones: tight on vertical space. Anchor the right-side
+           cluster to mid-height so it never collides with the top status
+           strip, shrink the joystick offset, and slim the edit bar. */
+        @media (orientation: landscape) and (max-height: 500px) {
+          [data-joystick] {
+            bottom: calc(0.5rem + env(safe-area-inset-bottom)) !important;
+          }
+          [data-controls] {
+            top: 50% !important;
+            bottom: auto !important;
+            transform: translateY(-50%);
+            grid-template-columns: 1fr !important;
+            gap: 0.5rem !important;
+          }
+          [data-controls] button {
+            width: 2.75rem !important;
+            height: 2.75rem !important;
+            font-size: 1.125rem !important;
+          }
+          [data-mobile-edit-bar] .vas-edit-bar-row {
+            padding-top: 0.25rem !important;
+            padding-bottom: 0.25rem !important;
+          }
+          [data-mobile-edit-bar] .vas-edit-bar-row button {
+            height: 2rem !important;
+          }
+        }
       `}</style>
     </div>
   );

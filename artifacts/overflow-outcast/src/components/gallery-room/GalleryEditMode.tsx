@@ -399,10 +399,11 @@ function MobileEditToolbar({
 
       {/* Bottom toolbar — compact icon row */}
       <div
+        data-mobile-edit-bar
         className="fixed left-0 right-0 z-40 pointer-events-auto"
         style={{ bottom: "env(safe-area-inset-bottom)" }}
       >
-        <div className="flex items-center justify-between gap-1 px-3 py-2 bg-black/85 backdrop-blur-md border-t-2 border-amber-500/60">
+        <div className="vas-edit-bar-row flex items-center justify-between gap-1 px-3 py-2 bg-black/85 backdrop-blur-md border-t-2 border-amber-500/60">
           <button onClick={onUndo} disabled={!canUndo}
             className="w-9 h-9 flex items-center justify-center text-white/70 disabled:opacity-30 font-mono text-base">↩</button>
           <button onClick={onRedo} disabled={!canRedo}
