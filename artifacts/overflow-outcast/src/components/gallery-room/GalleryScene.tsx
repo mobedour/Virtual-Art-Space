@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import { PointerLockControls, Environment } from "@react-three/drei";
+import { PointerLockControls } from "@react-three/drei";
 import * as THREE from "three";
 import { ArtworkFrame, type ArtworkData } from "./ArtworkFrame";
 import { getTheme } from "./theme-config";
@@ -474,28 +474,12 @@ export function GalleryScene({
           color={theme.accentLight} intensity={theme.spotIntensity * 55} />
       ))}
 
-      {/* ── Environment (IBL) — drives reflections on every PBR material in the scene ── */}
-      <Environment
-        preset={
-          isLight ? "apartment"
-            : isNeon ? "night"
-            : theme.floorPattern === "concrete" ? "warehouse"
-            : theme.floorPattern === "slate" ? "night"
-            : "sunset"
-        }
-        environmentIntensity={isLight ? 0.55 : isNeon ? 0.4 : 0.35}
-        background={false}
-      />
-
       {/* ── Floor ── */}
       <mesh position={[0, -halfH, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[halfW * 2, halfD * 2]} />
-        <meshStandardMaterial
-          map={floorTexture}
-          roughness={isLight ? 0.12 : isNeon ? 0.28 : 0.52}
-          metalness={isLight ? 0.18 : isNeon ? 0.42 : 0.06}
-          envMapIntensity={isLight ? 1.2 : isNeon ? 1.0 : 0.75}
-        />
+        <meshStandardMaterial map={floorTexture} roughness={isNeon ? 0.3 : isLight ? 0.15 : 0.65}
+          metalness={isNeon ? 0.4 : isLight ? 0.08 : 0.02}
+          envMapIntensity={isLight ? 0.5 : 0.2} />
       </mesh>
 
       {/* ── Ceiling ── */}
@@ -590,7 +574,6 @@ export function GalleryScene({
       {!isMobile && <PointerLockControls ref={controlsRef} makeDefault />}
       {!isMobile && <MovementController enabled={isLocked} halfW={halfW} halfD={halfD} />}
       {isMobile && <TouchControls enabled={isLocked} joystickRef={joystickRef} onArtworkTap={fireCenterRaycast} halfW={halfW} halfD={halfD} />}
-
     </>
   );
 }
