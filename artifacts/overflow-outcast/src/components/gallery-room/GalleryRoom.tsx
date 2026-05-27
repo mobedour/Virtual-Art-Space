@@ -221,15 +221,24 @@ function EntranceOverlay({ galleryTitle, artistName, isOwner, onEnter, onEnterEd
 // ─── Pause overlay ────────────────────────────────────────────────────────────
 function PauseOverlay({
   galleryTitle, artistName, isOwner, audioMuted, walkSpeed, onWalkSpeedChange,
+  lookSensitivity, onLookSensitivityChange, isMobile,
   onResume, onExit, onEnterEditMode, onToggleAudio,
 }: {
   galleryTitle?: string; artistName?: string; isOwner?: boolean; audioMuted: boolean;
   walkSpeed: number; onWalkSpeedChange: (v: number) => void;
+  lookSensitivity?: number; onLookSensitivityChange?: (v: number) => void;
+  isMobile?: boolean;
   onResume: () => void; onExit?: () => void; onEnterEditMode?: () => void; onToggleAudio: () => void;
 }) {
   return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/75 backdrop-blur-md z-30">
-      <div className="text-center px-10 py-10 max-w-sm w-full">
+    <div
+      className="fixed inset-0 flex flex-col items-center justify-center bg-black/85 backdrop-blur-md z-[60] overflow-y-auto"
+      style={{
+        paddingTop: "max(2rem, env(safe-area-inset-top))",
+        paddingBottom: "max(2rem, env(safe-area-inset-bottom))",
+      }}
+    >
+      <div className="text-center px-8 py-6 max-w-sm w-full">
         {galleryTitle && (
           <h2 className="font-display text-xl italic text-white mb-1">{galleryTitle}</h2>
         )}
@@ -252,20 +261,32 @@ function PauseOverlay({
           </button>
         </div>
 
-        <div className="mt-8 pt-6 border-t border-white/10 space-y-4">
+        <div className="mt-6 pt-5 border-t border-white/10 space-y-4">
           {/* Walk speed slider */}
           <div className="flex items-center gap-3">
-            <span className="font-mono text-[9px] tracking-widest text-white/30 w-16 text-left">SPEED</span>
+            <span className="font-mono text-[9px] tracking-widest text-white/40 w-16 text-left">SPEED</span>
             <input
-              type="range" min={2} max={10} step={0.5} value={walkSpeed}
+              type="range" min={2} max={14} step={0.5} value={walkSpeed}
               onChange={(e) => onWalkSpeedChange(Number(e.target.value))}
-              className="flex-1 accent-amber-400"
+              className="flex-1 accent-amber-400 h-2"
             />
             <span className="font-mono text-[10px] text-amber-400/70 w-8 text-right">{walkSpeed.toFixed(1)}</span>
           </div>
+          {/* Look sensitivity (mobile only — desktop uses mouse) */}
+          {isMobile && onLookSensitivityChange && lookSensitivity !== undefined && (
+            <div className="flex items-center gap-3">
+              <span className="font-mono text-[9px] tracking-widest text-white/40 w-16 text-left">LOOK</span>
+              <input
+                type="range" min={0.3} max={3} step={0.1} value={lookSensitivity}
+                onChange={(e) => onLookSensitivityChange(Number(e.target.value))}
+                className="flex-1 accent-amber-400 h-2"
+              />
+              <span className="font-mono text-[10px] text-amber-400/70 w-8 text-right">{lookSensitivity.toFixed(1)}</span>
+            </div>
+          )}
           {/* Audio toggle */}
           <button onClick={onToggleAudio}
-            className="flex items-center gap-2 mx-auto text-sm text-white/40 hover:text-white/70 font-sans transition-colors">
+            className="flex items-center gap-2 mx-auto text-sm text-white/50 hover:text-white/80 font-sans transition-colors">
             <span>{audioMuted ? "🔇" : "🔊"}</span>
             <span>{audioMuted ? "Audio Off" : "Audio On"}</span>
           </button>
@@ -290,6 +311,7 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner }: Gallery
   const [isEditMode, setIsEditMode] = useState(false);
   const [isPresenting, setIsPresenting] = useState(false);
   const [vrArtwork, setVrArtwork] = useState<ArtworkData | null>(null);
+  const [isEditDragging, setIsEditDragging] = useState(false);
   const [walkSpeed, setWalkSpeed] = useState(() => {
     const saved = localStorage.getItem("vas_walkSpeed");
     return saved ? Number(saved) : 5.5;
@@ -377,6 +399,67 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner }: Gallery
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isLocked, isPaused, selectedArtwork, isEditMode, editState.isDirty, vrArtwork]);
 
+  // ─── Browser back button handling ───────────────────────────────────────────
+  // Push a sentinel state when entering any modal layer so back button pops it
+  // off in order: artwork modal → edit mode → pause → exit gallery.
+  useEffect(() => {
+    // Push history sentinel when entering immersive mode
+    if (!hasEntered) return;
+    window.history.pushState({ vasImmersive: true }, "");
+    const onPop = () => {
+      // Pop layers in order; if nothing to pop, the browser will navigate away
+      if (vrArtwork) { setVrArtwork(null); window.history.pushState({ vasImmersive: true }, ""); return; }
+      if (selectedArtwork) { setSelectedArtwork(null); window.history.pushState({ vasImmersive: true }, ""); return; }
+      if (isEditMode) {
+        if (editState.isDirty) {
+          if (!window.confirm("Discard unsaved edits?")) {
+            window.history.pushState({ vasImmersive: true }, "");
+            return;
+          }
+          editState.discard();
+        }
+        setIsEditMode(false);
+        window.history.pushState({ vasImmersive: true }, "");
+        return;
+      }
+      if (isPaused) { setIsPaused(false); setIsLocked(isMobile); window.history.pushState({ vasImmersive: true }, ""); return; }
+      // Nothing left — actually exit the gallery
+      onExit?.();
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasEntered, vrArtwork, selectedArtwork, isEditMode, isPaused, isMobile, editState.isDirty]);
+
+  // ─── Visual viewport tracking for proper mobile fullscreen ──────────────────
+  // Browser chrome on iOS Safari changes viewport height as you scroll. Force
+  // body height to match visualViewport so controls stay glued to the bottom.
+  useEffect(() => {
+    if (!isMobile || !hasEntered) return;
+    const setVh = () => {
+      const h = window.visualViewport?.height ?? window.innerHeight;
+      document.documentElement.style.setProperty("--vas-vh", `${h}px`);
+    };
+    setVh();
+    window.visualViewport?.addEventListener("resize", setVh);
+    window.visualViewport?.addEventListener("scroll", setVh);
+    window.addEventListener("orientationchange", setVh);
+    // Prevent body scroll while immersive
+    document.body.style.overflow = "hidden";
+    document.body.style.position = "fixed";
+    document.body.style.width = "100%";
+    document.body.style.height = "100%";
+    return () => {
+      window.visualViewport?.removeEventListener("resize", setVh);
+      window.visualViewport?.removeEventListener("scroll", setVh);
+      window.removeEventListener("orientationchange", setVh);
+      document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.width = "";
+      document.body.style.height = "";
+    };
+  }, [isMobile, hasEntered]);
+
   // Suppress pointer-lock errors in proxied iframe
   useEffect(() => {
     const onErr = (e: ErrorEvent) => {
@@ -406,6 +489,9 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner }: Gallery
     setIsPaused(false);
     if (!isMobile) {
       setTimeout(() => { document.querySelector("canvas")?.click(); }, 50);
+    } else {
+      // Auto-enable fake fullscreen on mobile so browser chrome doesn't cover controls
+      setFakeFullscreen(true);
     }
     setIsLocked(isMobile);
   }, [isMobile]);
@@ -446,8 +532,12 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner }: Gallery
   const handleEnterEditMode = useCallback(() => {
     setIsPaused(false);
     setIsEditMode(true);
+    setHasEntered(true);
     if (!isMobile) {
       setTimeout(() => { document.querySelector("canvas")?.click(); }, 50);
+    } else {
+      setIsLocked(true);
+      setFakeFullscreen(true);
     }
   }, [isMobile]);
 
@@ -473,7 +563,10 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner }: Gallery
   const showEditBorder = isEditMode && !editState.isPreviewing && !isPresenting;
 
   return (
-    <div className={fakeFullscreen ? "fixed inset-0 z-[9999] bg-[#0d0b09]" : "absolute inset-0 bg-[#0d0b09]"}>
+    <div
+      className={fakeFullscreen ? "fixed inset-0 z-[9999] bg-[#0d0b09] overflow-hidden" : "absolute inset-0 bg-[#0d0b09] overflow-hidden"}
+      style={fakeFullscreen && isMobile ? { height: "var(--vas-vh, 100dvh)" } : undefined}
+    >
       {/* Canvas fade-in */}
       <div className="absolute inset-0 transition-opacity duration-700"
         style={{ opacity: sceneVisible ? 1 : 0 }}>
@@ -516,13 +609,14 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner }: Gallery
                   onArtworkMoved={editState.handleArtworkMoved}
                   onArtworkDropped={editState.handleArtworkMovedCommit}
                   onArtworkSelected={editState.handleArtworkSelected}
+                  onEditDraggingChange={setIsEditDragging}
                   walkSpeed={walkSpeed}
                   lookSensitivity={lookSensitivity}
                 />
 
-                {/* Edit mode floor grid */}
+                {/* Edit mode floor grid — pulses amber while picking */}
                 {isEditMode && !editState.isPreviewing && (
-                  <EditFloorGrid halfW={activeHalfW} halfD={activeHalfD} floorY={floorY} />
+                  <EditFloorGrid halfW={activeHalfW} halfD={activeHalfD} floorY={floorY} isPicking={isEditDragging} />
                 )}
 
                 {/* Edit mode wall resize arrows */}
@@ -564,7 +658,10 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner }: Gallery
 
       {/* Top-right controls row (visible when locked / in edit mode, not in VR) */}
       {webglSupported && hasEntered && !isPaused && !selectedArtwork && !isPresenting && (
-        <div className="absolute top-4 right-4 z-40 flex items-center gap-2 pointer-events-auto">
+        <div
+          className="absolute right-3 z-40 flex items-center gap-2 pointer-events-auto"
+          style={{ top: "max(0.75rem, env(safe-area-inset-top))" }}
+        >
           {/* Audio toggle */}
           <button onClick={handleToggleAudio}
             className="w-8 h-8 rounded-full bg-black/50 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/40 hover:text-white/80 transition-colors text-sm">
@@ -607,6 +704,7 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner }: Gallery
                 setWalkSpeed(v);
                 localStorage.setItem("vas_walkSpeed", String(v));
               }}
+              isMobile={false}
               onResume={handleResume}
               onExit={onExit}
               onEnterEditMode={isOwner ? handleEnterEditMode : undefined}
@@ -635,6 +733,7 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner }: Gallery
           {/* Edit mode toolbar */}
           {isEditMode && !editState.isPreviewing && (
             <EditToolbar
+              isMobile={false}
               galleryId={gallery.id ?? 0}
               currentTheme={editState.roomTheme}
               currentLighting={editState.lightingMood}
@@ -677,7 +776,7 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner }: Gallery
                   <p className="font-sans text-sm text-white/50 mb-8">{gallery.artistName}</p>
                 )}
                 <div className="flex flex-col items-center gap-3">
-                  <button onClick={() => { setHasEntered(true); setIsLocked(true); }}
+                  <button onClick={handleEnter}
                     className="inline-flex items-center gap-3 px-8 py-3 bg-amber-500/90 hover:bg-amber-400 text-black font-display text-base italic font-semibold rounded-sm transition-all">
                     Enter Gallery →
                   </button>
@@ -704,6 +803,12 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner }: Gallery
                 setWalkSpeed(v);
                 localStorage.setItem("vas_walkSpeed", String(v));
               }}
+              lookSensitivity={lookSensitivity}
+              onLookSensitivityChange={(v) => {
+                setLookSensitivity(v);
+                localStorage.setItem("vas_lookSensitivity", String(v));
+              }}
+              isMobile={true}
               onResume={handleResume}
               onExit={onExit}
               onEnterEditMode={isOwner ? handleEnterEditMode : undefined}
@@ -711,54 +816,88 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner }: Gallery
             />
           )}
 
-          {/* Mobile sensitivity / speed strip — shown when active */}
-          {mobileActive && !selectedArtwork && !isPaused && (
-            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-3 bg-black/50 backdrop-blur-sm rounded-full px-4 py-1.5 pointer-events-auto">
-              <span className="font-mono text-[9px] tracking-widest text-white/30">LOOK</span>
-              <input
-                type="range" min={0.3} max={3} step={0.1} value={lookSensitivity}
-                onChange={(e) => {
-                  const v = Number(e.target.value);
-                  setLookSensitivity(v);
-                  localStorage.setItem("vas_lookSensitivity", String(v));
-                }}
-                className="w-20 accent-amber-400"
-              />
-              <span className="font-mono text-[9px] tracking-widest text-white/30 ml-2">SPD</span>
-              <input
-                type="range" min={2} max={14} step={0.5} value={walkSpeed}
-                onChange={(e) => {
-                  const v = Number(e.target.value);
-                  setWalkSpeed(v);
-                  localStorage.setItem("vas_walkSpeed", String(v));
-                }}
-                className="w-20 accent-amber-400"
-              />
-            </div>
+          {/* Mobile edit-mode toolbar (compact, sits above joystick) */}
+          {isEditMode && !editState.isPreviewing && (
+            <EditToolbar
+              isMobile={true}
+              galleryId={gallery.id ?? 0}
+              currentTheme={editState.roomTheme}
+              currentLighting={editState.lightingMood}
+              currentDecorationLevel={editState.decorationLevel}
+              isDirty={editState.isDirty}
+              isSaving={editState.isSaving}
+              canUndo={editState.canUndo}
+              canRedo={editState.canRedo}
+              onThemeChange={editState.handleThemeChange}
+              onLightingChange={editState.handleLightingChange}
+              onDecorationLevelChange={editState.handleDecorationLevelChange}
+              onSave={handleSaveEdit}
+              onDiscard={handleExitEditMode}
+              onUndo={editState.undo}
+              onRedo={editState.redo}
+              onPreviewToggle={() => editState.setIsPreviewing((v) => !v)}
+              isPreviewing={editState.isPreviewing}
+              selectedArtwork={selectedEditArtwork}
+              onArtworkScale={(v) => editState.selectedArtworkId !== null && editState.handleArtworkScale(editState.selectedArtworkId, v)}
+              onArtworkScaleCommit={editState.handleArtworkScaleCommit}
+              onArtworkRotateOffset={(rad) => editState.selectedArtworkId !== null && editState.handleArtworkRotateOffset(editState.selectedArtworkId, rad)}
+              onArtworkResetPlacement={editState.handleArtworkResetPlacement}
+              onArtworkDeselect={() => editState.handleArtworkSelected(null)}
+            />
           )}
 
           {mobileActive && !isPaused && (
             <>
+              {/* Centre crosshair */}
               <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
                 <div className="w-1.5 h-1.5 rounded-full bg-white/60 ring-1 ring-black/40" />
               </div>
-              <div className="absolute bottom-8 left-8 z-10" data-joystick>
+              {/* Joystick — anchored to bottom-left with safe area */}
+              <div
+                className="absolute z-20"
+                data-joystick
+                style={{
+                  left: "max(1.5rem, env(safe-area-inset-left))",
+                  bottom: `calc(${isEditMode ? "8.5rem" : "2rem"} + env(safe-area-inset-bottom))`,
+                }}
+              >
                 <VirtualJoystick stateRef={joystickRef} />
               </div>
-              <div className="absolute bottom-8 right-6 z-10 select-none" data-controls style={{ width: 104, height: 164 }}>
-                <div className="absolute" style={{ top: 0, left: 30 }}>
-                  <ControlBtn symbol="☰" label="Menu" accent="#f5c060" onClick={() => { setIsLocked(false); setIsPaused(true); }} />
-                </div>
-                <div className="absolute" style={{ top: 60, left: 0 }}>
-                  <ControlBtn symbol="□" label="Toggle hints" accent="#a78bfa" onClick={() => setShowHints((h) => !h)} />
-                </div>
-                <div className="absolute" style={{ top: 60, left: 60 }}>
-                  <ControlBtn symbol={inAnyFullscreen ? "⊠" : "○"} label="Fullscreen"
-                    accent="#22d3ee" onClick={toggleFullscreen} />
-                </div>
-                <div className="absolute" style={{ top: 120, left: 30 }}>
-                  <ControlBtn symbol="×" label="Inspect artwork" accent="#f59e0b" onClick={() => inspectRef.current?.()} />
-                </div>
+              {/* Right-side compact controls */}
+              <div
+                className="absolute z-20 flex flex-col gap-2 items-end select-none"
+                data-controls
+                style={{
+                  right: "max(1rem, env(safe-area-inset-right))",
+                  bottom: `calc(${isEditMode ? "8.5rem" : "2rem"} + env(safe-area-inset-bottom))`,
+                }}
+              >
+                <ControlBtn
+                  symbol="☰"
+                  label="Menu"
+                  accent="#f5c060"
+                  onClick={() => { setIsLocked(false); setIsPaused(true); }}
+                />
+                {!isEditMode && (
+                  <ControlBtn
+                    symbol="◎"
+                    label="Inspect artwork"
+                    accent="#f59e0b"
+                    onClick={() => inspectRef.current?.()}
+                  />
+                )}
+                {isEditMode && (
+                  <ControlBtn
+                    symbol="✓"
+                    label="Pick / Drop"
+                    accent="#f5c060"
+                    onClick={() => {
+                      // Fire a synthetic click on the canvas to trigger pick/drop
+                      const canvas = document.querySelector("canvas");
+                      canvas?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+                    }}
+                  />
+                )}
               </div>
             </>
           )}

@@ -444,6 +444,7 @@ interface GallerySceneProps {
   onArtworkMoved?: (id: number, patch: Partial<ArtworkData>) => void;
   onArtworkDropped?: () => void;
   onArtworkSelected?: (id: number | null) => void;
+  onEditDraggingChange?: (dragging: boolean) => void;
   walkSpeed?: number;
   lookSensitivity?: number;
 }
@@ -454,6 +455,7 @@ export function GalleryScene({
   roomSize = 5, roomMode = "basic", roomSeed = 0, decorationLevel = 5,
   roomHeight = 5, lightingMood = 1.0, onSceneReady,
   isEditMode = false, onArtworkMoved, onArtworkDropped, onArtworkSelected,
+  onEditDraggingChange,
   walkSpeed = 5.5, lookSensitivity = 1.0,
 }: GallerySceneProps) {
   const theme = getTheme(roomTheme);
@@ -739,6 +741,7 @@ export function GalleryScene({
           onArtworkMoved={onArtworkMoved}
           onDrop={onArtworkDropped}
           onArtworkSelected={onArtworkSelected}
+          onDraggingChange={onEditDraggingChange}
         />
       )}
     </>

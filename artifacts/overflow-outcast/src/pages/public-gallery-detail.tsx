@@ -50,8 +50,8 @@ export default function PublicGalleryDetail() {
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
-      {/* Immersive overlay header */}
-      <header className="absolute top-0 w-full z-50 p-4 flex justify-between items-start pointer-events-none">
+      {/* Immersive overlay header (desktop only — mobile uses in-canvas controls) */}
+      <header className="hidden md:flex absolute top-0 w-full z-50 p-4 justify-between items-start pointer-events-none">
         {/* Left — Exit */}
         <Button
           asChild

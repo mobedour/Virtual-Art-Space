@@ -16,28 +16,36 @@ type EditSnapshot = {
 };
 
 // ─── Floor grid overlay ───────────────────────────────────────────────────────
-export function EditFloorGrid({ halfW, halfD, floorY }: { halfW: number; halfD: number; floorY: number }) {
-  const STEP = 0.5;
-  const MAIN = "#f5c060";
-  const GRID = MAIN + "33";
+export function EditFloorGrid({ halfW, halfD, floorY, isPicking = false }: {
+  halfW: number; halfD: number; floorY: number; isPicking?: boolean;
+}) {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const matRef = useRef<THREE.MeshBasicMaterial>(null);
 
-  const linePositions = useMemo(() => {
-    const positions: [number, number, number][] = [];
-    for (let x = -halfW; x <= halfW; x += STEP) {
-      positions.push([x, floorY + 0.01, -halfD], [x, floorY + 0.01, halfD]);
+  // Pulse opacity / brightness while picking
+  useFrame((state) => {
+    if (!matRef.current) return;
+    if (isPicking) {
+      const t = state.clock.getElapsedTime();
+      const pulse = 0.55 + 0.4 * Math.sin(t * 4);
+      matRef.current.opacity = pulse;
+      matRef.current.color.setStyle("#f5c060");
+    } else {
+      matRef.current.opacity = 0.22;
+      matRef.current.color.setStyle("#f5c060");
     }
-    for (let z = -halfD; z <= halfD; z += STEP) {
-      positions.push([-halfW, floorY + 0.01, z], [halfW, floorY + 0.01, z]);
-    }
-    return positions;
-  }, [halfW, halfD, floorY]);
+  });
 
   return (
     <group>
-      {/* Floor mesh with grid material */}
-      <mesh position={[0, floorY + 0.008, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      <mesh ref={meshRef} position={[0, floorY + 0.008, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[halfW * 2, halfD * 2, Math.max(2, Math.ceil(halfW * 4)), Math.max(2, Math.ceil(halfD * 4))]} />
+        <meshBasicMaterial ref={matRef} color="#f5c060" transparent opacity={0.22} wireframe />
+      </mesh>
+      {/* Solid soft underlay so grid reads on dark floors */}
+      <mesh position={[0, floorY + 0.005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[halfW * 2, halfD * 2]} />
-        <meshBasicMaterial color={GRID} transparent opacity={0.25} />
+        <meshBasicMaterial color={isPicking ? "#f5c060" : "#1a1410"} transparent opacity={isPicking ? 0.08 : 0.15} />
       </mesh>
     </group>
   );
@@ -74,6 +82,7 @@ export function EditDragController({
   onArtworkMoved,
   onDrop,
   onArtworkSelected,
+  onDraggingChange,
 }: {
   isEditing: boolean;
   artworks: ArtworkData[];
@@ -83,6 +92,7 @@ export function EditDragController({
   onArtworkMoved: (id: number, patch: Partial<ArtworkData>) => void;
   onDrop?: () => void;
   onArtworkSelected?: (id: number | null) => void;
+  onDraggingChange?: (dragging: boolean) => void;
 }) {
   const { camera, scene } = useThree();
   const draggingRef = useRef<{ artworkId: number; wallIdx: number } | null>(null);
@@ -143,19 +153,28 @@ export function EditDragController({
       return null;
     };
 
-    const handleClick = () => {
+    const handleClick = (e: MouseEvent) => {
       if (!isEditing) return;
+      // Ignore clicks that originated inside an interactive UI overlay —
+      // toolbar buttons, joystick, control cluster, etc. — so tapping a
+      // mobile control doesn't pick/drop an artwork under the crosshair.
+      const target = e.target as HTMLElement | null;
+      if (target && target.closest("button, input, a, [data-controls], [data-joystick], [role='dialog']")) {
+        return;
+      }
       const artworkHit = findArtworkHit();
 
       if (draggingRef.current) {
         // Drop: commit to undo history
         draggingRef.current = null;
         pendingPatchRef.current = null;
+        onDraggingChange?.(false);
         onDrop?.();
       } else if (artworkHit) {
         // Pick up
         const wallIdx = getNearestWallPlane(artworkHit.point, halfW, halfD);
         draggingRef.current = { artworkId: artworkHit.artworkId, wallIdx };
+        onDraggingChange?.(true);
       } else {
         // Click on empty space — deselect
         onArtworkSelected?.(null);
@@ -177,7 +196,7 @@ export function EditDragController({
       window.removeEventListener("click", handleClick);
       window.removeEventListener("contextmenu", handleContextMenu);
     };
-  }, [isEditing, camera, scene, halfW, halfD, onDrop, onArtworkSelected]);
+  }, [isEditing, camera, scene, halfW, halfD, onDrop, onArtworkSelected, onDraggingChange]);
 
   return null;
 }
@@ -250,10 +269,168 @@ interface EditToolbarProps {
   onArtworkRotateOffset?: (rad: number) => void;
   onArtworkResetPlacement?: (id: number) => void;
   onArtworkDeselect?: () => void;
+  isMobile?: boolean;
 }
 
-export function EditToolbar({
-  galleryId, currentTheme, currentLighting, currentDecorationLevel, isDirty, isSaving,
+export function EditToolbar(props: EditToolbarProps) {
+  if (props.isMobile) return <MobileEditToolbar {...props} />;
+  return <DesktopEditToolbar {...props} />;
+}
+
+function MobileEditToolbar({
+  currentTheme, currentLighting, currentDecorationLevel, isDirty, isSaving,
+  canUndo, canRedo,
+  onThemeChange, onLightingChange, onDecorationLevelChange, onSave, onDiscard, onUndo, onRedo,
+  onPreviewToggle, isPreviewing,
+  selectedArtwork, onArtworkScale, onArtworkScaleCommit, onArtworkRotateOffset,
+  onArtworkResetPlacement, onArtworkDeselect,
+}: EditToolbarProps) {
+  const themes = getAllThemes();
+  const [panel, setPanel] = useState<"none" | "theme" | "light" | "furn">("none");
+
+  return (
+    <>
+      {/* Top status strip — sits in top safe area */}
+      <div
+        className="fixed left-0 right-0 z-40 flex items-center justify-between pointer-events-none px-3"
+        style={{ top: "max(0.5rem, env(safe-area-inset-top))" }}
+      >
+        <div className="pointer-events-auto px-2.5 py-1 bg-black/75 backdrop-blur-md border border-amber-500/60 rounded-sm">
+          <span className="font-mono text-[9px] tracking-widest text-amber-400">
+            {isPreviewing ? "PREVIEW" : "EDIT"}
+          </span>
+        </div>
+        <div className="flex gap-2 pointer-events-auto">
+          <button onClick={onDiscard} disabled={isSaving}
+            className="px-3 h-8 text-[11px] border border-white/25 bg-black/70 backdrop-blur-md text-white/80 rounded-sm transition-all disabled:opacity-40">
+            ✕
+          </button>
+          <button onClick={onSave} disabled={!isDirty || isSaving}
+            className="px-4 h-8 text-[11px] bg-amber-500 text-black font-semibold rounded-sm transition-all disabled:opacity-40 disabled:bg-amber-500/40">
+            {isSaving ? "…" : "Save"}
+          </button>
+        </div>
+      </div>
+
+      {/* Frame properties — slide-up from above bottom toolbar when artwork selected */}
+      {selectedArtwork && (
+        <div
+          className="fixed left-3 right-3 z-40 pointer-events-auto"
+          style={{ bottom: `calc(4.5rem + env(safe-area-inset-bottom))` }}
+        >
+          <div className="px-3 py-2 bg-black/90 backdrop-blur-md border border-amber-500/50 rounded-sm">
+            <div className="flex items-center justify-between mb-2">
+              <span className="font-mono text-[9px] tracking-widest text-amber-400 truncate flex-1">{selectedArtwork.title}</span>
+              <button onClick={onArtworkDeselect} className="text-white/50 font-mono text-sm px-2">✕</button>
+            </div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="font-mono text-[9px] text-white/40 w-10">SIZE</span>
+              <input
+                type="range" min={0.4} max={2.0} step={0.05}
+                value={selectedArtwork.scale ?? 1.0}
+                onChange={(e) => onArtworkScale?.(Number(e.target.value))}
+                onTouchEnd={onArtworkScaleCommit} onMouseUp={onArtworkScaleCommit}
+                className="flex-1 accent-amber-400 h-2"
+              />
+              <span className="font-mono text-[10px] text-amber-400/70 w-10 text-right">{(selectedArtwork.scale ?? 1.0).toFixed(2)}×</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="font-mono text-[9px] text-white/40 w-10">SPIN</span>
+              {[-45, -15, 15, 45].map((deg) => (
+                <button key={deg} onClick={() => onArtworkRotateOffset?.(deg * Math.PI / 180)}
+                  className="flex-1 py-1 text-[10px] font-mono border border-white/20 text-white/60 rounded-sm">
+                  {deg > 0 ? `+${deg}` : `${deg}`}°
+                </button>
+              ))}
+              <button onClick={() => { onArtworkResetPlacement?.(selectedArtwork.id); onArtworkDeselect?.(); }}
+                className="px-2 py-1 text-[10px] font-mono border border-white/15 text-white/40 rounded-sm">
+                ↺
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Popup panel (theme / light / furnishings) */}
+      {panel !== "none" && (
+        <div
+          className="fixed left-3 right-3 z-40 pointer-events-auto"
+          style={{ bottom: `calc(4.5rem + env(safe-area-inset-bottom))` }}
+        >
+          <div className="px-3 py-3 bg-black/90 backdrop-blur-md border border-amber-500/40 rounded-sm">
+            {panel === "theme" && (
+              <div className="flex gap-2 flex-wrap justify-center">
+                {themes.map(({ key, config }) => (
+                  <button
+                    key={key}
+                    title={THEME_DISPLAY_NAMES[key] ?? key}
+                    onClick={() => { onThemeChange(key); setPanel("none"); }}
+                    className={`w-12 h-12 rounded-sm border-2 ${currentTheme === key ? "border-amber-400" : "border-white/20"}`}
+                    style={{ background: `linear-gradient(135deg, ${config.wallColor} 50%, ${config.floorColor} 50%)` }}
+                  />
+                ))}
+              </div>
+            )}
+            {panel === "light" && (
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-[9px] text-white/40 w-12">LIGHT</span>
+                <input
+                  type="range" min={0.5} max={2.0} step={0.1} value={currentLighting}
+                  onChange={(e) => onLightingChange(Number(e.target.value))}
+                  className="flex-1 accent-amber-400 h-2"
+                />
+                <span className="font-mono text-[10px] text-amber-400/70 w-10 text-right">{currentLighting.toFixed(1)}×</span>
+              </div>
+            )}
+            {panel === "furn" && (
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-[9px] text-white/40 w-12">DECOR</span>
+                <input
+                  type="range" min={0} max={10} step={1} value={currentDecorationLevel}
+                  onChange={(e) => onDecorationLevelChange(Number(e.target.value))}
+                  className="flex-1 accent-amber-400 h-2"
+                />
+                <span className="font-mono text-[10px] text-amber-400/70 w-10 text-right">{currentDecorationLevel}/10</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Bottom toolbar — compact icon row */}
+      <div
+        className="fixed left-0 right-0 z-40 pointer-events-auto"
+        style={{ bottom: "env(safe-area-inset-bottom)" }}
+      >
+        <div className="flex items-center justify-between gap-1 px-3 py-2 bg-black/85 backdrop-blur-md border-t-2 border-amber-500/60">
+          <button onClick={onUndo} disabled={!canUndo}
+            className="w-9 h-9 flex items-center justify-center text-white/70 disabled:opacity-30 font-mono text-base">↩</button>
+          <button onClick={onRedo} disabled={!canRedo}
+            className="w-9 h-9 flex items-center justify-center text-white/70 disabled:opacity-30 font-mono text-base">↪</button>
+          <button onClick={() => setPanel(panel === "theme" ? "none" : "theme")}
+            className={`flex-1 h-9 text-[11px] font-sans rounded-sm border ${panel === "theme" ? "border-amber-400 text-amber-400 bg-amber-400/10" : "border-white/20 text-white/70"}`}>
+            🎨
+          </button>
+          <button onClick={() => setPanel(panel === "light" ? "none" : "light")}
+            className={`flex-1 h-9 text-[11px] font-sans rounded-sm border ${panel === "light" ? "border-amber-400 text-amber-400 bg-amber-400/10" : "border-white/20 text-white/70"}`}>
+            ☀
+          </button>
+          <button onClick={() => setPanel(panel === "furn" ? "none" : "furn")}
+            className={`flex-1 h-9 text-[11px] font-sans rounded-sm border ${panel === "furn" ? "border-amber-400 text-amber-400 bg-amber-400/10" : "border-white/20 text-white/70"}`}>
+            🪴
+          </button>
+          <button onClick={onPreviewToggle}
+            className="flex-1 h-9 text-[11px] font-sans rounded-sm border border-white/20 text-white/70">
+            {isPreviewing ? "Edit" : "👁"}
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function DesktopEditToolbar({
+  currentTheme, currentLighting, currentDecorationLevel, isDirty, isSaving,
   canUndo, canRedo,
   onThemeChange, onLightingChange, onDecorationLevelChange, onSave, onDiscard, onUndo, onRedo,
   onPreviewToggle, isPreviewing,
