@@ -542,11 +542,15 @@ export function GalleryScene({
 
   useEffect(() => {
     if (isMobile) return;
+    // In edit mode, EditDragController owns canvas clicks (pick / drop).
+    // Skip this handler entirely so it doesn't unlock the pointer as a
+    // side-effect of fireCenterRaycast and break the drag.
+    if (isEditMode) return;
     const canvas = gl.domElement;
     const handleClick = () => { if (!document.pointerLockElement) return; fireCenterRaycast(); };
     canvas.addEventListener("click", handleClick);
     return () => canvas.removeEventListener("click", handleClick);
-  }, [gl, isMobile, fireCenterRaycast]);
+  }, [gl, isMobile, isEditMode, fireCenterRaycast]);
 
   const ambientMood = lightingMood;
   const fogColor = new THREE.Color(theme.fogColor);
