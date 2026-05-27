@@ -51,6 +51,18 @@ Planar reflection is expensive (full extra render pass per frame at half resolut
 
 **How to apply:** if a future "polished obsidian" theme wants planar reflection, add it to the `isLight` branch alongside marble.
 
+## Why the pipeline uses imperative Three.js, not @react-three/postprocessing
+
+`@react-three/postprocessing` v3.x crashes in the Replit environment with `R3F: Cannot set "data-component-name"`. Root cause: Replit's `@replit/vite-plugin-cartographer` injects a `data-component-name` annotation on all JSX elements (for component tracing in the Replit UI). When `@react-three/postprocessing`'s `EffectComposer` mounts its internal `Effect` nodes through R3F's reconciler, those nodes receive the annotation via `applyProps`. The `Effect` objects from the `postprocessing` library do not have standard Three.js prop interfaces, so `applyProps` throws → WebGL context lost → "Invalid hook call" cascade.
+
+The fix: use `three/examples/jsm/postprocessing/*` imperatively via `useEffect`/`useFrame`. These are plain Three.js classes, never touched by R3F's reconciler, so the Vite plugin annotation is never a problem.
+
+Import paths must include `.js` extension (`three/examples/jsm/postprocessing/EffectComposer.js`) for TypeScript to resolve them with `moduleResolution: bundler`.
+
+`MeshReflectorMaterial` from drei was also removed for the same reason — it creates internal render targets imperatively without R3F metadata (`__r3f`), which crashes on cleanup.
+
+**How to apply:** any future effects that need to be added should be additional `Pass` instances added to the imperative `EffectComposer` in `PostFX.tsx`, NOT declarative `@react-three/postprocessing` JSX elements.
+
 ## Don't add without a plan
 
 Tempting future effects that should NOT be added casually:

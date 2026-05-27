@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import { PointerLockControls, Environment, MeshReflectorMaterial } from "@react-three/drei";
+import { PointerLockControls, Environment } from "@react-three/drei";
 import * as THREE from "three";
 import { ArtworkFrame, type ArtworkData } from "./ArtworkFrame";
 import { getTheme } from "./theme-config";
@@ -491,31 +491,12 @@ export function GalleryScene({
       {/* ── Floor ── */}
       <mesh position={[0, -halfH, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[halfW * 2, halfD * 2]} />
-        {isLight ? (
-          // Marble / white-cube — true planar reflection (Kunstmatrix-style polished floor)
-          <MeshReflectorMaterial
-            map={floorTexture}
-            mirror={0.45}
-            resolution={512}
-            blur={[300, 100]}
-            mixBlur={1.2}
-            mixStrength={1.0}
-            mixContrast={1.0}
-            roughness={0.35}
-            metalness={0.15}
-            depthScale={0}
-            minDepthThreshold={0.4}
-            maxDepthThreshold={1.4}
-            envMapIntensity={0.6}
-          />
-        ) : (
-          <meshStandardMaterial
-            map={floorTexture}
-            roughness={isNeon ? 0.3 : 0.55}
-            metalness={isNeon ? 0.4 : 0.08}
-            envMapIntensity={isNeon ? 0.9 : 0.7}
-          />
-        )}
+        <meshStandardMaterial
+          map={floorTexture}
+          roughness={isLight ? 0.12 : isNeon ? 0.28 : 0.52}
+          metalness={isLight ? 0.18 : isNeon ? 0.42 : 0.06}
+          envMapIntensity={isLight ? 1.2 : isNeon ? 1.0 : 0.75}
+        />
       </mesh>
 
       {/* ── Ceiling ── */}
