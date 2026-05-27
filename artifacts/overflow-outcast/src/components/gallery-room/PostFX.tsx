@@ -86,13 +86,11 @@ export function PostFX({ theme }: PostFXProps) {
         mipmapBlur
         radius={0.85}
       />
-      {cfg.vignetteEnabled ? (
-        <Vignette
-          offset={0.3}
-          darkness={cfg.vignetteDarkness}
-          blendFunction={BlendFunction.NORMAL}
-        />
-      ) : null}
+      <Vignette
+        offset={0.3}
+        darkness={cfg.vignetteEnabled ? cfg.vignetteDarkness : 0}
+        blendFunction={BlendFunction.NORMAL}
+      />
       <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
       <SMAA />
     </EffectComposer>
