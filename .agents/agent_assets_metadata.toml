@@ -41,3 +41,9 @@ id = "nIS5lBThc7Voumv9JGjc1"
 uri = "file://FILESYSTEM.md"
 type = "text"
 title = "FILESYSTEM.md — Full Project Reference"
+
+[[outputs]]
+id = "sq1ZPX3OEncc-qVXzLn5I"
+uri = "file://.local/tasks/stage3-vr-and-live-edit.md"
+type = "text"
+title = "Stage 3 — VR & Live Edit Master Plan"
