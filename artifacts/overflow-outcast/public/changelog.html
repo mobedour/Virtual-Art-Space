@@ -743,6 +743,167 @@
         </div>
       </div>
 
+      <!-- ── Filesystem Explanation (collapsible) ── -->
+      <div class="technical-section">
+        <div class="section-label">Filesystem Explanation</div>
+        <div class="technical-toggle" id="fsToggle" onclick="toggleFs()">
+          <div class="technical-toggle-left">
+            <span class="tag" style="font-size:8px;">Docs</span>
+            <span class="technical-toggle-label">Full project file map — what every file and folder does</span>
+          </div>
+          <span class="toggle-arrow" id="fsArrow">▼</span>
+        </div>
+        <div class="technical-content" id="fsContent">
+          <div class="technical-inner">
+
+            <h2>The Big Picture</h2>
+            <p>
+              This is a <strong>monorepo</strong> — one repository containing multiple applications and shared
+              libraries, all managed together by pnpm workspaces. Think of it like one building with separate
+              floors, each doing a different job but sharing a basement of common utilities.
+            </p>
+
+            <h2>Root Level — the lobby</h2>
+            <ul>
+              <li><strong>pnpm-workspace.yaml</strong> — Tells pnpm which packages live in this repo (<code>artifacts/*</code>, <code>lib/*</code>, <code>scripts</code>). Also pins shared dependency versions so every package uses the same version of React, TypeScript, etc.</li>
+              <li><strong>package.json</strong> — Root-level scripts that run across the whole project: <code>pnpm run typecheck</code> (check all TypeScript), <code>pnpm run build</code> (build everything for deployment)</li>
+              <li><strong>tsconfig.base.json</strong> — Shared TypeScript rules inherited by all packages: strictness settings, target, module format</li>
+              <li><strong>tsconfig.json</strong> — The "solution file" — tells TypeScript which shared libraries to compile first, in the right order, before checking the apps</li>
+              <li><strong>replit.md</strong> — The project's memory: stack, architecture decisions, roadmap, and preferences. The live content above is pulled directly from this file.</li>
+            </ul>
+
+            <h2>lib/ — Shared Libraries (the basement)</h2>
+            <p>These packages are used by both the frontend and backend. You never run them directly — they're built and imported by the apps.</p>
+
+            <h3>lib/api-spec/</h3>
+            <p><strong>The single source of truth for the entire API.</strong></p>
+            <ul>
+              <li><strong>openapi.yaml</strong> — Describes every API endpoint: URL, method (GET/POST/etc.), what data goes in, what comes out, and which routes require login. This one file drives code generation for both the frontend and backend.</li>
+              <li><strong>orval.config.ts</strong> — Config for the code generator. Running <code>pnpm --filter @workspace/api-spec run codegen</code> reads the YAML and auto-generates the frontend hooks and backend validators below.</li>
+            </ul>
+
+            <h3>lib/api-zod/</h3>
+            <p><strong>Auto-generated — never edit manually.</strong> Zod validation schemas for every data entity (Gallery, Artwork, User, Profile). The API server imports these to validate that incoming data matches the expected shape before touching the database.</p>
+
+            <h3>lib/api-client-react/</h3>
+            <p><strong>Auto-generated — never edit manually.</strong></p>
+            <ul>
+              <li><strong>src/generated/api.ts</strong> — React Query hooks: <code>useGetGalleries</code>, <code>usePostArtwork</code>, <code>useGetProfile</code>, etc. The frontend imports these and they handle loading states, caching, and re-fetching automatically.</li>
+              <li><strong>src/custom-fetch.ts</strong> — The underlying fetch function used by all hooks. This is where auth tokens get attached to every API request — reads the token from Clerk and adds it as a <code>Bearer</code> header automatically.</li>
+            </ul>
+
+            <h3>lib/db/</h3>
+            <p><strong>The database layer.</strong></p>
+            <ul>
+              <li><strong>src/schema/users.ts</strong> — Platform users table, linked to Clerk identities</li>
+              <li><strong>src/schema/profiles.ts</strong> — Artist display info: bio, avatar, social links</li>
+              <li><strong>src/schema/galleries.ts</strong> — Gallery rooms: title, slug, theme, published status</li>
+              <li><strong>src/schema/artworks.ts</strong> — Individual pieces inside galleries: title, image, dimensions, description</li>
+              <li><strong>src/index.ts</strong> — Creates the database connection and exports the <code>db</code> object that all routes use to query data</li>
+            </ul>
+
+            <h2>artifacts/ — The Applications</h2>
+
+            <h3>artifacts/api-server/ — The Backend</h3>
+            <p>The Express server. Runs at port 8080 and handles all data. It's what the frontend talks to.</p>
+            <ul>
+              <li><strong>build.mjs</strong> — esbuild script that bundles the TypeScript server into a single <code>dist/index.mjs</code> for production</li>
+              <li><strong>src/index.ts</strong> — Starts the HTTP server, binds to the port</li>
+              <li><strong>src/app.ts</strong> — Sets up Express: attaches Clerk auth, Pino logger, CORS, JSON parsing, then mounts all route handlers</li>
+            </ul>
+            <p><strong>Middlewares:</strong></p>
+            <ul>
+              <li><strong>src/middlewares/requireAuth.ts</strong> — Protects private routes. Reads and verifies the Clerk JWT. On first login, automatically creates a local database user (JIT provisioning). Handles the edge case where a Clerk email already exists in the DB.</li>
+              <li><strong>src/middlewares/clerkProxyMiddleware.ts</strong> — Makes Clerk auth work correctly behind Replit's proxy layer</li>
+            </ul>
+            <p><strong>Routes:</strong></p>
+            <ul>
+              <li><strong>routes/index.ts</strong> — Mounts all route files under their URL prefixes</li>
+              <li><strong>routes/auth.ts</strong> — <code>/api/auth/me</code>: returns the current logged-in user's info</li>
+              <li><strong>routes/profile.ts</strong> — GET/PATCH <code>/api/profile</code>: view and edit your artist profile</li>
+              <li><strong>routes/galleries.ts</strong> — Full CRUD for your own galleries: create, list, edit, delete, publish</li>
+              <li><strong>routes/artworks.ts</strong> — Full CRUD for artworks within a gallery</li>
+              <li><strong>routes/publicGalleries.ts</strong> — Public browsing: anyone can view published galleries without logging in</li>
+              <li><strong>routes/dashboard.ts</strong> — <code>/api/dashboard/stats</code>: counts for the artist dashboard (galleries, artworks, views)</li>
+              <li><strong>routes/changelog.ts</strong> — Serves this progress page's content live from <code>replit.md</code> via SSE stream</li>
+              <li><strong>routes/health.ts</strong> — <code>/api/healthz</code>: simple ping for deployment health checks</li>
+            </ul>
+
+            <h3>artifacts/overflow-outcast/ — The Frontend</h3>
+            <p>The main React app. Everything visual lives here.</p>
+            <ul>
+              <li><strong>index.html</strong> — The HTML shell that loads the React app</li>
+              <li><strong>src/main.tsx</strong> — Bootstraps React, wraps everything in Clerk's auth provider and React Query's data provider</li>
+              <li><strong>src/App.tsx</strong> — Root component: sets up routing, mounts <code>ClerkAuthSync</code> (registers token getter so every API call gets auth headers), renders pages</li>
+            </ul>
+            <p><strong>Pages:</strong></p>
+            <ul>
+              <li><strong>home.tsx</strong> — Public landing page: hero, feature highlights, browse galleries</li>
+              <li><strong>galleries.tsx</strong> — Artist's private gallery management dashboard</li>
+              <li><strong>gallery-form.tsx</strong> — Create or edit a gallery: name, description, theme picker</li>
+              <li><strong>artworks.tsx</strong> — Manage artworks inside a specific gallery</li>
+              <li><strong>artwork-form.tsx</strong> — Upload or edit an artwork: image, title, dimensions, description</li>
+              <li><strong>public-galleries.tsx</strong> — Public browsing: all published galleries from all artists</li>
+              <li><strong>public-gallery-detail.tsx</strong> — The 3D gallery room viewer for a published gallery</li>
+              <li><strong>profile.tsx</strong> — Edit your own artist profile</li>
+              <li><strong>dashboard.tsx</strong> — Artist stats overview</li>
+            </ul>
+            <p><strong>3D Gallery Room</strong> (<code>src/components/gallery-room/</code>):</p>
+            <ul>
+              <li><strong>GalleryRoom.tsx</strong> — Top-level wrapper: handles loading state, fetches gallery + artworks, renders the scene or a loading screen</li>
+              <li><strong>GalleryScene.tsx</strong> — The actual 3D room in React Three Fiber. Renders floor, ceiling, walls, lighting, places artwork frames. Handles mouse look, WASD movement, and pointer lock.</li>
+              <li><strong>ArtworkFrame.tsx</strong> — A single framed artwork on the wall: 3D mesh with image texture, frame geometry, label plate. Emits a click event to open the detail modal.</li>
+              <li><strong>ArtworkDetailModal.tsx</strong> — The overlay when you click an artwork: full image, title, dimensions, description. Responsive for mobile landscape.</li>
+              <li><strong>RoomDecorations.tsx</strong> — Non-artwork 3D elements: spotlights, pedestals, ambient decorations based on the active theme</li>
+              <li><strong>TouchControls.tsx</strong> — Mobile movement: detects touch, handles virtual joystick and swipe-to-look</li>
+              <li><strong>VirtualJoystick.tsx</strong> — The on-screen joystick UI for mobile walking</li>
+              <li><strong>theme-config.ts</strong> — Defines the 5 room themes (Dark Void, Neon Grid, Concrete, etc.): colors, lighting, materials, fog settings</li>
+              <li><strong>room-dimensions.ts</strong> — Constants for the room's physical size, wall positions, and artwork slot positions</li>
+              <li><strong>seeded-rng.ts</strong> — Deterministic random number generator: ensures artwork placement looks identical every time you load a gallery (same seed = same layout)</li>
+            </ul>
+            <p><strong>Shared components:</strong></p>
+            <ul>
+              <li><strong>layout.tsx</strong> — Authenticated app shell with top navbar and user avatar</li>
+              <li><strong>public-layout.tsx</strong> — Public-facing shell with simpler navbar for unauthenticated visitors</li>
+              <li><strong>GalleryThumbnail.tsx</strong> — The gallery card in list views: thumbnail, title, artwork count, theme badge</li>
+              <li><strong>components/ui/</strong> — ~40 reusable UI primitives (buttons, dialogs, inputs, tabs, toasts, etc.) based on shadcn/ui</li>
+            </ul>
+            <p><strong>Public files</strong> (<code>public/</code>):</p>
+            <ul>
+              <li><strong>changelog.html</strong> — This page: client-facing project progress (standalone HTML, no React)</li>
+              <li><strong>invoice.html</strong> — Project invoice document</li>
+              <li><strong>favicon.svg / logo.svg</strong> — Brand assets</li>
+              <li><strong>opengraph.jpg</strong> — Preview image when sharing the site link on social media</li>
+              <li><strong>robots.txt</strong> — Tells search engine crawlers what to index</li>
+              <li><strong>images/</strong> — 6 Amman reference photos used as placeholder artwork in seed data</li>
+            </ul>
+
+            <h3>artifacts/mockup-sandbox/ — Design Prototyping</h3>
+            <p>A completely separate Vite app used only for designing and previewing new UI components before building them into the real app. Powers the Canvas board previews.</p>
+            <ul>
+              <li><strong>mockupPreviewPlugin.ts</strong> — Custom Vite plugin that auto-scans <code>src/components/mockups/</code> and registers every component it finds for isolated preview at <code>/__mockup</code></li>
+              <li><strong>src/components/mockups/amman-homepage/ScrollingHome.tsx</strong> — The scrolling homepage mockup on the canvas board</li>
+              <li><strong>src/components/ui/</strong> — shadcn UI kit mirrored here so mockups can use it</li>
+            </ul>
+
+            <h2>scripts/ — Utility Scripts</h2>
+            <ul>
+              <li><strong>src/seed.ts</strong> — Populates the database with demo content: Amman-themed artists, galleries with Arabic/contemporary art metadata, and artworks using the reference images. Run once to get realistic-looking data for development.</li>
+            </ul>
+
+            <h2>How Everything Connects</h2>
+            <p>The key discipline of this project is <strong>contract-first</strong>: the OpenAPI spec is the agreement between frontend and backend, and the code on both sides is generated from it — so they can never fall out of sync.</p>
+            <ol style="list-style:decimal;padding-left:20px;">
+              <li style="color:rgba(240,232,216,.68);padding:6px 0;border-bottom:1px solid var(--border2);">Edit <code>lib/api-spec/openapi.yaml</code> to define or change an endpoint</li>
+              <li style="color:rgba(240,232,216,.68);padding:6px 0;border-bottom:1px solid var(--border2);">Run codegen → auto-updates <code>api-zod</code> (validators) and <code>api-client-react</code> (hooks)</li>
+              <li style="color:rgba(240,232,216,.68);padding:6px 0;border-bottom:1px solid var(--border2);"><code>api-server</code> uses <code>api-zod</code> to validate requests → queries <code>lib/db</code> → PostgreSQL</li>
+              <li style="color:rgba(240,232,216,.68);padding:6px 0;"><code>overflow-outcast</code> uses <code>api-client-react</code> hooks → renders UI → 3D room</li>
+            </ol>
+
+          </div>
+        </div>
+      </div>
+
       <!-- Footer -->
       <div class="page-footer">
         <div class="footer-brand">Virtual Art Space</div>
@@ -782,10 +943,15 @@
         footerUpd.textContent = t;
       }
 
-      // ── Toggle ──
+      // ── Toggles ──
       function toggleTech() {
         const open = techContent.classList.toggle("open");
         toggleArrow.classList.toggle("open", open);
+      }
+
+      function toggleFs() {
+        const open = document.getElementById("fsContent").classList.toggle("open");
+        document.getElementById("fsArrow").classList.toggle("open", open);
       }
 
       // ── SSE ──
