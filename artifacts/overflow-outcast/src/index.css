@@ -387,7 +387,11 @@
   min-height: 100dvh;
 }
 
-@media (min-width: 768px) {
+/* Only enable fixed-height snap scrolling on real desktops with a fine
+   pointer AND enough vertical space. Touch tablets (iPad, etc.) and
+   short landscape windows fall back to natural scroll so hero content
+   never overflows a locked 100dvh box and overlaps itself. */
+@media (min-width: 768px) and (min-height: 640px) and (pointer: fine) {
   .snap-wrapper {
     height: 100dvh;
     overflow: hidden;
