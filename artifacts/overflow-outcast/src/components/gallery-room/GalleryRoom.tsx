@@ -702,7 +702,7 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner }: Gallery
           )}
 
           {/* Pause overlay */}
-          {isPaused && !selectedArtwork && !isEditMode && (
+          {isPaused && !selectedArtwork && (
             <PauseOverlay
               galleryTitle={gallery.galleryTitle}
               artistName={gallery.artistName}
@@ -716,7 +716,7 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner }: Gallery
               isMobile={false}
               onResume={handleResume}
               onExit={onExit}
-              onEnterEditMode={isOwner ? handleEnterEditMode : undefined}
+              onEnterEditMode={isOwner && !isEditMode ? handleEnterEditMode : undefined}
               onToggleAudio={handleToggleAudio}
             />
           )}
@@ -801,7 +801,7 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner }: Gallery
           )}
 
           {/* Mobile pause overlay */}
-          {isPaused && !selectedArtwork && !isEditMode && (
+          {isPaused && !selectedArtwork && (
             <PauseOverlay
               galleryTitle={gallery.galleryTitle}
               artistName={gallery.artistName}
@@ -820,9 +820,27 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner }: Gallery
               isMobile={true}
               onResume={handleResume}
               onExit={onExit}
-              onEnterEditMode={isOwner ? handleEnterEditMode : undefined}
+              onEnterEditMode={isOwner && !isEditMode ? handleEnterEditMode : undefined}
               onToggleAudio={handleToggleAudio}
             />
+          )}
+
+          {/* Floating "Exit Preview" pill — the only way out of preview mode
+              once the edit toolbar is hidden. Always on top, safe-area aware. */}
+          {isEditMode && editState.isPreviewing && !isPaused && !selectedArtwork && (
+            <button
+              onClick={() => editState.setIsPreviewing(false)}
+              aria-label="Exit preview"
+              className="absolute z-50 flex items-center gap-2 px-4 h-11 rounded-full bg-amber-500/90 hover:bg-amber-400 active:scale-95 transition-all font-sans text-sm font-semibold text-black shadow-lg shadow-black/50 touch-manipulation pointer-events-auto"
+              style={{
+                top: "max(1rem, env(safe-area-inset-top))",
+                left: "50%",
+                transform: "translateX(-50%)",
+              }}
+            >
+              <span aria-hidden>✏</span>
+              <span>Exit preview</span>
+            </button>
           )}
 
           {/* Mobile edit-mode toolbar (compact, sits above joystick) */}
