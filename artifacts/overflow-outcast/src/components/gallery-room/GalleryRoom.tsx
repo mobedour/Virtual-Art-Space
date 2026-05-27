@@ -984,31 +984,31 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner }: Gallery
           0%, 100% { opacity: 0.7; }
           50%       { opacity: 1.0; }
         }
-        /* Landscape phones: tight on vertical space. Anchor the right-side
-           cluster to mid-height so it never collides with the top status
-           strip, shrink the joystick offset, and slim the edit bar. */
+        /* Landscape phones: tight on vertical space. Slim the edit bar and
+           anchor both joystick and right-cluster at the same bottom row so
+           they don't overlap the top status strip or each other. */
         @media (orientation: landscape) and (max-height: 500px) {
-          [data-joystick] {
-            bottom: calc(0.5rem + env(safe-area-inset-bottom)) !important;
+          [data-joystick],
+          [data-controls] {
+            bottom: calc(2.75rem + env(safe-area-inset-bottom)) !important;
+            top: auto !important;
+            transform: none !important;
           }
           [data-controls] {
-            top: 50% !important;
-            bottom: auto !important;
-            transform: translateY(-50%);
-            grid-template-columns: 1fr !important;
-            gap: 0.5rem !important;
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 0.4rem !important;
           }
           [data-controls] button {
-            width: 2.75rem !important;
-            height: 2.75rem !important;
-            font-size: 1.125rem !important;
+            width: 2.5rem !important;
+            height: 2.5rem !important;
+            font-size: 1rem !important;
           }
           [data-mobile-edit-bar] .vas-edit-bar-row {
             padding-top: 0.25rem !important;
             padding-bottom: 0.25rem !important;
           }
           [data-mobile-edit-bar] .vas-edit-bar-row button {
-            height: 2rem !important;
+            height: 1.75rem !important;
           }
         }
       `}</style>
