@@ -1,3 +1,2 @@
-- [Clerk auth migration](clerk-auth-migration.md) — full JWT→Clerk migration pattern with JIT user provisioning and Tailwind v4 layer ordering.
-- [Clerk auth for React SPA + Express API](clerk-spa-express.md) — must use getToken() Bearer token, not cookies; clerkMiddleware() with no args reads env vars correctly.
-- [JIT provisioning email collision](jit-provisioning.md) — when insert fails, fall back to link-by-email before returning 500; seed data emails cause silent failures.
+- [Stage 3 master plan](stage3-plan.md) — Stage 3 = Phase 1 room/controls polish → Phase 2 live edit → Phase 3 VR/WebXR; see master doc at `.local/tasks/stage3-vr-and-live-edit.md`
+- [Gallery post-processing pipeline](gallery-postfx.md) — `<PostFX>` mounts inside `<GalleryScene>`; tone mapping moved into pipeline (don't double-apply on renderer); per-theme tuning in `getPostFXIntensity`
