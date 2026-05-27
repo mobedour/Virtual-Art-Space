@@ -8,6 +8,7 @@ import { TouchControls } from "./TouchControls";
 import type { JoystickState } from "./VirtualJoystick";
 import { getRoomDims } from "./room-dimensions";
 import { RoomDecorations } from "./RoomDecorations";
+import { PostFX } from "./PostFX";
 
 const EYE_Y = 0;
 const WALL_INSET = 0.12;
@@ -574,6 +575,9 @@ export function GalleryScene({
       {!isMobile && <PointerLockControls ref={controlsRef} makeDefault />}
       {!isMobile && <MovementController enabled={isLocked} halfW={halfW} halfD={halfD} />}
       {isMobile && <TouchControls enabled={isLocked} joystickRef={joystickRef} onArtworkTap={fireCenterRaycast} halfW={halfW} halfD={halfD} />}
+
+      {/* ── Post-processing pipeline (Bloom + N8AO + Vignette + ACES tone-map + SMAA) ── */}
+      <PostFX theme={theme} />
     </>
   );
 }
