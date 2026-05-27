@@ -35,3 +35,9 @@ id = "StT9DJomcx_2wNxhuCRJ2"
 uri = "file://artifacts/overflow-outcast/PROJECT_DELIVERABLES.md"
 type = "text"
 title = "Project Deliverables & Cost Breakdown"
+
+[[outputs]]
+id = "nIS5lBThc7Voumv9JGjc1"
+uri = "file://FILESYSTEM.md"
+type = "text"
+title = "FILESYSTEM.md — Full Project Reference"
