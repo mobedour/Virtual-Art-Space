@@ -552,6 +552,19 @@ export function GalleryScene({
     return () => canvas.removeEventListener("click", handleClick);
   }, [gl, isMobile, isEditMode, fireCenterRaycast]);
 
+  // Re-lock pointer on request from Ctrl-hold-to-free-mouse (GalleryRoom).
+  // Calling controlsRef.lock() directly avoids firing canvas/window click
+  // handlers — important in edit mode where a synthetic click would
+  // trigger pick / drop.
+  useEffect(() => {
+    if (isMobile) return;
+    const onRequestLock = () => {
+      try { controlsRef.current?.lock?.(); } catch { /* user gesture or already locked */ }
+    };
+    window.addEventListener("vas:request-lock", onRequestLock);
+    return () => window.removeEventListener("vas:request-lock", onRequestLock);
+  }, [isMobile]);
+
   const ambientMood = lightingMood;
   const fogColor = new THREE.Color(theme.fogColor);
   const BASEBOARD_H = 0.22;

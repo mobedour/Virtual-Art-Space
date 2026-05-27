@@ -505,14 +505,47 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner }: Gallery
     setIsLocked(isMobile);
   }, [isMobile]);
 
+  // Tracks a Ctrl-hold induced pointer-unlock so handleUnlock doesn't pop
+  // the pause overlay (and so we can auto re-lock on key release).
+  const ctrlUnlockedRef = useRef(false);
   const handleLock       = useCallback(() => setIsLocked(true), []);
   const handleUnlock     = useCallback(() => {
     setIsLocked(false);
-    // In edit mode the pointer is intentionally unlocked so the user can
-    // use the toolbar — don't auto-show the pause overlay (it would hide
-    // edit mode and swallow the next canvas click meant for drop).
-    if (!selectedArtwork && !isEditMode) setIsPaused(true);
+    // Skip pause overlay when:
+    //  - edit mode (pointer intentionally unlocked for the toolbar), or
+    //  - user is holding Ctrl to temporarily free the cursor.
+    if (!selectedArtwork && !isEditMode && !ctrlUnlockedRef.current) setIsPaused(true);
   }, [selectedArtwork, isEditMode]);
+
+  // Hold Ctrl to release the mouse, release Ctrl to re-lock. Works in both
+  // normal walking and edit mode. Desktop only.
+  useEffect(() => {
+    if (isMobile || !hasEntered) return;
+    const isCtrl = (e: KeyboardEvent) =>
+      e.code === "ControlLeft" || e.code === "ControlRight" || e.key === "Control";
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!isCtrl(e) || e.repeat) return;
+      if (!document.pointerLockElement) return;
+      ctrlUnlockedRef.current = true;
+      document.exitPointerLock();
+    };
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (!isCtrl(e) || !ctrlUnlockedRef.current) return;
+      ctrlUnlockedRef.current = false;
+      // Don't try to re-lock while a modal / pause overlay is up.
+      if (selectedArtwork || isPaused) return;
+      // Ask GalleryScene to call controlsRef.current.lock() directly. We
+      // avoid synthesising a canvas click because in edit mode that would
+      // also fire the EditDragController pick/drop handler.
+      window.dispatchEvent(new CustomEvent("vas:request-lock"));
+    };
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+    };
+  }, [isMobile, hasEntered, selectedArtwork, isPaused]);
 
   const handleArtworkSelect = useCallback((artwork: ArtworkData) => {
     if (isEditMode) return; // in edit mode, drag instead of select
