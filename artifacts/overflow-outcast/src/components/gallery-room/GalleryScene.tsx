@@ -447,6 +447,7 @@ interface GallerySceneProps {
   onEditDraggingChange?: (dragging: boolean) => void;
   walkSpeed?: number;
   lookSensitivity?: number;
+  isPresenting?: boolean;
 }
 
 export function GalleryScene({
@@ -457,6 +458,7 @@ export function GalleryScene({
   isEditMode = false, onArtworkMoved, onArtworkDropped, onArtworkSelected,
   onEditDraggingChange,
   walkSpeed = 5.5, lookSensitivity = 1.0,
+  isPresenting = false,
 }: GallerySceneProps) {
   const theme = getTheme(roomTheme);
   const controlsRef = useRef<any>(null);
@@ -498,10 +500,14 @@ export function GalleryScene({
 
   const wallTexture = useMemo(() => makeWallTexture(theme.wallColor), [theme.wallColor]);
 
-  useEffect(() => { camera.position.set(0, EYE_Y, halfD - 1.5); }, [camera, halfD]);
+  useEffect(() => {
+    // In VR the headset pose owns camera position — don't reset it.
+    if (isPresenting) return;
+    camera.position.set(0, EYE_Y, halfD - 1.5);
+  }, [camera, halfD, isPresenting]);
 
   useEffect(() => {
-    if (isMobile) return;
+    if (isMobile || isPresenting) return;
     const controls = controlsRef.current; if (!controls) return;
     const handleLock   = () => onLockRef.current();
     const handleUnlock = () => onUnlockRef.current();
@@ -731,8 +737,11 @@ export function GalleryScene({
           }} />
       ))}
 
-      {!isMobile && <PointerLockControls ref={controlsRef} makeDefault />}
-      {!isMobile && (
+      {/* In VR the headset + XR controllers drive view + locomotion.
+          Disable desktop / mobile controllers so they don't fight the
+          XR camera pose (which caused inverted look and broken movement). */}
+      {!isMobile && !isPresenting && <PointerLockControls ref={controlsRef} makeDefault />}
+      {!isMobile && !isPresenting && (
         <MovementController
           enabled={isLocked}
           halfW={halfW}
@@ -742,7 +751,7 @@ export function GalleryScene({
           walkSpeed={walkSpeed}
         />
       )}
-      {isMobile && (
+      {isMobile && !isPresenting && (
         <TouchControls
           enabled={isLocked}
           joystickRef={joystickRef}

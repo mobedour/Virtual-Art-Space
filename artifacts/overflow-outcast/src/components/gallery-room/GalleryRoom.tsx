@@ -657,6 +657,7 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner }: Gallery
                   onEditDraggingChange={setIsEditDragging}
                   walkSpeed={walkSpeed}
                   lookSensitivity={lookSensitivity}
+                  isPresenting={isPresenting}
                 />
 
                 {/* Edit mode floor grid — pulses amber while picking */}
