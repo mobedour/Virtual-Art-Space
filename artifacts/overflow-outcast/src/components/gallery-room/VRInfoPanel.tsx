@@ -15,6 +15,7 @@ interface VRInfoPanelProps {
 export function VRInfoPanel({ artwork, onClose }: VRInfoPanelProps) {
   const { camera } = useThree();
   const [pos, setPos] = useState<[number, number, number]>([0, 0, -PANEL_OFFSET]);
+  const [rotY, setRotY] = useState(0);
   const dismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -26,6 +27,10 @@ export function VRInfoPanel({ artwork, onClose }: VRInfoPanelProps) {
     const p = camera.position.clone().addScaledVector(forward, PANEL_OFFSET);
     p.y = camera.position.y;
     setPos([p.x, p.y, p.z]);
+    // Rotate the panel so it faces the camera (yaw only — keeps it upright).
+    // Without this, <Html transform> would render edge-on whenever the user
+    // wasn't looking along a world axis.
+    setRotY(Math.atan2(forward.x, forward.z) + Math.PI);
 
     // Auto-dismiss
     if (dismissTimer.current) clearTimeout(dismissTimer.current);
@@ -36,7 +41,7 @@ export function VRInfoPanel({ artwork, onClose }: VRInfoPanelProps) {
   if (!artwork) return null;
 
   return (
-    <Html transform position={pos} occlude={false} style={{ width: 360 }}>
+    <Html transform position={pos} rotation={[0, rotY, 0]} occlude={false} style={{ width: 360 }}>
       <div style={{
         background: "rgba(0,0,0,0.9)",
         border: "1px solid rgba(245,192,96,0.4)",

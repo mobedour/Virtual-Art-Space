@@ -313,6 +313,7 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner }: Gallery
   const [isEditMode, setIsEditMode] = useState(false);
   const [isPresenting, setIsPresenting] = useState(false);
   const [vrArtwork, setVrArtwork] = useState<ArtworkData | null>(null);
+  const xrOriginRef = useRef<THREE.Group>(null);
   const [isEditDragging, setIsEditDragging] = useState(false);
   const [walkSpeed, setWalkSpeed] = useState(() => {
     const saved = localStorage.getItem("vas_walkSpeed");
@@ -630,7 +631,7 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner }: Gallery
               }}
             >
               <XR store={xrStore}>
-                <XROrigin position={[0, -1.6, 0]} />
+                <XROrigin ref={xrOriginRef} position={[0, -1.6, 0]} />
 
                 <GalleryScene
                   artworks={activeArtworks}
@@ -673,7 +674,7 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner }: Gallery
                 {/* VR-only: locomotion + artwork info panel */}
                 {isPresenting && (
                   <>
-                    <XRLocomotion halfW={halfW} halfD={halfD} />
+                    <XRLocomotion halfW={halfW} halfD={halfD} xrOriginRef={xrOriginRef} />
                     <XRControllerRay handedness="left" />
                     <XRControllerRay
                       handedness="right"

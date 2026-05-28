@@ -52,25 +52,25 @@ export function XRControllerRay({
   const ctrlState = useXRInputSourceState("controller", handedness);
 
   useFrame(() => {
-    const inputSource = ctrlState?.inputSource;
-    if (!inputSource) {
+    // ctrlState.object is the controller's tracked 3D node in the scene.
+    // Earlier we looked it up by name, but @react-three/xr v6 doesn't tag
+    // controllers that way — so the ray defaulted to a static spot and
+    // never hit anything. Using the state object directly fixes that.
+    const ctrlObj = ctrlState?.object;
+    if (!ctrlObj) {
       const arr = posAttr.array as Float32Array;
       arr.fill(0);
       posAttr.needsUpdate = true;
       return;
     }
 
-    const ctrlObj =
-      scene.getObjectByName(`xr-controller-${handedness}`) ??
-      scene.getObjectByProperty("userData.xrControllerHandedness", handedness);
-
-    const pos = new THREE.Vector3(handedness === "right" ? 0.2 : -0.2, 1.4, -0.3);
-    const dir = new THREE.Vector3(0, -0.1, -1).normalize();
-
-    if (ctrlObj) {
-      ctrlObj.getWorldPosition(pos);
-      ctrlObj.getWorldDirection(dir);
-    }
+    const pos = new THREE.Vector3();
+    const dir = new THREE.Vector3();
+    ctrlObj.getWorldPosition(pos);
+    // `getWorldDirection` returns the object's local +Z in world space.
+    // WebXR controllers (like cameras) point down −Z, so negate — otherwise
+    // the ray fires backward into the user's wrist and never hits artwork.
+    ctrlObj.getWorldDirection(dir).multiplyScalar(-1);
 
     let hitDist = 10;
     let hitArtworkId: number | null = null;
@@ -109,17 +109,19 @@ export function XRControllerRay({
       if (hitArtworkId !== lastHoverIdRef.current) {
         lastHoverIdRef.current = hitArtworkId;
         if (hitArtworkId !== null && handedness === "right") {
-          const gp = inputSource.gamepad;
-          const ha = gp?.hapticActuators?.[0];
+          const ha = ctrlState?.inputSource?.gamepad?.hapticActuators?.[0];
           if (ha && "pulse" in ha) (ha as any).pulse(0.25, 35);
         }
       }
 
-      // Trigger rising-edge → select artwork (right hand only)
-      const triggerPressed = inputSource.gamepad?.buttons?.[0]?.pressed ?? false;
+      // Trigger rising-edge → select artwork (right hand only).
+      // Use the parsed component state instead of raw gamepad indices —
+      // Quest / Index / WMR all expose the trigger under this id.
+      const triggerPressed =
+        ctrlState?.gamepad?.["xr-standard-trigger"]?.state === "pressed";
       if (triggerPressed && !prevTriggerRef.current && hitArtworkId !== null && handedness === "right") {
         onArtworkSelect?.(hitArtworkId);
-        const ha = inputSource.gamepad?.hapticActuators?.[0];
+        const ha = ctrlState?.inputSource?.gamepad?.hapticActuators?.[0];
         if (ha && "pulse" in ha) (ha as any).pulse(0.6, 80);
       }
       prevTriggerRef.current = triggerPressed;

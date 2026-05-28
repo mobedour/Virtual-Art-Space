@@ -6,6 +6,10 @@ import * as THREE from "three";
 interface XRLocomotionProps {
   halfW: number;
   halfD: number;
+  // Ref to the XROrigin group (player rig). Locomotion translates this
+  // rig instead of the camera, since the camera pose is owned by the
+  // headset and writing to it directly has no effect.
+  xrOriginRef: React.RefObject<THREE.Group | null>;
 }
 
 // ─── Movement vignette (billboard quad) ───────────────────────────────────────
@@ -37,14 +41,15 @@ function VRVignette({ intensityRef }: { intensityRef: React.MutableRefObject<num
   );
 }
 
-// ─── Teleport arc ─────────────────────────────────────────────────────────────
+// ─── Teleport arc (cast from right controller) ────────────────────────────────
 function TeleportArc({
-  halfW, halfD, visible, targetRef,
+  halfW, halfD, visible, targetRef, originObj,
 }: {
   halfW: number; halfD: number; visible: boolean;
   targetRef: React.MutableRefObject<THREE.Vector3 | null>;
+  originObj: THREE.Object3D | null;
 }) {
-  const { camera, scene } = useThree();
+  const { scene } = useThree();
   const lineRef = useRef<THREE.Line | null>(null);
   const markerRef = useRef<THREE.Mesh | null>(null);
   const posAttr = useRef(new THREE.BufferAttribute(new Float32Array(30 * 3), 3));
@@ -83,16 +88,23 @@ function TeleportArc({
     const marker = markerRef.current;
     if (!line || !marker) return;
 
-    if (!visible) {
+    if (!visible || !originObj) {
       marker.visible = false;
       geoRef.current.setDrawRange(0, 0);
       targetRef.current = null;
       return;
     }
 
-    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
-    const origin = camera.position.clone();
-    const vel = forward.multiplyScalar(8);
+    // Cast from the right controller, aimed along its forward (-Z local).
+    const origin = new THREE.Vector3();
+    const dir = new THREE.Vector3();
+    originObj.getWorldPosition(origin);
+    // `getWorldDirection` returns the object's local +Z axis in world space,
+    // but WebXR controllers (like cameras) point down −Z. Negate so the arc
+    // fires out the front of the controller, not into the user's wrist.
+    originObj.getWorldDirection(dir).multiplyScalar(-1);
+
+    const vel = dir.clone().multiplyScalar(8);
     const gravity = new THREE.Vector3(0, -9.8, 0);
     const arr = posAttr.current.array as Float32Array;
     let count = 0;
@@ -131,7 +143,7 @@ function TeleportArc({
 }
 
 // ─── Main locomotion component ────────────────────────────────────────────────
-export function XRLocomotion({ halfW, halfD }: XRLocomotionProps) {
+export function XRLocomotion({ halfW, halfD, xrOriginRef }: XRLocomotionProps) {
   const { camera } = useThree();
   const vrVignette = localStorage.getItem("vas_vrVignette") !== "false";
 
@@ -141,31 +153,48 @@ export function XRLocomotion({ halfW, halfD }: XRLocomotionProps) {
   const vignetteIntensity = useRef(0);
   const prevSqueezeRef = useRef(false);
   const prevTriggerRef = useRef(false);
+  const prevOriginXZ = useRef(new THREE.Vector2(0, 0));
 
   const rightCtrl = useXRInputSourceState("controller", "right");
 
-  // Smooth locomotion — left thumbstick drives movement
+  // Smooth locomotion — translate the player rig (XROrigin), not the camera.
+  // Writing camera.position in WebXR has no effect because the headset pose
+  // overwrites the camera every frame.
   useXRControllerLocomotion(
-    (velocity, _rotY, delta, state) => {
-      if (teleportModeRef.current) return;
-      const { camera: cam } = state;
-      vignetteIntensity.current = Math.min(1, velocity.length() / 5);
-      cam.position.addScaledVector(velocity, delta);
-      cam.position.x = Math.max(-(halfW - 0.6), Math.min(halfW - 0.6, cam.position.x));
-      cam.position.z = Math.max(-(halfD - 0.6), Math.min(halfD - 0.6, cam.position.z));
-    },
+    xrOriginRef,
     { speed: 5.5 },
     { type: "snap", degrees: 45 },
     "left",
   );
 
-  // Poll right controller gamepad each frame:
-  //   Squeeze (button 1) rising edge → toggle teleport arc
-  //   Trigger (button 0) rising edge while teleport active → execute + exit
-  useFrame(() => {
-    const gp = rightCtrl?.inputSource?.gamepad;
-    const squeeze = gp?.buttons?.[1]?.pressed ?? false;
-    const trigger = gp?.buttons?.[0]?.pressed ?? false;
+  // Per-frame: clamp the player rig to the room, drive the vignette from
+  // motion delta, and poll the right controller for teleport input.
+  useFrame((_, delta) => {
+    const origin = xrOriginRef.current;
+    if (origin) {
+      // Clamp the rig so the player can't walk through walls. The headset
+      // contributes a small extra offset (room-scale), so leave 0.6 slack.
+      origin.position.x = Math.max(-(halfW - 0.6), Math.min(halfW - 0.6, origin.position.x));
+      origin.position.z = Math.max(-(halfD - 0.6), Math.min(halfD - 0.6, origin.position.z));
+
+      // Vignette tracks rig translation speed (snap turns / headset look
+      // shouldn't trigger it).
+      const dx = origin.position.x - prevOriginXZ.current.x;
+      const dz = origin.position.z - prevOriginXZ.current.y;
+      const moved = Math.hypot(dx, dz) / Math.max(delta, 0.0001);
+      prevOriginXZ.current.set(origin.position.x, origin.position.z);
+      if (!teleportModeRef.current) {
+        vignetteIntensity.current = THREE.MathUtils.lerp(
+          vignetteIntensity.current, Math.min(1, moved / 5), 0.2,
+        );
+      }
+    }
+
+    // Right controller gamepad — use the parsed component state (cross-vendor
+    // safe) instead of raw button indices.
+    const gp = rightCtrl?.gamepad;
+    const squeeze = gp?.["xr-standard-squeeze"]?.state === "pressed";
+    const trigger = gp?.["xr-standard-trigger"]?.state === "pressed";
 
     if (squeeze && !prevSqueezeRef.current) {
       const next = !teleportModeRef.current;
@@ -176,25 +205,34 @@ export function XRLocomotion({ halfW, halfD }: XRLocomotionProps) {
     prevSqueezeRef.current = squeeze;
 
     if (trigger && !prevTriggerRef.current && teleportModeRef.current) {
-      if (targetRef.current) {
-        camera.position.x = targetRef.current.x;
-        camera.position.z = targetRef.current.z;
+      if (targetRef.current && origin) {
+        // In @react-three/xr v6 the XR camera is added as a child of XROrigin,
+        // so `camera.position` is the headset's local offset within the rig.
+        // To land the player's head at the world-space target we want
+        //   camera_world = origin_world + camera_local = target
+        // → origin.position = target − camera.position (assignment, not +=).
+        origin.position.x = targetRef.current.x - camera.position.x;
+        origin.position.z = targetRef.current.z - camera.position.z;
+        origin.position.x = Math.max(-(halfW - 0.6), Math.min(halfW - 0.6, origin.position.x));
+        origin.position.z = Math.max(-(halfD - 0.6), Math.min(halfD - 0.6, origin.position.z));
       }
       teleportModeRef.current = false;
       setTeleportVisible(false);
       targetRef.current = null;
     }
     prevTriggerRef.current = trigger;
-
-    if (!teleportModeRef.current) {
-      vignetteIntensity.current = Math.max(0, vignetteIntensity.current - 0.02);
-    }
   });
 
   return (
     <>
       {vrVignette && <VRVignette intensityRef={vignetteIntensity} />}
-      <TeleportArc halfW={halfW} halfD={halfD} visible={teleportVisible} targetRef={targetRef} />
+      <TeleportArc
+        halfW={halfW}
+        halfD={halfD}
+        visible={teleportVisible}
+        targetRef={targetRef}
+        originObj={rightCtrl?.object ?? null}
+      />
     </>
   );
 }
