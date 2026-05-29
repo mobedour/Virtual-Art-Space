@@ -42,7 +42,12 @@ description: Non-obvious constraints when building immersive WebXR (VR) scenes w
   via `gl.xr.isPresenting ? gl.xr.getCamera() : camera` and use its `getWorldPosition` /
   `getWorldQuaternion`. To make a panel "fill the view" in any (stationary or room-scale) mode,
   head-lock it: every frame set `group.position = camPos + camForward*dist` and
-  `group.quaternion = camQuat`.
+  `group.quaternion = camQuat`. **This applies to EVERY head-relative element** — comfort
+  vignette, detail panel, AND the edit-mode panel all broke the same way (placed near the rig
+  origin). For "anchor once in front of me" panels (not head-locked), set the anchor on the first
+  frame the pose is ready, guarded by an `anchored` ref, and read the world transform via
+  `gl.xr.getCamera()`. Add a fallback forward (e.g. `(0,0,-1)`) for when the user looks straight
+  up/down at entry (horizontal forward collapses to ~0), or the panel never anchors.
 
 - **VR selection that works without precise aiming = controller-ray with a gaze fallback.** Cast the
   controller ray first; if it misses, cast a second ray from the XR camera centre (gaze) against the

@@ -53,6 +53,9 @@ export function XRVREditController({
   const raycaster = useRef(new THREE.Raycaster());
   const plane = useRef(new THREE.Plane());
   const hitPt = useRef(new THREE.Vector3());
+  const posV = useRef(new THREE.Vector3());
+  const dirV = useRef(new THREE.Vector3());
+  const endV = useRef(new THREE.Vector3());
   const interactiveRootsRef = useRef<THREE.Object3D[]>([]);
   const frameCountRef = useRef(0);
 
@@ -90,8 +93,8 @@ export function XRVREditController({
       return;
     }
 
-    const pos = new THREE.Vector3();
-    const dir = new THREE.Vector3();
+    const pos = posV.current;
+    const dir = dirV.current;
     ctrlObj.getWorldPosition(pos);
     ctrlObj.getWorldDirection(dir).multiplyScalar(-1);
 
@@ -183,7 +186,7 @@ export function XRVREditController({
     prevTriggerRef.current = triggerPressed;
 
     // ── Update ray geometry ────────────────────────────────────────────────
-    const end = pos.clone().addScaledVector(dir, hitDist);
+    const end = endV.current.copy(pos).addScaledVector(dir, hitDist);
     const arr = posAttr.array as Float32Array;
     arr[0] = pos.x; arr[1] = pos.y; arr[2] = pos.z;
     arr[3] = end.x; arr[4] = end.y; arr[5] = end.z;
@@ -241,31 +244,46 @@ interface VREditPanelProps {
 export function VREditPanel({
   isDirty, isSaving, isDragging, canUndo, canRedo, onSave, onUndo, onRedo, onExit,
 }: VREditPanelProps) {
-  const { camera } = useThree();
+  const { camera, gl } = useThree();
   const groupRef = useRef<THREE.Group>(null);
   const anchor = useRef(new THREE.Vector3());
-
-  useEffect(() => {
-    const forward = new THREE.Vector3();
-    camera.getWorldDirection(forward);
-    forward.y = 0;
-    forward.normalize();
-    // Anchor slightly to the side and below eye level so it doesn't block the
-    // artwork the user is editing.
-    const right = new THREE.Vector3(forward.z, 0, -forward.x);
-    anchor.current
-      .copy(camera.position)
-      .addScaledVector(forward, 1.5)
-      .addScaledVector(right, 0.55);
-    anchor.current.y = camera.position.y - 0.45;
-  }, [camera]);
+  const anchored = useRef(false);
+  const camPos = useRef(new THREE.Vector3());
+  const fwd = useRef(new THREE.Vector3());
 
   useFrame(() => {
     const g = groupRef.current;
     if (!g) return;
+    // Use the LIVE XR camera world transform — useThree().camera holds only the
+    // head's local offset within the rig in @react-three/xr v6, so anchoring off
+    // its .position would place the panel near the rig origin, far from the user.
+    const cam = gl.xr.isPresenting ? (gl.xr.getCamera() as unknown as THREE.Camera) : camera;
+    cam.getWorldPosition(camPos.current);
+
+    // Anchor once, on the first frame the camera pose is available, slightly to
+    // the side and below eye level so it doesn't block the artwork being edited.
+    if (!anchored.current) {
+      cam.getWorldDirection(fwd.current);
+      fwd.current.y = 0;
+      // If the user is looking straight up/down at entry, the horizontal
+      // forward collapses to ~0. Fall back to a default forward so the panel
+      // still anchors in reach instead of getting stuck at the world origin.
+      if (fwd.current.lengthSq() < 1e-6) fwd.current.set(0, 0, -1);
+      fwd.current.normalize();
+      const rx = fwd.current.z;
+      const rz = -fwd.current.x;
+      anchor.current
+        .copy(camPos.current)
+        .addScaledVector(fwd.current, 1.5);
+      anchor.current.x += rx * 0.55;
+      anchor.current.z += rz * 0.55;
+      anchor.current.y = camPos.current.y - 0.45;
+      anchored.current = true;
+    }
+
     g.position.copy(anchor.current);
-    const dx = camera.position.x - anchor.current.x;
-    const dz = camera.position.z - anchor.current.z;
+    const dx = camPos.current.x - anchor.current.x;
+    const dz = camPos.current.z - anchor.current.z;
     g.rotation.set(0, Math.atan2(dx, dz), 0);
   });
 

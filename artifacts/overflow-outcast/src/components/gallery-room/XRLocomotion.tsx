@@ -23,17 +23,30 @@ interface XRLocomotionProps {
 function VRVignette({ intensityRef }: { intensityRef: React.MutableRefObject<number> }) {
   const meshRef = useRef<THREE.Mesh>(null);
   const matRef = useRef<THREE.MeshBasicMaterial>(null);
+  const { camera, gl } = useThree();
   const geo = useMemo(() => new THREE.PlaneGeometry(2, 2), []);
   const mat = useMemo(() => new THREE.MeshBasicMaterial({
     color: 0x000000, transparent: true, opacity: 0,
     depthTest: false, depthWrite: false, side: THREE.FrontSide,
   }), []);
+  const camPos = useRef(new THREE.Vector3());
+  const camQuat = useRef(new THREE.Quaternion());
+  const fwd = useRef(new THREE.Vector3());
 
-  useFrame(({ camera }, delta) => {
+  useEffect(() => () => { geo.dispose(); mat.dispose(); }, [geo, mat]);
+
+  useFrame((_, delta) => {
     if (!meshRef.current) return;
-    const forward = new THREE.Vector3(0, 0, -0.3).applyQuaternion(camera.quaternion);
-    meshRef.current.position.copy(camera.position).add(forward);
-    meshRef.current.quaternion.copy(camera.quaternion);
+    // Read the LIVE XR camera world transform — useThree().camera holds only
+    // the head's local offset within the rig in @react-three/xr v6, so copying
+    // its .position/.quaternion would pin the vignette near the rig origin
+    // instead of over the eyes.
+    const cam = gl.xr.isPresenting ? (gl.xr.getCamera() as unknown as THREE.Camera) : camera;
+    cam.getWorldPosition(camPos.current);
+    cam.getWorldQuaternion(camQuat.current);
+    fwd.current.set(0, 0, -0.3).applyQuaternion(camQuat.current);
+    meshRef.current.position.copy(camPos.current).add(fwd.current);
+    meshRef.current.quaternion.copy(camQuat.current);
     if (matRef.current) {
       matRef.current.opacity = THREE.MathUtils.lerp(
         matRef.current.opacity, intensityRef.current * 0.7, 1 - Math.exp(-8 * delta)
@@ -61,6 +74,11 @@ function TeleportArc({
   const markerRef = useRef<THREE.Mesh | null>(null);
   const posAttr = useRef(new THREE.BufferAttribute(new Float32Array(30 * 3), 3));
   const geoRef = useRef(new THREE.BufferGeometry());
+  const originV = useRef(new THREE.Vector3());
+  const dirV = useRef(new THREE.Vector3());
+  const velV = useRef(new THREE.Vector3());
+  const posV = useRef(new THREE.Vector3());
+  const landV = useRef(new THREE.Vector3());
 
   useMemo(() => {
     geoRef.current.setAttribute("position", posAttr.current);
@@ -85,7 +103,9 @@ function TeleportArc({
     return () => {
       scene.remove(line);
       scene.remove(marker);
+      g.dispose();
       mat.dispose();
+      ring.dispose();
       ringMat.dispose();
     };
   }, [scene]);
@@ -103,29 +123,29 @@ function TeleportArc({
     }
 
     // Cast from the right controller, aimed along its forward (-Z local).
-    const origin = new THREE.Vector3();
-    const dir = new THREE.Vector3();
+    const origin = originV.current;
+    const dir = dirV.current;
     originObj.getWorldPosition(origin);
     // `getWorldDirection` returns the object's local +Z axis in world space,
     // but WebXR controllers (like cameras) point down −Z. Negate so the arc
     // fires out the front of the controller, not into the user's wrist.
     originObj.getWorldDirection(dir).multiplyScalar(-1);
 
-    const vel = dir.clone().multiplyScalar(8);
-    const gravity = new THREE.Vector3(0, -9.8, 0);
+    const vel = velV.current.copy(dir).multiplyScalar(8);
     const arr = posAttr.current.array as Float32Array;
     let count = 0;
-    let landPos: THREE.Vector3 | null = null;
+    let landed = false;
 
     for (let i = 0; i < 30; i++) {
       const t = i * 0.07;
-      const pos = origin.clone()
-        .addScaledVector(vel, t)
-        .addScaledVector(gravity, 0.5 * t * t);
+      const pos = posV.current.copy(origin)
+        .addScaledVector(vel, t);
+      pos.y += 0.5 * -9.8 * t * t;
       arr[i * 3] = pos.x; arr[i * 3 + 1] = pos.y; arr[i * 3 + 2] = pos.z;
       count = i + 1;
-      if (!landPos && pos.y <= -1.2) {
-        landPos = new THREE.Vector3(
+      if (!landed && pos.y <= -1.2) {
+        landed = true;
+        landV.current.set(
           Math.max(-(halfW - 0.6), Math.min(halfW - 0.6, pos.x)),
           -1.2,
           Math.max(-(halfD - 0.6), Math.min(halfD - 0.6, pos.z)),
@@ -136,10 +156,10 @@ function TeleportArc({
     posAttr.current.needsUpdate = true;
     geoRef.current.setDrawRange(0, count);
     geoRef.current.computeBoundingSphere();
-    targetRef.current = landPos;
+    targetRef.current = landed ? landV.current : null;
 
-    if (landPos) {
-      marker.position.set(landPos.x, -1.19, landPos.z);
+    if (landed) {
+      marker.position.set(landV.current.x, -1.19, landV.current.z);
       marker.visible = true;
     } else {
       marker.visible = false;
