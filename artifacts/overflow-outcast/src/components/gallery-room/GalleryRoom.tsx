@@ -714,7 +714,7 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner, onSaved }
                           isDragging={isEditDragging}
                           canUndo={editState.canUndo}
                           canRedo={editState.canRedo}
-                          onSave={() => { void editState.save(); }}
+                          onSave={() => { void handleSaveEdit(); }}
                           onUndo={editState.undo}
                           onRedo={editState.redo}
                           onExit={() => {
