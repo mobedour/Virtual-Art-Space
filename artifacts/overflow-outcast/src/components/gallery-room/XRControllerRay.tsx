@@ -7,12 +7,11 @@ import type { ArtworkData } from "./ArtworkFrame";
 export interface XRControllerRayProps {
   handedness?: "left" | "right";
   onArtworkHover?: (artwork: ArtworkData | null) => void;
-  // Hold-to-view: fired on trigger PRESS while targeting an artwork (ray or
-  // gaze). The detail panel stays up only while the trigger is held.
   onArtworkSelect?: (id: number) => void;
-  // Fired on trigger RELEASE — closes the held detail panel so releasing the
-  // button returns the user to roaming.
-  onArtworkRelease?: () => void;
+  // Reports the right-hand trigger hold state (pressed → true, released →
+  // false). Drives the VR "hold to reveal info on every artwork frame" mode.
+  // Suppressed while teleport mode owns the trigger (suppressRef).
+  onTriggerHoldChange?: (held: boolean) => void;
   accentColor?: string;
   // When this ref is true, teleport mode owns the right trigger — suppress our
   // own select handling so a single trigger press doesn't both teleport and
@@ -38,7 +37,7 @@ export function XRControllerRay({
   handedness = "right",
   onArtworkHover,
   onArtworkSelect,
-  onArtworkRelease,
+  onTriggerHoldChange,
   accentColor = "#f5c060",
   suppressRef,
   enableGaze = false,
@@ -47,6 +46,7 @@ export function XRControllerRay({
   const { scene, camera, gl } = useThree();
   const lastHoverKeyRef = useRef<string | null>(null);
   const prevTriggerRef = useRef(false);
+  const holdRef = useRef(false);
   const raycaster = useRef(new THREE.Raycaster());
   const interactiveRootsRef = useRef<THREE.Object3D[]>([]);
   const frameCountRef = useRef(0);
@@ -105,6 +105,18 @@ export function XRControllerRay({
 
   const ctrlState = useXRInputSourceState("controller", handedness);
 
+  // On unmount (e.g. XR session ends), force release so a held trigger doesn't
+  // leave the info-reveal mode latched on for the next session.
+  useEffect(() => {
+    return () => {
+      if (holdRef.current) {
+        holdRef.current = false;
+        onTriggerHoldChange?.(false);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useFrame(() => {
     // ctrlState.object is the controller's tracked 3D node in the scene.
     // Earlier we looked it up by name, but @react-three/xr v6 doesn't tag
@@ -115,6 +127,12 @@ export function XRControllerRay({
       const arr = posAttr.array as Float32Array;
       arr.fill(0);
       posAttr.needsUpdate = true;
+      // Controller lost tracking while a hold was active → report release so
+      // the info overlays don't get stuck on.
+      if (holdRef.current) {
+        holdRef.current = false;
+        onTriggerHoldChange?.(false);
+      }
       return;
     }
 
@@ -253,6 +271,24 @@ export function XRControllerRay({
         }
       }
       prevTriggerRef.current = triggerPressed;
+    }
+
+    // Trigger hold → global "reveal info on every artwork frame" mode (VR).
+    // Independent of hit-testing so it works even when this ray does no
+    // targeting. While teleport mode owns the trigger (suppressRef) we report
+    // not-held so a teleport confirm doesn't also flash the info overlays.
+    if (handedness === "right" && onTriggerHoldChange) {
+      const held =
+        ctrlState?.gamepad?.["xr-standard-trigger"]?.state === "pressed" &&
+        !suppressRef?.current;
+      if (held !== holdRef.current) {
+        holdRef.current = held;
+        onTriggerHoldChange(held);
+        if (held) {
+          const ha = ctrlState?.inputSource?.gamepad?.hapticActuators?.[0];
+          if (ha && "pulse" in ha) (ha as any).pulse(0.4, 50);
+        }
+      }
     }
 
     // Update ray geometry

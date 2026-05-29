@@ -17,7 +17,6 @@ import {
 import { VRButton, xrStore, useVRSupport } from "./VRButton";
 import { XRLocomotion } from "./XRLocomotion";
 import { XRControllerRay } from "./XRControllerRay";
-import { VRInfoPanel } from "./VRInfoPanel";
 import { XRVREditController, VREditPanel } from "./VREditMode";
 import { getRoomDims } from "./room-dimensions";
 
@@ -313,7 +312,14 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner }: Gallery
   const [audioMuted, setAudioMuted] = useState(() => localStorage.getItem("vas_audioMuted") === "true");
   const [isEditMode, setIsEditMode] = useState(false);
   const [isPresenting, setIsPresenting] = useState(false);
-  const [vrArtwork, setVrArtwork] = useState<ArtworkData | null>(null);
+  // VR-only: true while the user holds the controller trigger to reveal each
+  // artwork's info directly on its own frame. Released → false → back to normal.
+  const [vrInfoVisible, setVrInfoVisible] = useState(false);
+  // Defensively clear the hold-to-reveal state whenever we leave VR so it can't
+  // stay latched on into the next session.
+  useEffect(() => {
+    if (!isPresenting && vrInfoVisible) setVrInfoVisible(false);
+  }, [isPresenting, vrInfoVisible]);
   const xrOriginRef = useRef<THREE.Group>(null);
   // Shared flag: true while VR teleport-aim mode owns the right trigger, so the
   // ray / edit controllers suppress their own trigger handling.
@@ -395,7 +401,6 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner }: Gallery
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.code === "Escape") {
-        if (vrArtwork) { setVrArtwork(null); return; }
         if (selectedArtwork) { setSelectedArtwork(null); return; }
         if (isEditMode && !editState.isDirty) { setIsEditMode(false); return; }
         if (isLocked) { setIsLocked(false); setIsPaused(true); }
@@ -404,7 +409,7 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner }: Gallery
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isLocked, isPaused, selectedArtwork, isEditMode, editState.isDirty, vrArtwork]);
+  }, [isLocked, isPaused, selectedArtwork, isEditMode, editState.isDirty]);
 
   // ─── Browser back button handling ───────────────────────────────────────────
   // Push a sentinel state when entering any modal layer so back button pops it
@@ -415,7 +420,6 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner }: Gallery
     window.history.pushState({ vasImmersive: true }, "");
     const onPop = () => {
       // Pop layers in order; if nothing to pop, the browser will navigate away
-      if (vrArtwork) { setVrArtwork(null); window.history.pushState({ vasImmersive: true }, ""); return; }
       if (selectedArtwork) { setSelectedArtwork(null); window.history.pushState({ vasImmersive: true }, ""); return; }
       if (isEditMode) {
         if (editState.isDirty) {
@@ -443,7 +447,7 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner }: Gallery
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasEntered, vrArtwork, selectedArtwork, isEditMode, isPaused, isMobile, editState.isDirty]);
+  }, [hasEntered, selectedArtwork, isEditMode, isPaused, isMobile, editState.isDirty]);
 
   // ─── Visual viewport tracking for proper mobile fullscreen ──────────────────
   // Browser chrome on iOS Safari changes viewport height as you scroll. Force
@@ -651,7 +655,8 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner }: Gallery
                   joystickRef={joystickRef}
                   onLock={handleLock}
                   onUnlock={handleUnlock}
-                  onArtworkSelect={isPresenting ? (a) => setVrArtwork(a) : handleArtworkSelect}
+                  onArtworkSelect={isPresenting ? () => {} : handleArtworkSelect}
+                  vrInfoVisible={vrInfoVisible}
                   onHoverStateChange={setHoverState}
                   inspectCallbackRef={inspectRef}
                   onSceneReady={() => setTimeout(() => setSceneVisible(true), 200)}
@@ -718,14 +723,8 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner }: Gallery
                         <XRControllerRay
                           handedness="right"
                           suppressRef={teleportActiveRef}
-                          enableGaze
-                          selectionPaused={!!vrArtwork}
-                          onArtworkSelect={(id) => {
-                            const a = activeArtworks.find((aw) => aw.id === id) ?? null;
-                            if (a) setVrArtwork(a);
-                          }}
+                          onTriggerHoldChange={setVrInfoVisible}
                         />
-                        <VRInfoPanel artwork={vrArtwork} onClose={() => setVrArtwork(null)} />
                       </>
                     )}
                   </>

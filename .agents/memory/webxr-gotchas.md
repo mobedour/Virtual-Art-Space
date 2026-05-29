@@ -62,3 +62,13 @@ description: Non-obvious constraints when building immersive WebXR (VR) scenes w
 - **Controller face-button ids vary by vendor.** The left upper button is `y-button` on Quest,
   `b-button`/`secondary-button` elsewhere — check several ids. A rarely-used button (left upper) makes
   a good "exit VR / exit gallery" shortcut; end the session with `xrStore.getState().session?.end()`.
+
+- **A "hold the trigger" VR mode must force-release on every exit path, or it latches on.**
+  When a controller-ray reports a held-trigger boolean up to React state (e.g. "hold to reveal
+  info on all artwork frames"), the per-frame poll only fires on edges — so if the controller
+  loses tracking, the component unmounts, or the XR session ends *while held*, the falling edge
+  never fires and the state stays true into the next session.
+  **How to apply:** in the ray's `useFrame`, when the controller object is missing, emit
+  `onHoldChange(false)` if the hold ref is true; add an unmount `useEffect` cleanup that does the
+  same; and defensively clear the lifted state in the parent on the `!isPresenting` transition.
+  Belt-and-suspenders across all three is intentional — any one alone has a gap.
