@@ -681,7 +681,7 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner }: Gallery
                     is invisible inside the headset. */}
                 {isPresenting && (
                   <>
-                    <XRLocomotion halfW={halfW} halfD={halfD} xrOriginRef={xrOriginRef} teleportActiveRef={teleportActiveRef} />
+                    <XRLocomotion halfW={halfW} halfD={halfD} xrOriginRef={xrOriginRef} teleportActiveRef={teleportActiveRef} onExitGallery={() => xrStore.getState().session?.end()} />
                     <XRControllerRay handedness="left" />
 
                     {isEditMode && !editState.isPreviewing ? (
@@ -718,6 +718,8 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner }: Gallery
                         <XRControllerRay
                           handedness="right"
                           suppressRef={teleportActiveRef}
+                          enableGaze
+                          selectionPaused={!!vrArtwork}
                           onArtworkSelect={(id) => {
                             const a = activeArtworks.find((aw) => aw.id === id) ?? null;
                             if (a) setVrArtwork(a);

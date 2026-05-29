@@ -14,6 +14,9 @@ interface XRLocomotionProps {
   // owned by teleport, so the ray / edit controllers suppress their own
   // trigger handling to avoid double-firing (teleport + select in one press).
   teleportActiveRef?: React.MutableRefObject<boolean>;
+  // Shortcut to leave VR / the gallery — bound to the left controller's
+  // secondary (upper) button so it can't be hit by accident during play.
+  onExitGallery?: () => void;
 }
 
 // ─── Movement vignette (billboard quad) ───────────────────────────────────────
@@ -147,7 +150,7 @@ function TeleportArc({
 }
 
 // ─── Main locomotion component ────────────────────────────────────────────────
-export function XRLocomotion({ halfW, halfD, xrOriginRef, teleportActiveRef }: XRLocomotionProps) {
+export function XRLocomotion({ halfW, halfD, xrOriginRef, teleportActiveRef, onExitGallery }: XRLocomotionProps) {
   const { camera } = useThree();
   const vrVignette = localStorage.getItem("vas_vrVignette") !== "false";
 
@@ -160,9 +163,11 @@ export function XRLocomotion({ halfW, halfD, xrOriginRef, teleportActiveRef }: X
   const vignetteIntensity = useRef(0);
   const prevSqueezeRef = useRef(false);
   const prevTriggerRef = useRef(false);
+  const prevExitRef = useRef(false);
   const prevOriginXZ = useRef(new THREE.Vector2(0, 0));
 
   const rightCtrl = useXRInputSourceState("controller", "right");
+  const leftCtrl = useXRInputSourceState("controller", "left");
 
   // Smooth locomotion — translate the player rig (XROrigin), not the camera.
   // Writing camera.position in WebXR has no effect because the headset pose
@@ -196,6 +201,19 @@ export function XRLocomotion({ halfW, halfD, xrOriginRef, teleportActiveRef }: X
         );
       }
     }
+
+    // Left controller secondary (upper) button → exit the gallery / VR. Try the
+    // known cross-vendor ids for the upper face button so it works on Quest
+    // ("y-button"), Index / WMR ("b-button"), etc.
+    const lg = leftCtrl?.gamepad;
+    const exitPressed =
+      lg?.["y-button"]?.state === "pressed" ||
+      lg?.["b-button"]?.state === "pressed" ||
+      lg?.["secondary-button"]?.state === "pressed";
+    if (exitPressed && !prevExitRef.current) {
+      onExitGallery?.();
+    }
+    prevExitRef.current = exitPressed;
 
     // Right controller gamepad — use the parsed component state (cross-vendor
     // safe) instead of raw button indices.

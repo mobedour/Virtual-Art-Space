@@ -34,3 +34,26 @@ description: Non-obvious constraints when building immersive WebXR (VR) scenes w
 
 - **Custom `THREE.Line` ray objects added via `scene.add` must dispose geometry + material on
   cleanup**, not just `scene.remove`, or long VR sessions leak GPU resources.
+
+- **`useThree().camera` is NOT the live headset pose in @react-three/xr v6.** It is the desktop
+  fallback camera; in an immersive session it stays near the rig origin. Anything positioned from
+  it (e.g. an "in front of me" panel) lands in the wrong place — the symptom was the artwork detail
+  panel floating far away in the gallery centre. **How to apply:** read the real XR camera each frame
+  via `gl.xr.isPresenting ? gl.xr.getCamera() : camera` and use its `getWorldPosition` /
+  `getWorldQuaternion`. To make a panel "fill the view" in any (stationary or room-scale) mode,
+  head-lock it: every frame set `group.position = camPos + camForward*dist` and
+  `group.quaternion = camQuat`.
+
+- **VR selection that works without precise aiming = controller-ray with a gaze fallback.** Cast the
+  controller ray first; if it misses, cast a second ray from the XR camera centre (gaze) against the
+  same interactive roots. Highlight the targeted artwork (e.g. an amber `EdgesGeometry` box sized via
+  `Box3.setFromObject`) so the user can see what the trigger will select. Gaze should target only
+  artworks, never `onVRSelect` UI buttons, or the user selects buttons just by looking near them.
+
+- **Pause artwork selection while a modal/detail panel is open**, otherwise the ray keeps selecting
+  other artworks behind the panel instead of giving a clean "press EXIT to go back" flow. Keep the
+  panel's own `onVRSelect` buttons interactive.
+
+- **Controller face-button ids vary by vendor.** The left upper button is `y-button` on Quest,
+  `b-button`/`secondary-button` elsewhere — check several ids. A rarely-used button (left upper) makes
+  a good "exit VR / exit gallery" shortcut; end the session with `xrStore.getState().session?.end()`.

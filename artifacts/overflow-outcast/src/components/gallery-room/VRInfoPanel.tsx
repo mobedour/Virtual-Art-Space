@@ -4,10 +4,10 @@ import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import type { ArtworkData } from "./ArtworkFrame";
 
-const PANEL_OFFSET = 1.6; // metres ahead of the camera when opened
-const AUTO_DISMISS_MS = 60_000;
-const PANEL_W = 1.25;
-const PANEL_H = 1.55;
+const PANEL_OFFSET = 1.25; // metres ahead of the headset (close = fills view)
+const AUTO_DISMISS_MS = 120_000;
+const PANEL_W = 1.5;
+const PANEL_H = 1.9;
 
 interface VRInfoPanelProps {
   artwork: ArtworkData | null;
@@ -26,29 +26,24 @@ interface VRInfoPanelProps {
  * (via userData.onVRSelect).
  */
 export function VRInfoPanel({ artwork, onClose }: VRInfoPanelProps) {
-  const { camera } = useThree();
+  const { camera, gl } = useThree();
   const groupRef = useRef<THREE.Group>(null);
-  const anchor = useRef(new THREE.Vector3());
+  const tmpPos = useRef(new THREE.Vector3());
+  const tmpQuat = useRef(new THREE.Quaternion());
+  const tmpFwd = useRef(new THREE.Vector3());
   const [texture, setTexture] = useState<THREE.Texture | null>(null);
   const [imgAspect, setImgAspect] = useState(1);
   const dismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Place the panel in front of the camera when an artwork is opened.
+  // Auto-dismiss after a while so an abandoned panel doesn't stay forever.
   useEffect(() => {
     if (!artwork) return;
-    const forward = new THREE.Vector3();
-    camera.getWorldDirection(forward);
-    forward.y = 0;
-    forward.normalize();
-    anchor.current.copy(camera.position).addScaledVector(forward, PANEL_OFFSET);
-    anchor.current.y = camera.position.y;
-
     if (dismissTimer.current) clearTimeout(dismissTimer.current);
     dismissTimer.current = setTimeout(onClose, AUTO_DISMISS_MS);
     return () => {
       if (dismissTimer.current) clearTimeout(dismissTimer.current);
     };
-  }, [artwork, camera, onClose]);
+  }, [artwork, onClose]);
 
   // Load the artwork image as a texture.
   useEffect(() => {
@@ -73,21 +68,27 @@ export function VRInfoPanel({ artwork, onClose }: VRInfoPanelProps) {
     return () => { cancelled = true; };
   }, [artwork?.imageUrl]);
 
-  // Keep the panel anchored where it opened, but billboard it (yaw only) so it
-  // always faces the viewer and stays upright.
+  // Head-lock the panel: every frame, pin it a fixed distance directly in front
+  // of the *live XR camera* and face it square-on. Reading the XR camera (not
+  // useThree().camera, which isn't updated with the headset pose in
+  // @react-three/xr v6) is what fixes the old bug where the panel appeared far
+  // away in the middle of the gallery. Locking it to the head makes it fill the
+  // view ("whole screen") regardless of stationary / room-scale mode.
   useFrame(() => {
     const g = groupRef.current;
     if (!g) return;
-    g.position.copy(anchor.current);
-    const dx = camera.position.x - anchor.current.x;
-    const dz = camera.position.z - anchor.current.z;
-    g.rotation.set(0, Math.atan2(dx, dz), 0);
+    const cam = gl.xr.isPresenting ? (gl.xr.getCamera() as unknown as THREE.Camera) : camera;
+    cam.getWorldPosition(tmpPos.current);
+    cam.getWorldQuaternion(tmpQuat.current);
+    tmpFwd.current.set(0, 0, -1).applyQuaternion(tmpQuat.current);
+    g.position.copy(tmpPos.current).addScaledVector(tmpFwd.current, PANEL_OFFSET);
+    g.quaternion.copy(tmpQuat.current);
   });
 
   // Image plane dimensions (contain within a fixed box, preserving aspect).
   const { imgW, imgH } = useMemo(() => {
-    const maxW = 0.95;
-    const maxH = 0.72;
+    const maxW = 1.2;
+    const maxH = 0.95;
     let w = maxW;
     let h = w / imgAspect;
     if (h > maxH) { h = maxH; w = h * imgAspect; }
@@ -182,21 +183,22 @@ export function VRInfoPanel({ artwork, onClose }: VRInfoPanelProps) {
         </Text>
       )}
 
-      {/* Close button — pressable by the controller ray (userData.onVRSelect) */}
+      {/* Exit button — pressable by the controller ray (userData.onVRSelect).
+          Closes the panel and returns to roaming the gallery. */}
       <group
-        position={[0, -PANEL_H / 2 + 0.13, 0.002]}
+        position={[0, -PANEL_H / 2 + 0.16, 0.002]}
         userData={{ onVRSelect: onClose }}
       >
         <mesh>
-          <planeGeometry args={[0.5, 0.16]} />
-          <meshBasicMaterial color="#f5c060" transparent opacity={0.18} side={THREE.DoubleSide} />
+          <planeGeometry args={[0.62, 0.2]} />
+          <meshBasicMaterial color="#f5c060" transparent opacity={0.22} side={THREE.DoubleSide} />
         </mesh>
         <lineSegments>
-          <edgesGeometry args={[new THREE.PlaneGeometry(0.5, 0.16)]} />
-          <lineBasicMaterial color="#f5c060" transparent opacity={0.6} />
+          <edgesGeometry args={[new THREE.PlaneGeometry(0.62, 0.2)]} />
+          <lineBasicMaterial color="#f5c060" transparent opacity={0.7} />
         </lineSegments>
-        <Text position={[0, 0, 0.002]} fontSize={0.052} color="#f5c060" anchorX="center" anchorY="middle">
-          CLOSE
+        <Text position={[0, 0, 0.002]} fontSize={0.07} color="#f5c060" anchorX="center" anchorY="middle">
+          EXIT
         </Text>
       </group>
     </group>

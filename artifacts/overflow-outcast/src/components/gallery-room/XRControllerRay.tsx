@@ -13,6 +13,16 @@ export interface XRControllerRayProps {
   // own select handling so a single trigger press doesn't both teleport and
   // select an artwork.
   suppressRef?: React.RefObject<boolean>;
+  // When true, fall back to head-gaze targeting whenever the controller ray
+  // isn't pointing at an artwork: whatever artwork the user is looking at gets
+  // highlighted and can be selected with the trigger. "Both" mode — controller
+  // when aiming, gaze when not.
+  enableGaze?: boolean;
+  // When true, artwork targeting/highlight/selection is paused (e.g. while the
+  // detail panel is open) so the user can only press the panel's EXIT button to
+  // return to roaming, rather than re-selecting artworks behind it. In-scene UI
+  // buttons (userData.onVRSelect) stay interactive.
+  selectionPaused?: boolean;
 }
 
 // Refresh the cached artwork root list every N frames. Artworks rarely
@@ -25,18 +35,43 @@ export function XRControllerRay({
   onArtworkSelect,
   accentColor = "#f5c060",
   suppressRef,
+  enableGaze = false,
+  selectionPaused = false,
 }: XRControllerRayProps) {
-  const { scene } = useThree();
+  const { scene, camera, gl } = useThree();
   const lastHoverKeyRef = useRef<string | null>(null);
   const prevTriggerRef = useRef(false);
   const raycaster = useRef(new THREE.Raycaster());
   const interactiveRootsRef = useRef<THREE.Object3D[]>([]);
   const frameCountRef = useRef(0);
+  const box3 = useRef(new THREE.Box3());
+  const gazePos = useRef(new THREE.Vector3());
+  const gazeQuat = useRef(new THREE.Quaternion());
+  const gazeDir = useRef(new THREE.Vector3());
+  // Reused per-frame temporaries — avoid allocating new vectors every frame.
+  const posV = useRef(new THREE.Vector3());
+  const dirV = useRef(new THREE.Vector3());
+  const endV = useRef(new THREE.Vector3());
 
   // Whether this controller has any work to do beyond drawing its ray.
   // Left controller with no handlers becomes nearly free — we still
   // draw the ray but skip raycasting entirely.
   const needsHitTest = !!(onArtworkHover || onArtworkSelect);
+
+  // Amber wireframe box drawn around the currently targeted artwork (whether
+  // aimed at by the controller or looked at via gaze) so the user can always
+  // see what they're about to select. Built once and repositioned per frame.
+  const highlight = useMemo(() => {
+    const boxGeo = new THREE.BoxGeometry(1, 1, 1);
+    const edges = new THREE.EdgesGeometry(boxGeo);
+    boxGeo.dispose();
+    const mat = new THREE.LineBasicMaterial({ color: accentColor, transparent: true, opacity: 0.95 });
+    const seg = new THREE.LineSegments(edges, mat);
+    seg.frustumCulled = false;
+    seg.visible = false;
+    seg.renderOrder = 998;
+    return seg;
+  }, [accentColor]);
 
   const { posAttr, line } = useMemo(() => {
     const positions = new Float32Array(6);
@@ -51,12 +86,16 @@ export function XRControllerRay({
 
   useEffect(() => {
     scene.add(line);
+    if (needsHitTest) scene.add(highlight);
     return () => {
       scene.remove(line);
       line.geometry.dispose();
       (line.material as THREE.Material).dispose();
+      scene.remove(highlight);
+      highlight.geometry.dispose();
+      (highlight.material as THREE.Material).dispose();
     };
-  }, [scene, line]);
+  }, [scene, line, highlight, needsHitTest]);
 
   const ctrlState = useXRInputSourceState("controller", handedness);
 
@@ -73,8 +112,8 @@ export function XRControllerRay({
       return;
     }
 
-    const pos = new THREE.Vector3();
-    const dir = new THREE.Vector3();
+    const pos = posV.current;
+    const dir = dirV.current;
     ctrlObj.getWorldPosition(pos);
     // `getWorldDirection` returns the object's local +Z in world space.
     // WebXR controllers (like cameras) point down −Z, so negate — otherwise
@@ -107,6 +146,10 @@ export function XRControllerRay({
       // (walls, floor, decor props, lights, etc. are all skipped).
       const intersects = raycaster.current.intersectObjects(interactiveRootsRef.current, true);
 
+      // The frame group (the object carrying userData.artworkId) of whatever
+      // we're targeting — used to draw the highlight box around it.
+      let hitGroup: THREE.Object3D | null = null;
+
       for (const hit of intersects) {
         let obj: THREE.Object3D | null = hit.object;
         while (obj) {
@@ -115,9 +158,10 @@ export function XRControllerRay({
             hitUISelect = obj.userData.onVRSelect as () => void;
             break;
           }
-          if (obj.userData.artworkId !== undefined) {
+          if (!selectionPaused && obj.userData.artworkId !== undefined) {
             hitDist = Math.min(hit.distance, 10);
             hitArtworkId = obj.userData.artworkId as number;
+            hitGroup = obj;
             break;
           }
           obj = obj.parent;
@@ -125,8 +169,58 @@ export function XRControllerRay({
         if (hitArtworkId !== null || hitUISelect !== null) break;
       }
 
+      // Gaze fallback: when the controller isn't pointing at anything
+      // interactive, target whatever artwork the headset is looking at. This is
+      // the "gaze when I'm not pointing" half of the Both selection mode. Gaze
+      // only targets artworks (never UI buttons), so a user can't accidentally
+      // trigger a button just by looking near it.
+      let gazeArtworkId: number | null = null;
+      if (enableGaze && !selectionPaused && hitArtworkId === null && hitUISelect === null) {
+        const cam = gl.xr.isPresenting ? (gl.xr.getCamera() as unknown as THREE.Camera) : camera;
+        cam.getWorldPosition(gazePos.current);
+        cam.getWorldQuaternion(gazeQuat.current);
+        gazeDir.current.set(0, 0, -1).applyQuaternion(gazeQuat.current);
+        raycaster.current.set(gazePos.current, gazeDir.current);
+        const gazeHits = raycaster.current.intersectObjects(interactiveRootsRef.current, true);
+        for (const hit of gazeHits) {
+          let obj: THREE.Object3D | null = hit.object;
+          while (obj) {
+            if (obj.userData.artworkId !== undefined) {
+              gazeArtworkId = obj.userData.artworkId as number;
+              hitGroup = obj;
+              break;
+            }
+            obj = obj.parent;
+          }
+          if (gazeArtworkId !== null) break;
+        }
+      }
+
+      // What a trigger press would activate / what we highlight.
+      const targetArtworkId = hitArtworkId ?? gazeArtworkId;
+
+      // Position the highlight box around the targeted artwork frame.
+      if (hitGroup && targetArtworkId !== null) {
+        box3.current.setFromObject(hitGroup);
+        if (!box3.current.isEmpty()) {
+          box3.current.getCenter(highlight.position);
+          box3.current.getSize(highlight.scale);
+          highlight.scale.multiplyScalar(1.05);
+          highlight.scale.z = Math.max(highlight.scale.z, 0.08);
+          highlight.visible = true;
+        } else {
+          highlight.visible = false;
+        }
+      } else {
+        highlight.visible = false;
+      }
+
       // Hover haptic feedback (right hand only, on enter)
-      const hoverKey = hitUISelect ? "ui" : hitArtworkId !== null ? `art:${hitArtworkId}` : null;
+      const hoverKey = hitUISelect
+        ? "ui"
+        : targetArtworkId !== null
+          ? `art:${targetArtworkId}`
+          : null;
       if (hoverKey !== lastHoverKeyRef.current) {
         lastHoverKeyRef.current = hoverKey;
         if (hoverKey !== null && handedness === "right") {
@@ -146,8 +240,8 @@ export function XRControllerRay({
           hitUISelect();
           const ha = ctrlState?.inputSource?.gamepad?.hapticActuators?.[0];
           if (ha && "pulse" in ha) (ha as any).pulse(0.6, 80);
-        } else if (hitArtworkId !== null) {
-          onArtworkSelect?.(hitArtworkId);
+        } else if (targetArtworkId !== null) {
+          onArtworkSelect?.(targetArtworkId);
           const ha = ctrlState?.inputSource?.gamepad?.hapticActuators?.[0];
           if (ha && "pulse" in ha) (ha as any).pulse(0.6, 80);
         }
@@ -156,7 +250,7 @@ export function XRControllerRay({
     }
 
     // Update ray geometry
-    const end = pos.clone().addScaledVector(dir, hitDist);
+    const end = endV.current.copy(pos).addScaledVector(dir, hitDist);
     const arr = posAttr.array as Float32Array;
     arr[0] = pos.x; arr[1] = pos.y; arr[2] = pos.z;
     arr[3] = end.x; arr[4] = end.y; arr[5] = end.z;
