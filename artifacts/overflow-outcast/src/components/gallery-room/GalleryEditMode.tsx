@@ -59,11 +59,11 @@ const WALL_PLANES = [
   { wallIdx: 3, normal: new THREE.Vector3(1, 0, 0),  point: new THREE.Vector3(0, 0, 0) }, // west
 ];
 
-function snapToGrid(v: number, step = 0.25): number {
+export function snapToGrid(v: number, step = 0.25): number {
   return Math.round(v / step) * step;
 }
 
-function getNearestWallPlane(pos: THREE.Vector3, halfW: number, halfD: number) {
+export function getNearestWallPlane(pos: THREE.Vector3, halfW: number, halfD: number) {
   const dists = [
     { idx: 0, d: Math.abs(pos.z + halfD) }, // north
     { idx: 1, d: Math.abs(pos.x - halfW) }, // east

@@ -18,6 +18,7 @@ import { VRButton, xrStore, useVRSupport } from "./VRButton";
 import { XRLocomotion } from "./XRLocomotion";
 import { XRControllerRay } from "./XRControllerRay";
 import { VRInfoPanel } from "./VRInfoPanel";
+import { XRVREditController, VREditPanel } from "./VREditMode";
 import { getRoomDims } from "./room-dimensions";
 
 type GalleryRoomData = {
@@ -314,6 +315,9 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner }: Gallery
   const [isPresenting, setIsPresenting] = useState(false);
   const [vrArtwork, setVrArtwork] = useState<ArtworkData | null>(null);
   const xrOriginRef = useRef<THREE.Group>(null);
+  // Shared flag: true while VR teleport-aim mode owns the right trigger, so the
+  // ray / edit controllers suppress their own trigger handling.
+  const teleportActiveRef = useRef(false);
   const [isEditDragging, setIsEditDragging] = useState(false);
   const [walkSpeed, setWalkSpeed] = useState(() => {
     const saved = localStorage.getItem("vas_walkSpeed");
@@ -671,19 +675,57 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner }: Gallery
                   <WallArrows halfW={activeHalfW} halfD={activeHalfD} halfH={halfH} floorY={floorY} onResize={editState.handleRoomResize} />
                 )}
 
-                {/* VR-only: locomotion + artwork info panel */}
+                {/* VR-only: locomotion + interaction. Edit mode swaps the
+                    right-hand ray for the grab-to-move edit controller and
+                    shows an in-scene 3D control panel, since the DOM toolbar
+                    is invisible inside the headset. */}
                 {isPresenting && (
                   <>
-                    <XRLocomotion halfW={halfW} halfD={halfD} xrOriginRef={xrOriginRef} />
+                    <XRLocomotion halfW={halfW} halfD={halfD} xrOriginRef={xrOriginRef} teleportActiveRef={teleportActiveRef} />
                     <XRControllerRay handedness="left" />
-                    <XRControllerRay
-                      handedness="right"
-                      onArtworkSelect={(id) => {
-                        const a = activeArtworks.find((aw) => aw.id === id) ?? null;
-                        if (a) setVrArtwork(a);
-                      }}
-                    />
-                    <VRInfoPanel artwork={vrArtwork} onClose={() => setVrArtwork(null)} />
+
+                    {isEditMode && !editState.isPreviewing ? (
+                      <>
+                        <XRVREditController
+                          halfW={activeHalfW}
+                          halfD={activeHalfD}
+                          halfH={halfH}
+                          suppressRef={teleportActiveRef}
+                          onArtworkMoved={editState.handleArtworkMoved}
+                          onDrop={() => { editState.handleArtworkMovedCommit(); setIsEditDragging(false); }}
+                          onArtworkSelected={(id) => {
+                            editState.handleArtworkSelected(id);
+                            setIsEditDragging(id !== null);
+                          }}
+                        />
+                        <VREditPanel
+                          isDirty={editState.isDirty}
+                          isSaving={editState.isSaving}
+                          isDragging={isEditDragging}
+                          canUndo={editState.canUndo}
+                          canRedo={editState.canRedo}
+                          onSave={() => { void editState.save(); }}
+                          onUndo={editState.undo}
+                          onRedo={editState.redo}
+                          onExit={() => {
+                            if (editState.isDirty) { void editState.save(); }
+                            setIsEditMode(false);
+                          }}
+                        />
+                      </>
+                    ) : (
+                      <>
+                        <XRControllerRay
+                          handedness="right"
+                          suppressRef={teleportActiveRef}
+                          onArtworkSelect={(id) => {
+                            const a = activeArtworks.find((aw) => aw.id === id) ?? null;
+                            if (a) setVrArtwork(a);
+                          }}
+                        />
+                        <VRInfoPanel artwork={vrArtwork} onClose={() => setVrArtwork(null)} />
+                      </>
+                    )}
                   </>
                 )}
               </XR>

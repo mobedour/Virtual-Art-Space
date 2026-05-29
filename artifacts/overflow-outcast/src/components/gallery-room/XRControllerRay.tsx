@@ -9,6 +9,10 @@ export interface XRControllerRayProps {
   onArtworkHover?: (artwork: ArtworkData | null) => void;
   onArtworkSelect?: (id: number) => void;
   accentColor?: string;
+  // When this ref is true, teleport mode owns the right trigger — suppress our
+  // own select handling so a single trigger press doesn't both teleport and
+  // select an artwork.
+  suppressRef?: React.RefObject<boolean>;
 }
 
 // Refresh the cached artwork root list every N frames. Artworks rarely
@@ -20,12 +24,13 @@ export function XRControllerRay({
   onArtworkHover,
   onArtworkSelect,
   accentColor = "#f5c060",
+  suppressRef,
 }: XRControllerRayProps) {
   const { scene } = useThree();
-  const lastHoverIdRef = useRef<number | null>(null);
+  const lastHoverKeyRef = useRef<string | null>(null);
   const prevTriggerRef = useRef(false);
   const raycaster = useRef(new THREE.Raycaster());
-  const artworkRootsRef = useRef<THREE.Object3D[]>([]);
+  const interactiveRootsRef = useRef<THREE.Object3D[]>([]);
   const frameCountRef = useRef(0);
 
   // Whether this controller has any work to do beyond drawing its ray.
@@ -46,7 +51,11 @@ export function XRControllerRay({
 
   useEffect(() => {
     scene.add(line);
-    return () => { scene.remove(line); };
+    return () => {
+      scene.remove(line);
+      line.geometry.dispose();
+      (line.material as THREE.Material).dispose();
+    };
   }, [scene, line]);
 
   const ctrlState = useXRInputSourceState("controller", handedness);
@@ -74,27 +83,38 @@ export function XRControllerRay({
 
     let hitDist = 10;
     let hitArtworkId: number | null = null;
+    let hitUISelect: (() => void) | null = null;
 
     if (needsHitTest) {
-      // Refresh the artwork root cache periodically. Walking the whole
-      // scene every frame was the single biggest perf cost in VR.
+      // Refresh the interactive-root cache periodically. Walking the whole
+      // scene every frame was the single biggest perf cost in VR. We track
+      // both artwork frames (userData.artworkId) and in-scene 3D UI buttons
+      // (userData.onVRSelect — e.g. the info-panel close button) so the same
+      // ray can drive both.
       if (frameCountRef.current % ARTWORK_CACHE_REFRESH_FRAMES === 0) {
         const roots: THREE.Object3D[] = [];
         scene.traverse((o) => {
-          if (o.userData.artworkId !== undefined) roots.push(o);
+          if (o.userData.artworkId !== undefined || typeof o.userData.onVRSelect === "function") {
+            roots.push(o);
+          }
         });
-        artworkRootsRef.current = roots;
+        interactiveRootsRef.current = roots;
       }
       frameCountRef.current++;
 
       raycaster.current.set(pos, dir);
-      // Recurse only into the small artwork subtree, not the whole scene
+      // Recurse only into the small interactive subtree, not the whole scene
       // (walls, floor, decor props, lights, etc. are all skipped).
-      const intersects = raycaster.current.intersectObjects(artworkRootsRef.current, true);
+      const intersects = raycaster.current.intersectObjects(interactiveRootsRef.current, true);
 
       for (const hit of intersects) {
         let obj: THREE.Object3D | null = hit.object;
         while (obj) {
+          if (typeof obj.userData.onVRSelect === "function") {
+            hitDist = Math.min(hit.distance, 10);
+            hitUISelect = obj.userData.onVRSelect as () => void;
+            break;
+          }
           if (obj.userData.artworkId !== undefined) {
             hitDist = Math.min(hit.distance, 10);
             hitArtworkId = obj.userData.artworkId as number;
@@ -102,27 +122,35 @@ export function XRControllerRay({
           }
           obj = obj.parent;
         }
-        if (hitArtworkId !== null) break;
+        if (hitArtworkId !== null || hitUISelect !== null) break;
       }
 
       // Hover haptic feedback (right hand only, on enter)
-      if (hitArtworkId !== lastHoverIdRef.current) {
-        lastHoverIdRef.current = hitArtworkId;
-        if (hitArtworkId !== null && handedness === "right") {
+      const hoverKey = hitUISelect ? "ui" : hitArtworkId !== null ? `art:${hitArtworkId}` : null;
+      if (hoverKey !== lastHoverKeyRef.current) {
+        lastHoverKeyRef.current = hoverKey;
+        if (hoverKey !== null && handedness === "right") {
           const ha = ctrlState?.inputSource?.gamepad?.hapticActuators?.[0];
           if (ha && "pulse" in ha) (ha as any).pulse(0.25, 35);
         }
       }
 
-      // Trigger rising-edge → select artwork (right hand only).
+      // Trigger rising-edge → activate (right hand only). A 3D UI button
+      // (close, save, …) takes priority over selecting an artwork behind it.
       // Use the parsed component state instead of raw gamepad indices —
       // Quest / Index / WMR all expose the trigger under this id.
       const triggerPressed =
         ctrlState?.gamepad?.["xr-standard-trigger"]?.state === "pressed";
-      if (triggerPressed && !prevTriggerRef.current && hitArtworkId !== null && handedness === "right") {
-        onArtworkSelect?.(hitArtworkId);
-        const ha = ctrlState?.inputSource?.gamepad?.hapticActuators?.[0];
-        if (ha && "pulse" in ha) (ha as any).pulse(0.6, 80);
+      if (triggerPressed && !prevTriggerRef.current && handedness === "right" && !suppressRef?.current) {
+        if (hitUISelect) {
+          hitUISelect();
+          const ha = ctrlState?.inputSource?.gamepad?.hapticActuators?.[0];
+          if (ha && "pulse" in ha) (ha as any).pulse(0.6, 80);
+        } else if (hitArtworkId !== null) {
+          onArtworkSelect?.(hitArtworkId);
+          const ha = ctrlState?.inputSource?.gamepad?.hapticActuators?.[0];
+          if (ha && "pulse" in ha) (ha as any).pulse(0.6, 80);
+        }
       }
       prevTriggerRef.current = triggerPressed;
     }

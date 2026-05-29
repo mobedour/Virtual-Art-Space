@@ -10,6 +10,10 @@ interface XRLocomotionProps {
   // rig instead of the camera, since the camera pose is owned by the
   // headset and writing to it directly has no effect.
   xrOriginRef: React.RefObject<THREE.Group | null>;
+  // Shared flag mirroring teleport-aim mode. While true, the right trigger is
+  // owned by teleport, so the ray / edit controllers suppress their own
+  // trigger handling to avoid double-firing (teleport + select in one press).
+  teleportActiveRef?: React.MutableRefObject<boolean>;
 }
 
 // ─── Movement vignette (billboard quad) ───────────────────────────────────────
@@ -143,12 +147,15 @@ function TeleportArc({
 }
 
 // ─── Main locomotion component ────────────────────────────────────────────────
-export function XRLocomotion({ halfW, halfD, xrOriginRef }: XRLocomotionProps) {
+export function XRLocomotion({ halfW, halfD, xrOriginRef, teleportActiveRef }: XRLocomotionProps) {
   const { camera } = useThree();
   const vrVignette = localStorage.getItem("vas_vrVignette") !== "false";
 
   const [teleportVisible, setTeleportVisible] = useState(false);
-  const teleportModeRef = useRef(false);
+  const internalTeleportRef = useRef(false);
+  // Use the shared ref when provided so other VR systems can observe teleport
+  // mode; fall back to a local ref otherwise.
+  const teleportModeRef = teleportActiveRef ?? internalTeleportRef;
   const targetRef = useRef<THREE.Vector3 | null>(null);
   const vignetteIntensity = useRef(0);
   const prevSqueezeRef = useRef(false);

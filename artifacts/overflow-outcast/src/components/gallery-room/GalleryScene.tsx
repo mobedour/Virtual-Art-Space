@@ -763,8 +763,11 @@ export function GalleryScene({
         />
       )}
 
-      {/* Edit drag controller — active when isEditMode is true */}
-      {isEditMode && onArtworkMoved && (
+      {/* Edit drag controller — active when isEditMode is true. Gated out of
+          VR: it is mouse / pointer-lock based, and VR editing is handled by
+          XRVREditController instead. Mounting both would run two parallel edit
+          systems. */}
+      {isEditMode && onArtworkMoved && !isPresenting && (
         <EditDragController
           isEditing={isEditMode}
           artworks={artworks}
