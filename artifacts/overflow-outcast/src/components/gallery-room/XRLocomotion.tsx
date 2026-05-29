@@ -17,6 +17,9 @@ interface XRLocomotionProps {
   // Shortcut to leave VR / the gallery — bound to the left controller's
   // secondary (upper) button so it can't be hit by accident during play.
   onExitGallery?: () => void;
+  // Toggle the in-headset VR menu — bound to the left controller's primary
+  // (lower) button. Gives access to edit mode / exit from inside VR.
+  onToggleMenu?: () => void;
 }
 
 // ─── Movement vignette (billboard quad) ───────────────────────────────────────
@@ -170,7 +173,7 @@ function TeleportArc({
 }
 
 // ─── Main locomotion component ────────────────────────────────────────────────
-export function XRLocomotion({ halfW, halfD, xrOriginRef, teleportActiveRef, onExitGallery }: XRLocomotionProps) {
+export function XRLocomotion({ halfW, halfD, xrOriginRef, teleportActiveRef, onExitGallery, onToggleMenu }: XRLocomotionProps) {
   const { camera } = useThree();
   const vrVignette = localStorage.getItem("vas_vrVignette") !== "false";
 
@@ -184,6 +187,7 @@ export function XRLocomotion({ halfW, halfD, xrOriginRef, teleportActiveRef, onE
   const prevSqueezeRef = useRef(false);
   const prevTriggerRef = useRef(false);
   const prevExitRef = useRef(false);
+  const prevMenuRef = useRef(false);
   const prevOriginXZ = useRef(new THREE.Vector2(0, 0));
 
   const rightCtrl = useXRInputSourceState("controller", "right");
@@ -234,6 +238,17 @@ export function XRLocomotion({ halfW, halfD, xrOriginRef, teleportActiveRef, onE
       onExitGallery?.();
     }
     prevExitRef.current = exitPressed;
+
+    // Left controller primary (lower) button → toggle the VR menu. Quest
+    // exposes it as "x-button"; check generic ids too for other runtimes.
+    const menuPressed =
+      lg?.["x-button"]?.state === "pressed" ||
+      lg?.["a-button"]?.state === "pressed" ||
+      lg?.["primary-button"]?.state === "pressed";
+    if (menuPressed && !prevMenuRef.current) {
+      onToggleMenu?.();
+    }
+    prevMenuRef.current = menuPressed;
 
     // Right controller gamepad — use the parsed component state (cross-vendor
     // safe) instead of raw button indices.

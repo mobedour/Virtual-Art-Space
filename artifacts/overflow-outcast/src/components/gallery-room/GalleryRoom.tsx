@@ -18,6 +18,7 @@ import { VRButton, xrStore, useVRSupport } from "./VRButton";
 import { XRLocomotion } from "./XRLocomotion";
 import { XRControllerRay } from "./XRControllerRay";
 import { XRVREditController, VREditPanel } from "./VREditMode";
+import { VRDetailPanel, VRMenuPanel } from "./VROverlayPanels";
 import { getRoomDims } from "./room-dimensions";
 
 type GalleryRoomData = {
@@ -316,14 +317,20 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner, onSaved }
   const [audioMuted, setAudioMuted] = useState(() => localStorage.getItem("vas_audioMuted") === "true");
   const [isEditMode, setIsEditMode] = useState(false);
   const [isPresenting, setIsPresenting] = useState(false);
-  // VR-only: true while the user holds the controller trigger to reveal each
-  // artwork's info directly on its own frame. Released → false → back to normal.
-  const [vrInfoVisible, setVrInfoVisible] = useState(false);
-  // Defensively clear the hold-to-reveal state whenever we leave VR so it can't
-  // stay latched on into the next session.
+  // VR-only: the artwork whose detail panel is open in the headset (point at a
+  // piece + pull the trigger). null → roaming. The DOM detail modal is invisible
+  // in immersive WebXR, so this drives an in-scene 3D panel instead.
+  const [vrSelectedArtwork, setVrSelectedArtwork] = useState<ArtworkData | null>(null);
+  // VR-only: whether the in-headset menu (edit room / exit / resume) is open.
+  const [vrMenuOpen, setVrMenuOpen] = useState(false);
+  // Defensively clear VR overlay state whenever we leave VR so nothing stays
+  // latched on into the next session.
   useEffect(() => {
-    if (!isPresenting && vrInfoVisible) setVrInfoVisible(false);
-  }, [isPresenting, vrInfoVisible]);
+    if (!isPresenting) {
+      if (vrSelectedArtwork) setVrSelectedArtwork(null);
+      if (vrMenuOpen) setVrMenuOpen(false);
+    }
+  }, [isPresenting, vrSelectedArtwork, vrMenuOpen]);
   const xrOriginRef = useRef<THREE.Group>(null);
   // Shared flag: true while VR teleport-aim mode owns the right trigger, so the
   // ray / edit controllers suppress their own trigger handling.
@@ -661,7 +668,6 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner, onSaved }
                   onLock={handleLock}
                   onUnlock={handleUnlock}
                   onArtworkSelect={isPresenting ? () => {} : handleArtworkSelect}
-                  vrInfoVisible={vrInfoVisible}
                   onHoverStateChange={setHoverState}
                   inspectCallbackRef={inspectRef}
                   onSceneReady={() => setTimeout(() => setSceneVisible(true), 200)}
@@ -691,7 +697,17 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner, onSaved }
                     is invisible inside the headset. */}
                 {isPresenting && (
                   <>
-                    <XRLocomotion halfW={halfW} halfD={halfD} xrOriginRef={xrOriginRef} teleportActiveRef={teleportActiveRef} onExitGallery={() => xrStore.getState().session?.end()} />
+                    <XRLocomotion
+                      halfW={halfW}
+                      halfD={halfD}
+                      xrOriginRef={xrOriginRef}
+                      teleportActiveRef={teleportActiveRef}
+                      onExitGallery={() => xrStore.getState().session?.end()}
+                      onToggleMenu={isEditMode ? undefined : () => {
+                        setVrSelectedArtwork(null);
+                        setVrMenuOpen((o) => !o);
+                      }}
+                    />
                     <XRControllerRay handedness="left" />
 
                     {isEditMode && !editState.isPreviewing ? (
@@ -728,8 +744,27 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner, onSaved }
                         <XRControllerRay
                           handedness="right"
                           suppressRef={teleportActiveRef}
-                          onTriggerHoldChange={setVrInfoVisible}
+                          enableGaze
+                          selectionPaused={vrSelectedArtwork !== null || vrMenuOpen}
+                          onArtworkSelect={(id) => {
+                            const art = activeArtworks.find((a) => a.id === id);
+                            if (art) { setVrMenuOpen(false); setVrSelectedArtwork(art); }
+                          }}
                         />
+                        {vrSelectedArtwork && (
+                          <VRDetailPanel
+                            artwork={vrSelectedArtwork}
+                            onClose={() => setVrSelectedArtwork(null)}
+                          />
+                        )}
+                        {vrMenuOpen && (
+                          <VRMenuPanel
+                            isOwner={isOwner}
+                            onEditRoom={() => { setVrMenuOpen(false); handleEnterEditMode(); }}
+                            onExitVR={() => xrStore.getState().session?.end()}
+                            onClose={() => setVrMenuOpen(false)}
+                          />
+                        )}
                       </>
                     )}
                   </>

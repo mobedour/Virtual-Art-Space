@@ -40,10 +40,6 @@ interface ArtworkFrameProps {
   frameColor: string;
   labelColor: string;
   onSelect: (artwork: ArtworkData) => void;
-  // VR-only: when true, overlay the artwork's details directly on its own
-  // canvas (title, artist, year/medium, description). Driven by holding the
-  // VR controller trigger so every frame reveals its info at once.
-  showInfo?: boolean;
 }
 
 function makePlaceholderTexture(title: string, frameColor: string): THREE.Texture {
@@ -112,7 +108,6 @@ export function ArtworkFrame({
   frameColor,
   labelColor,
   onSelect,
-  showInfo = false,
 }: ArtworkFrameProps) {
   const [texture, setTexture] = useState<THREE.Texture | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -225,75 +220,6 @@ export function ArtworkFrame({
           <meshStandardMaterial color="#1a1510" roughness={0.9} emissive="#0d0b08" emissiveIntensity={0.5} />
         )}
       </mesh>
-
-      {/* VR info overlay — laid directly over the canvas while the user holds
-          the controller trigger. Faces outward with the frame (inherits the
-          group rotation). Desktop/mobile never set showInfo, so this is
-          VR-only. */}
-      {showInfo && (
-        <group position={[0, 0, 0.034]} renderOrder={1000}>
-          <mesh>
-            <planeGeometry args={[IMAGE_W, IMAGE_H]} />
-            <meshBasicMaterial color="#0d0b09" transparent opacity={0.9} depthWrite={false} />
-          </mesh>
-          <Text
-            position={[0, IMAGE_H / 2 - 0.16, 0.004]}
-            fontSize={0.15}
-            color={labelColor}
-            anchorX="center"
-            anchorY="top"
-            maxWidth={IMAGE_W - 0.2}
-            textAlign="center"
-            outlineWidth={0.004}
-            outlineColor="#000000"
-          >
-            {artwork.title}
-          </Text>
-          {artwork.artistName && (
-            <Text
-              position={[0, IMAGE_H / 2 - 0.5, 0.004]}
-              fontSize={0.1}
-              color="#ffffff"
-              fillOpacity={0.82}
-              anchorX="center"
-              anchorY="top"
-              maxWidth={IMAGE_W - 0.2}
-              textAlign="center"
-            >
-              {artwork.artistName}
-            </Text>
-          )}
-          {(artwork.year || artwork.medium) && (
-            <Text
-              position={[0, IMAGE_H / 2 - 0.74, 0.004]}
-              fontSize={0.075}
-              color="#f5c060"
-              fillOpacity={0.85}
-              anchorX="center"
-              anchorY="top"
-              maxWidth={IMAGE_W - 0.2}
-              textAlign="center"
-            >
-              {[artwork.year, artwork.medium].filter(Boolean).join("   ·   ")}
-            </Text>
-          )}
-          {artwork.description && (
-            <Text
-              position={[0, IMAGE_H / 2 - 0.96, 0.004]}
-              fontSize={0.066}
-              color="#ffffff"
-              fillOpacity={0.72}
-              anchorX="center"
-              anchorY="top"
-              lineHeight={1.45}
-              maxWidth={IMAGE_W - 0.24}
-              textAlign="center"
-            >
-              {artwork.description.length > 320 ? artwork.description.slice(0, 317) + "…" : artwork.description}
-            </Text>
-          )}
-        </group>
-      )}
 
       {/* Label shelf — thin horizontal ledge below frame */}
       <mesh position={[0, -(FRAME_H / 2 + 0.025), -FRAME_D / 2 + 0.01]}>

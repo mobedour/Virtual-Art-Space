@@ -448,9 +448,6 @@ interface GallerySceneProps {
   walkSpeed?: number;
   lookSensitivity?: number;
   isPresenting?: boolean;
-  // VR-only: when true (driven by holding the VR trigger), every artwork frame
-  // overlays its details on its own canvas.
-  vrInfoVisible?: boolean;
 }
 
 export function GalleryScene({
@@ -462,7 +459,6 @@ export function GalleryScene({
   onEditDraggingChange,
   walkSpeed = 5.5, lookSensitivity = 1.0,
   isPresenting = false,
-  vrInfoVisible = false,
 }: GallerySceneProps) {
   const theme = getTheme(roomTheme);
   const controlsRef = useRef<any>(null);
@@ -731,7 +727,6 @@ export function GalleryScene({
       {placedArtworks.map(({ artwork, position, rotationY }) => (
         <ArtworkFrame key={artwork.id} artwork={artwork} position={position} rotationY={rotationY}
           frameColor={theme.frameColor} labelColor={theme.labelColor}
-          showInfo={isPresenting && vrInfoVisible}
           onSelect={(a) => {
             // In edit mode, EditDragController owns artwork clicks
             // (pick / drop). Don't unlock the pointer or open the modal
