@@ -632,6 +632,7 @@ export function useEditState(
   originalLighting: number,
   originalDecorationLevel = 5,
   originalRoomSize = 5,
+  onSaved?: () => void | Promise<void>,
 ) {
   const draftKey = `vas_editDraft_${galleryId}`;
 
@@ -808,10 +809,15 @@ export function useEditState(
       ]);
       setIsDirty(false);
       try { localStorage.removeItem(draftKey); } catch {}
+      // Refresh the source gallery query so normal mode (which reads the
+      // fetched gallery, not the edit draft) reflects the saved placement.
+      // Awaited so the caller can exit edit mode only once fresh data has
+      // landed — otherwise normal mode briefly flashes the pre-save layout.
+      await onSaved?.();
     } finally {
       setIsSaving(false);
     }
-  }, [artworks, galleryId, patchArtwork, patchRoom, roomTheme, lightingMood, decorationLevel, roomSize, draftKey]);
+  }, [artworks, galleryId, patchArtwork, patchRoom, roomTheme, lightingMood, decorationLevel, roomSize, draftKey, onSaved]);
 
   const discard = useCallback(() => {
     setArtworks(originalArtworks);

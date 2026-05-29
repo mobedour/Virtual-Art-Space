@@ -1,2 +1,3 @@
 - [Drizzle push in post-merge](drizzle-push-postmerge.md) — `drizzle-kit push` blocks on TTY prompts for destructive ops; post-merge must pipe "No" and verify schema matched DB before relying on it.
 - [WebXR / react-three-xr gotchas](webxr-gotchas.md) — drei `<Html>` invisible in headset; createXRStore defaults trigger passthrough error; right-trigger needs arbitration; never write camera.position in VR.
+- [Mutations don't auto-invalidate](query-cache-invalidation.md) — generated react-query write hooks never invalidate; caller must invalidate the source query (await before exiting edit mode) or UI shows stale data.

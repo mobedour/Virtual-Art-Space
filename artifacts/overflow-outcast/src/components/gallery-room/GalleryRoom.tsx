@@ -39,6 +39,10 @@ interface GalleryRoomProps {
   onExit?: () => void;
   onEditRequest?: () => void;
   isOwner?: boolean;
+  // Called after a successful edit save so the host page can refetch/invalidate
+  // its gallery query and normal mode reflects the saved changes. May return a
+  // promise; the save awaits it before exiting edit mode to avoid a stale flash.
+  onSaved?: () => void | Promise<void>;
 }
 
 function checkWebGLSupport(): boolean {
@@ -298,7 +302,7 @@ function PauseOverlay({
   );
 }
 
-export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner }: GalleryRoomProps) {
+export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner, onSaved }: GalleryRoomProps) {
   const isMobile = useIsMobile();
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [fakeFullscreen, setFakeFullscreen] = useState(false);
@@ -351,6 +355,7 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner }: Gallery
     gallery.lightingMood ?? 1.0,
     gallery.decorationLevel ?? 5,
     gallery.roomSize ?? 5,
+    onSaved,
   );
 
   // Which artworks/theme/lighting/decoration to render (edit mode may override)

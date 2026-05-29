@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { Link, useLocation, useParams } from "wouter";
+import { useQueryClient } from "@tanstack/react-query";
 import { useGetPublicGallery, getGetPublicGalleryQueryKey, useGetMe } from "@workspace/api-client-react";
 import { PublicLayout } from "@/components/public-layout";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,7 @@ import { THEME_DISPLAY_NAMES } from "@/components/gallery-room/theme-config";
 export default function PublicGalleryDetail() {
   const { slug } = useParams();
   const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
 
   const { data: gallery, isLoading, error } = useGetPublicGallery(slug || "", {
     query: { queryKey: getGetPublicGalleryQueryKey(slug || ""), enabled: !!slug },
@@ -18,6 +20,10 @@ export default function PublicGalleryDetail() {
   const { data: me } = useGetMe({});
 
   const handleExit = useCallback(() => setLocation("/galleries"), [setLocation]);
+  const handleSaved = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: getGetPublicGalleryQueryKey(slug || "") }),
+    [queryClient, slug],
+  );
 
   if (isLoading) {
     return (
@@ -99,6 +105,7 @@ export default function PublicGalleryDetail() {
           onExit={handleExit}
           isOwner={isOwner}
           onEditRequest={isOwner ? () => setLocation(`/dashboard`) : undefined}
+          onSaved={handleSaved}
         />
       </main>
     </div>
