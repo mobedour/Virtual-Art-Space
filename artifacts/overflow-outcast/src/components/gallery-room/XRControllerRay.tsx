@@ -7,7 +7,12 @@ import type { ArtworkData } from "./ArtworkFrame";
 export interface XRControllerRayProps {
   handedness?: "left" | "right";
   onArtworkHover?: (artwork: ArtworkData | null) => void;
+  // Hold-to-view: fired on trigger PRESS while targeting an artwork (ray or
+  // gaze). The detail panel stays up only while the trigger is held.
   onArtworkSelect?: (id: number) => void;
+  // Fired on trigger RELEASE — closes the held detail panel so releasing the
+  // button returns the user to roaming.
+  onArtworkRelease?: () => void;
   accentColor?: string;
   // When this ref is true, teleport mode owns the right trigger — suppress our
   // own select handling so a single trigger press doesn't both teleport and
@@ -33,6 +38,7 @@ export function XRControllerRay({
   handedness = "right",
   onArtworkHover,
   onArtworkSelect,
+  onArtworkRelease,
   accentColor = "#f5c060",
   suppressRef,
   enableGaze = false,
