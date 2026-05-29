@@ -63,6 +63,11 @@ description: Non-obvious constraints when building immersive WebXR (VR) scenes w
   `b-button`/`secondary-button` elsewhere — check several ids. A rarely-used button (left upper) makes
   a good "exit VR / exit gallery" shortcut; end the session with `xrStore.getState().session?.end()`.
 
+- **VR 3D panel sizing and layout.** At ~1.35 m distance, a comfortable panel is 0.65–0.85 m wide and 0.75–1.0 m tall (≈30–40° vertical FOV). Panels taller than 1.0 m at that distance fill >45° and feel overwhelming. For text panels use drei `<Text>` with `anchorY="top"` so multi-line text flows *downward* — this lets you calculate safe gaps: place each element's Y at the *previous element's top minus its worst-case height minus a gap*. Failing to account for variable-height text (long titles wrap to 2+ lines) causes elements to overlap. A "close" button should sit at a fixed offset from panel bottom, not from the last text element.
+  **How to apply:** keep PANEL_H ≤ 1.0 for detail panels; lay out top-down with `anchorY="top"` and conservative height estimates; for artwork info in VR, omit the image thumbnail (the artwork is visible on the wall right in front of you).
+
+- **VR menu access.** The DOM toolbar is invisible in the headset, so all in-VR actions (edit mode, exit, settings) need a 3D panel toggled by a controller button. Left-controller lower button (`x-button` on Quest / `primary-button` on other runtimes) is the natural menu toggle — the upper button (`y-button`) is reserved for quick-exit. To enter edit mode from inside VR, the menu fires `setIsEditMode(true)`; the VR branch then swaps the right-hand ray for the edit grab controller and shows VREditPanel automatically (they're already mutually exclusive in the render tree).
+
 - **A "hold the trigger" VR mode must force-release on every exit path, or it latches on.**
   When a controller-ray reports a held-trigger boolean up to React state (e.g. "hold to reveal
   info on all artwork frames"), the per-frame poll only fires on edges — so if the controller
