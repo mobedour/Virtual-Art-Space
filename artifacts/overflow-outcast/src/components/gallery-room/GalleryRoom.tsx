@@ -314,9 +314,7 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner, onSaved }
   const [selectedArtwork, setSelectedArtwork] = useState<ArtworkData | null>(null);
   const [hoverState, setHoverState] = useState<HoverState>("idle");
   const [sceneVisible, setSceneVisible] = useState(false);
-  // Default to muted — audio only plays if the user has explicitly turned it on
-  // (saved as "false" in localStorage). New visitors always start silent.
-  const [audioMuted, setAudioMuted] = useState(() => localStorage.getItem("vas_audioMuted") !== "false");
+  const [audioMuted, setAudioMuted] = useState(() => localStorage.getItem("vas_audioMuted") === "true");
   const [isEditMode, setIsEditMode] = useState(false);
   const [isPresenting, setIsPresenting] = useState(false);
   // VR-only: the artwork whose detail panel is open in the headset (point at a

@@ -1,19 +1,19 @@
-import { useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { Text } from "@react-three/drei";
 import * as THREE from "three";
 import type { ArtworkData } from "./ArtworkFrame";
 
 // ─── Shared head-anchor hook ───────────────────────────────────────────────────
-// Anchors the panel ONCE in front of the user on the first frame the XR camera
-// pose is ready, then billboards it (yaw only) so it stays readable as the user
+// Anchors a panel ONCE in front of the user (the first frame the XR camera pose
+// is ready), then billboards it (yaw only) so it stays readable as the user
 // turns. We read the LIVE XR camera via gl.xr.getCamera() — useThree().camera in
-// @react-three/xr v6 is the head's local offset within the rig, NOT its world
-// position. Reading its world position would pin the panel near the rig origin
-// instead of in front of the user. (See webxr-gotchas memory.)
+// @react-three/xr v6 is only the head's local offset within the rig, so reading
+// its world position would pin the panel near the rig origin instead of in front
+// of the user. (See webxr-gotchas memory.)
 function useHeadAnchor(
   groupRef: React.RefObject<THREE.Group | null>,
-  { distance = 1.35, yOffset = 0 }: { distance?: number; yOffset?: number } = {},
+  { distance = 1.5, yOffset = 0 }: { distance?: number; yOffset?: number } = {},
 ) {
   const { camera, gl } = useThree();
   const anchor = useRef(new THREE.Vector3());
@@ -30,8 +30,8 @@ function useHeadAnchor(
     if (!anchored.current) {
       cam.getWorldDirection(fwd.current);
       fwd.current.y = 0;
-      // Looking straight up/down collapses horizontal forward to ~0 — fall back
-      // to a safe default so the panel still lands in reach.
+      // Looking straight up/down at open collapses horizontal forward to ~0 —
+      // fall back to a default so the panel still lands in reach.
       if (fwd.current.lengthSq() < 1e-6) fwd.current.set(0, 0, -1);
       fwd.current.normalize();
       anchor.current.copy(camPos.current).addScaledVector(fwd.current, distance);
@@ -40,7 +40,6 @@ function useHeadAnchor(
     }
 
     g.position.copy(anchor.current);
-    // Yaw-only billboard: always face the user's horizontal position.
     const dx = camPos.current.x - anchor.current.x;
     const dz = camPos.current.z - anchor.current.z;
     g.rotation.set(0, Math.atan2(dx, dz), 0);
@@ -48,9 +47,7 @@ function useHeadAnchor(
 }
 
 // ─── Ray-pressable 3D button ────────────────────────────────────────────────────
-// Interactive via the controller ray, which reads userData.onVRSelect.
-// selectionPaused on the XRControllerRay gates artwork picking but NOT
-// onVRSelect buttons, so panel buttons always remain reachable.
+// Interactive via the controller ray, which picks up userData.onVRSelect.
 interface VRPanelButtonProps {
   position: [number, number, number];
   width?: number;
@@ -62,7 +59,7 @@ interface VRPanelButtonProps {
 }
 
 export function VRPanelButton({
-  position, width = 0.5, height = 0.11, label, color = "#f5c060", enabled = true, onSelect,
+  position, width = 0.5, height = 0.12, label, color = "#f5c060", enabled = true, onSelect,
 }: VRPanelButtonProps) {
   return (
     <group position={position} userData={enabled ? { onVRSelect: onSelect } : {}}>
@@ -75,8 +72,8 @@ export function VRPanelButton({
         <lineBasicMaterial color={color} transparent opacity={enabled ? 0.65 : 0.2} />
       </lineSegments>
       <Text
-        position={[0, 0, 0.003]}
-        fontSize={0.038}
+        position={[0, 0, 0.002]}
+        fontSize={0.04}
         color={color}
         fillOpacity={enabled ? 1 : 0.3}
         anchorX="center"
@@ -90,80 +87,84 @@ export function VRPanelButton({
   );
 }
 
-// ─── VR Artwork Detail Panel ─────────────────────────────────────────────────────
+// ─── Artwork image texture loader (mirrors ArtworkFrame) ────────────────────────
+function useArtworkTexture(imageUrl?: string): THREE.Texture | null {
+  const [texture, setTexture] = useState<THREE.Texture | null>(null);
+  useEffect(() => {
+    if (!imageUrl) { setTexture(null); return; }
+    let cancelled = false;
+    const loader = new THREE.TextureLoader();
+    loader.crossOrigin = "anonymous";
+    loader.load(
+      imageUrl,
+      (tex) => { if (!cancelled) { tex.colorSpace = THREE.SRGBColorSpace; setTexture(tex); } },
+      undefined,
+      () => { if (!cancelled) setTexture(null); },
+    );
+    return () => { cancelled = true; };
+  }, [imageUrl]);
+  return texture;
+}
+
+// ─── VR Artwork Detail Panel ────────────────────────────────────────────────────
 // Opens when the user pulls the trigger while pointing at (or gazing at) an
-// artwork in the headset. Head-anchored and billboarded. Shows the full artwork
-// metadata as readable 3D text — the artwork itself is visible on the wall right
-// in front of the user, so an additional image is unnecessary.
-//
-// While this panel is open, GalleryRoom passes selectionPaused=true to the right
-// XRControllerRay so the only way to return to roaming is to press CLOSE.
-//
-// Panel layout (PANEL_W=0.68, PANEL_H=0.78 at 1.35 m):
-//   ┌──────────────────────────────┐  +0.39
-//   │  ARTWORK INFO               │  +0.37  (header label)
-//   │  Title of the Work          │  +0.30  (anchorY top, up to 2 lines)
-//   │  Artist Name                │  +0.155 (anchorY top)
-//   │  Year · Medium              │  +0.094 (anchorY top)
-//   │  ─────────────────────────  │  separator
-//   │  Description text…          │  +0.028 (anchorY top, 3–4 lines max)
-//   │                             │
-//   │         [ ✕ CLOSE ]         │  -0.305 (center)
-//   └──────────────────────────────┘  -0.39
-//
-// Angular size at 1.35 m: ~31° tall — comfortable for immersive VR.
+// artwork. Head-anchored, billboarded, shows the image + full details with a
+// CLOSE button. While it's open the caller pauses artwork re-selection so the
+// only way back to roaming is the CLOSE button.
 interface VRDetailPanelProps {
   artwork: ArtworkData;
   onClose: () => void;
 }
 
-const PW = 0.68;
-const PH = 0.78;
-
 export function VRDetailPanel({ artwork, onClose }: VRDetailPanelProps) {
   const groupRef = useRef<THREE.Group>(null);
-  useHeadAnchor(groupRef, { distance: 1.35, yOffset: 0 });
+  useHeadAnchor(groupRef, { distance: 1.4, yOffset: 0 });
+  const texture = useArtworkTexture(artwork.imageUrl);
 
+  const PANEL_W = 1.1;
+  const PANEL_H = 1.55;
+  const IMG_W = 0.78;
+  const IMG_H = 0.78 * 1.25; // 4:5 portrait, matches gallery frames
+
+  // Image sits in the upper area; text flows below it.
+  const imgCenterY = PANEL_H / 2 - 0.12 - IMG_H / 2;
+  const textTop = imgCenterY - IMG_H / 2 - 0.07;
+
+  const meta = [artwork.year, artwork.medium].filter(Boolean).join("   ·   ");
   const desc = artwork.description
-    ? (artwork.description.length > 165 ? artwork.description.slice(0, 162) + "…" : artwork.description)
-    : null;
-
-  const meta = [artwork.year, artwork.medium].filter(Boolean).join("   ·   ") || null;
+    ? (artwork.description.length > 280 ? artwork.description.slice(0, 277) + "…" : artwork.description)
+    : "";
 
   return (
     <group ref={groupRef} renderOrder={1000}>
       {/* Backing panel */}
-      <mesh position={[0, 0, -0.013]}>
-        <planeGeometry args={[PW, PH]} />
-        <meshBasicMaterial color="#0d0b09" transparent opacity={0.96} side={THREE.DoubleSide} />
+      <mesh position={[0, 0, -0.012]}>
+        <planeGeometry args={[PANEL_W, PANEL_H]} />
+        <meshBasicMaterial color="#0d0b09" transparent opacity={0.95} side={THREE.DoubleSide} />
       </mesh>
-      <lineSegments position={[0, 0, -0.012]}>
-        <edgesGeometry args={[new THREE.PlaneGeometry(PW, PH)]} />
-        <lineBasicMaterial color="#f5c060" transparent opacity={0.55} />
+      <lineSegments position={[0, 0, -0.011]}>
+        <edgesGeometry args={[new THREE.PlaneGeometry(PANEL_W, PANEL_H)]} />
+        <lineBasicMaterial color="#f5c060" transparent opacity={0.5} />
       </lineSegments>
 
-      {/* "ARTWORK INFO" header */}
-      <Text
-        position={[0, 0.37, 0.003]}
-        fontSize={0.028}
-        color="#f5c060"
-        anchorX="center"
-        anchorY="middle"
-        letterSpacing={0.18}
-        outlineWidth={0.0015}
-        outlineColor="#000000"
-      >
-        ARTWORK INFO
-      </Text>
+      {/* Image */}
+      <mesh position={[0, imgCenterY, 0]}>
+        <planeGeometry args={[IMG_W, IMG_H]} />
+        {texture ? (
+          <meshBasicMaterial map={texture} toneMapped={false} />
+        ) : (
+          <meshBasicMaterial color="#1a1510" />
+        )}
+      </mesh>
 
-      {/* Title — up to 2 lines; anchorY="top" so variable height flows DOWN */}
+      {/* Title */}
       <Text
-        position={[0, 0.30, 0.003]}
-        fontSize={0.050}
+        position={[0, textTop, 0.002]}
+        fontSize={0.058}
         color="#ffffff"
         anchorX="center"
         anchorY="top"
-        maxWidth={PW - 0.10}
+        maxWidth={PANEL_W - 0.14}
         textAlign="center"
         outlineWidth={0.0025}
         outlineColor="#000000"
@@ -171,66 +172,55 @@ export function VRDetailPanel({ artwork, onClose }: VRDetailPanelProps) {
         {artwork.title}
       </Text>
 
-      {/* Artist name — shown only when available */}
       {artwork.artistName && (
         <Text
-          position={[0, 0.155, 0.003]}
-          fontSize={0.038}
+          position={[0, textTop - 0.1, 0.002]}
+          fontSize={0.04}
           color="#f5c060"
           anchorX="center"
           anchorY="top"
-          maxWidth={PW - 0.10}
+          maxWidth={PANEL_W - 0.14}
           textAlign="center"
         >
           {artwork.artistName}
         </Text>
       )}
 
-      {/* Year · Medium metadata */}
       {meta && (
         <Text
-          position={[0, 0.094, 0.003]}
-          fontSize={0.029}
+          position={[0, textTop - 0.17, 0.002]}
+          fontSize={0.032}
           color="#ffffff"
-          fillOpacity={0.70}
+          fillOpacity={0.7}
           anchorX="center"
           anchorY="top"
-          maxWidth={PW - 0.10}
+          maxWidth={PANEL_W - 0.14}
           textAlign="center"
         >
           {meta}
         </Text>
       )}
 
-      {/* Thin separator */}
-      {desc && (
-        <mesh position={[0, 0.044, 0.003]}>
-          <planeGeometry args={[PW - 0.12, 0.002]} />
-          <meshBasicMaterial color="#ffffff" transparent opacity={0.12} />
-        </mesh>
-      )}
-
-      {/* Description — truncated to fit ~3–4 lines */}
       {desc && (
         <Text
-          position={[0, 0.028, 0.003]}
-          fontSize={0.027}
+          position={[0, textTop - 0.25, 0.002]}
+          fontSize={0.03}
           color="#ffffff"
-          fillOpacity={0.75}
+          fillOpacity={0.78}
           anchorX="center"
           anchorY="top"
-          lineHeight={1.40}
-          maxWidth={PW - 0.10}
+          lineHeight={1.4}
+          maxWidth={PANEL_W - 0.18}
           textAlign="center"
         >
           {desc}
         </Text>
       )}
 
-      {/* CLOSE button — always reachable via onVRSelect even while selectionPaused */}
+      {/* Close button */}
       <VRPanelButton
-        position={[0, -(PH / 2 - 0.085), 0.003]}
-        width={0.48}
+        position={[0, -PANEL_H / 2 + 0.12, 0.002]}
+        width={0.5}
         label="✕  CLOSE"
         color="#e5777a"
         onSelect={onClose}
@@ -239,18 +229,10 @@ export function VRDetailPanel({ artwork, onClose }: VRDetailPanelProps) {
   );
 }
 
-// ─── VR Menu Panel ───────────────────────────────────────────────────────────────
-// Head-anchored menu opened by the left controller's lower button (X on Quest /
-// primary-button on other runtimes). Gives access to edit mode and exit from
-// inside the headset — the DOM toolbar is invisible in immersive WebXR.
-//
-// Panel layout (PANEL_W=0.66, PANEL_H varies):
-//   ┌──────────────────────────────┐
-//   │           MENU               │
-//   │       [ EDIT ROOM ]          │  (owner only)
-//   │         [ RESUME ]           │
-//   │        [ EXIT VR ]           │
-//   └──────────────────────────────┘
+// ─── VR Menu Panel ──────────────────────────────────────────────────────────────
+// Head-anchored menu opened with the left controller's lower button. Gives the
+// user access to edit mode and exit from inside the headset, since the DOM
+// toolbars are invisible in immersive WebXR.
 interface VRMenuPanelProps {
   isOwner?: boolean;
   onEditRoom: () => void;
@@ -260,47 +242,52 @@ interface VRMenuPanelProps {
 
 export function VRMenuPanel({ isOwner, onEditRoom, onExitVR, onClose }: VRMenuPanelProps) {
   const groupRef = useRef<THREE.Group>(null);
-  useHeadAnchor(groupRef, { distance: 1.25, yOffset: -0.04 });
+  useHeadAnchor(groupRef, { distance: 1.3, yOffset: -0.05 });
 
-  const MW = 0.66;
-  // Layout: title row + N buttons, each 0.155 step, with top/bottom margins.
-  const buttonDefs = [
-    ...(isOwner ? [{ label: "EDIT ROOM", color: "#f5c060", onSelect: onEditRoom }] : []),
-    { label: "RESUME", color: "#9adf8f", onSelect: onClose },
-    { label: "EXIT VR", color: "#e5777a", onSelect: onExitVR },
-  ];
-  const MH = 0.16 + buttonDefs.length * 0.155 + 0.08; // title + buttons + margins
-  const firstButtonY = MH / 2 - 0.16 - 0.11 / 2;     // top margin 0.16, button h 0.11
+  const PANEL_W = 0.7;
+  const PANEL_H = isOwner ? 0.78 : 0.62;
+
+  // Stack the buttons from the top with a fixed step.
+  const buttons = useMemo(() => {
+    const list: { label: string; color?: string; onSelect: () => void }[] = [];
+    if (isOwner) list.push({ label: "EDIT ROOM", onSelect: onEditRoom });
+    list.push({ label: "RESUME", color: "#9adf8f", onSelect: onClose });
+    list.push({ label: "EXIT VR", color: "#e5777a", onSelect: onExitVR });
+    return list;
+  }, [isOwner, onEditRoom, onClose, onExitVR]);
+
+  const startY = PANEL_H / 2 - 0.22;
+  const step = 0.16;
 
   return (
     <group ref={groupRef} renderOrder={1000}>
-      <mesh position={[0, 0, -0.013]}>
-        <planeGeometry args={[MW, MH]} />
-        <meshBasicMaterial color="#0d0b09" transparent opacity={0.96} side={THREE.DoubleSide} />
+      <mesh position={[0, 0, -0.012]}>
+        <planeGeometry args={[PANEL_W, PANEL_H]} />
+        <meshBasicMaterial color="#0d0b09" transparent opacity={0.95} side={THREE.DoubleSide} />
       </mesh>
-      <lineSegments position={[0, 0, -0.012]}>
-        <edgesGeometry args={[new THREE.PlaneGeometry(MW, MH)]} />
-        <lineBasicMaterial color="#f5c060" transparent opacity={0.55} />
+      <lineSegments position={[0, 0, -0.011]}>
+        <edgesGeometry args={[new THREE.PlaneGeometry(PANEL_W, PANEL_H)]} />
+        <lineBasicMaterial color="#f5c060" transparent opacity={0.5} />
       </lineSegments>
 
       <Text
-        position={[0, MH / 2 - 0.075, 0.003]}
-        fontSize={0.048}
+        position={[0, PANEL_H / 2 - 0.08, 0.002]}
+        fontSize={0.05}
         color="#f5c060"
         anchorX="center"
         anchorY="middle"
-        letterSpacing={0.20}
+        letterSpacing={0.18}
         outlineWidth={0.002}
         outlineColor="#000000"
       >
         MENU
       </Text>
 
-      {buttonDefs.map((b, i) => (
+      {buttons.map((b, i) => (
         <VRPanelButton
           key={b.label}
-          position={[0, firstButtonY - i * 0.155, 0.003]}
-          width={MW - 0.12}
+          position={[0, startY - i * step, 0.002]}
+          width={0.56}
           label={b.label}
           color={b.color}
           onSelect={b.onSelect}
