@@ -57,25 +57,27 @@ export default function PublicGalleryDetail() {
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       {/* Immersive overlay header (desktop only — mobile uses in-canvas controls) */}
-      <header className="hidden md:flex absolute top-0 w-full z-50 p-4 justify-between items-start pointer-events-none">
+      <header className="hidden md:flex absolute top-0 w-full z-50 p-4 items-start pointer-events-none">
         {/* Left — Exit */}
-        <Button
-          asChild
-          variant="outline"
-          size="sm"
-          className="pointer-events-auto rounded-sm border-white/20 bg-black/50 backdrop-blur-md text-white hover:bg-white hover:text-black font-sans text-xs"
-        >
-          <Link href="/galleries">
-            <ArrowLeft className="w-4 h-4 mr-1.5" /> Exit
-          </Link>
-        </Button>
+        <div className="flex-1">
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="pointer-events-auto rounded-sm border-white/20 bg-black/50 backdrop-blur-md text-white hover:bg-white hover:text-black font-sans text-xs"
+          >
+            <Link href="/galleries">
+              <ArrowLeft className="w-4 h-4 mr-1.5" /> Exit
+            </Link>
+          </Button>
+        </div>
 
-        {/* Right — Theme + Title */}
-        <div className="pointer-events-none text-right">
-          <div className="inline-block px-3 py-1 bg-black/50 backdrop-blur-md border border-white/15 font-sans text-[10px] text-white/60 tracking-widest mb-1 rounded-sm">
+        {/* Centre — Gallery title + theme chips */}
+        <div className="flex flex-col items-center gap-1 pointer-events-none">
+          <div className="px-3 py-1 bg-black/50 backdrop-blur-md border border-white/15 font-sans text-[10px] text-white/60 tracking-widest rounded-sm">
             {themeLabel}
           </div>
-          <div className="block px-3 py-1 bg-black/50 backdrop-blur-md border border-white/10 font-display text-sm text-white/70 italic rounded-sm">
+          <div className="px-3 py-1 bg-black/50 backdrop-blur-md border border-white/10 font-display text-sm text-white/70 italic rounded-sm text-center">
             {gallery.title}
             {gallery.artistName ? (
               <span className="font-sans text-[10px] not-italic text-white/40 ml-2">
@@ -84,6 +86,9 @@ export default function PublicGalleryDetail() {
             ) : null}
           </div>
         </div>
+
+        {/* Right — spacer (VR + audio buttons are rendered by GalleryRoom at absolute right-3) */}
+        <div className="flex-1" />
       </header>
 
       {/* Full-screen 3D gallery */}
