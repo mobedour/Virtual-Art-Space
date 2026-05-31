@@ -834,6 +834,17 @@ export function useEditState(
     try { localStorage.removeItem(draftKey); } catch {}
   }, [originalArtworks, originalTheme, originalLighting, originalDecorationLevel, originalRoomSize, initSnap, draftKey]);
 
+  // When the upstream artwork list changes (e.g. artwork added/deleted from
+  // the dashboard while the gallery page is open) and the edit session is
+  // clean, sync the local artwork list so edit mode always reflects the
+  // latest data.  We intentionally skip the sync while dirty so an
+  // in-progress edit is never silently discarded.
+  useEffect(() => {
+    if (isDirty) return;
+    setArtworks(originalArtworks);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [originalArtworks]);
+
   // Autosave draft
   useEffect(() => {
     if (!isDirty) return;

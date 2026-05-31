@@ -21,7 +21,7 @@ export default function PublicGalleryDetail() {
 
   const handleExit = useCallback(() => setLocation("/galleries"), [setLocation]);
   const handleSaved = useCallback(
-    () => queryClient.invalidateQueries({ queryKey: getGetPublicGalleryQueryKey(slug || "") }),
+    () => queryClient.refetchQueries({ queryKey: getGetPublicGalleryQueryKey(slug || "") }),
     [queryClient, slug],
   );
 

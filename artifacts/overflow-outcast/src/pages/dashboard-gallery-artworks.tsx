@@ -815,23 +815,43 @@ function ArtworkFormDialog({
                         className="hidden"
                         onChange={handleFileChange}
                       />
-                      <div className="flex items-center gap-3">
-                        <div className="flex-1 h-px bg-border/40" />
-                        <span className="font-mono text-[10px] text-muted-foreground tracking-widest">
-                          OR PASTE URL
-                        </span>
-                        <div className="flex-1 h-px bg-border/40" />
-                      </div>
-                      <Input
-                        placeholder="https://example.com/artwork.jpg"
-                        className="font-mono bg-background/50 border-border/50 focus-visible:ring-primary rounded-none text-xs"
-                        value={imagePreview.startsWith("data:") ? "" : imagePreview}
-                        onChange={(e) => {
-                          const url = e.target.value;
-                          form.setValue("imageUrl", url, { shouldValidate: true });
-                          setImagePreview(url);
-                        }}
-                      />
+                      {imagePreview.startsWith("data:") ? (
+                        <div className="flex items-center gap-2 px-3 py-2 border border-border/30 bg-background/30">
+                          <span className="font-mono text-[10px] text-primary tracking-widest flex-1">
+                            ✓ FILE UPLOADED
+                          </span>
+                          <button
+                            type="button"
+                            className="font-mono text-[10px] text-muted-foreground hover:text-white tracking-widest transition-colors"
+                            onClick={() => {
+                              form.setValue("imageUrl", "", { shouldValidate: false });
+                              setImagePreview("");
+                            }}
+                          >
+                            CLEAR
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-3">
+                            <div className="flex-1 h-px bg-border/40" />
+                            <span className="font-mono text-[10px] text-muted-foreground tracking-widest">
+                              OR PASTE URL
+                            </span>
+                            <div className="flex-1 h-px bg-border/40" />
+                          </div>
+                          <Input
+                            placeholder="https://example.com/artwork.jpg"
+                            className="font-mono bg-background/50 border-border/50 focus-visible:ring-primary rounded-none text-xs"
+                            value={imagePreview}
+                            onChange={(e) => {
+                              const url = e.target.value;
+                              form.setValue("imageUrl", url, { shouldValidate: true });
+                              setImagePreview(url);
+                            }}
+                          />
+                        </>
+                      )}
                     </div>
                     <FormMessage className="font-mono text-xs" />
                   </FormItem>

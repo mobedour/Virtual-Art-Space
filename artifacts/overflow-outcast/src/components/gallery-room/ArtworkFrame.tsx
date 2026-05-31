@@ -162,10 +162,13 @@ export function ArtworkFrame({
     { pos: [ (IMAGE_W / 2 + MAT_INSET + BEVEL_W / 2), 0,  FRAME_D / 2 - BEVEL_D / 2], size: [BEVEL_W, FRAME_H, BEVEL_D] },
   ];
 
+  const artworkScale = artwork.scale ?? 1;
+
   return (
     <group
       position={position}
       rotation={[0, rotationY, 0]}
+      scale={[artworkScale, artworkScale, artworkScale]}
       userData={{ artworkId: artwork.id }}
       onClick={(e) => { e.stopPropagation(); onSelect(artwork); }}
     >
