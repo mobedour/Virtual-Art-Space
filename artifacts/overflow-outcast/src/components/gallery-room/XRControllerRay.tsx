@@ -100,30 +100,30 @@ export function XRControllerRay({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useFrame(() => {
+  useFrame((_state, _delta, frame) => {
     const pos = posV.current;
     const dir = dirV.current;
 
     // ── Universal controller pointing via XR target ray space ────────────────
-    // The target ray space is the standard WebXR "pointing" direction — it's
-    // what Quest 2, Quest 3, Index, WMR, and every other runtime calibrates
-    // for the user's natural aiming angle. The grip space (ctrlState.object)
-    // is aligned with the physical grip and aims ~40° off on most controllers.
+    // R3F passes the live XRFrame as the third useFrame argument — this is the
+    // only reliable way to read pose data inside the frame callback. The target
+    // ray space is the WebXR-standard "pointing" direction calibrated by every
+    // runtime (Quest 2/3, Index, WMR, etc.).
     let gotTargetRay = false;
 
     const inputSource = ctrlState?.inputSource as XRInputSource | undefined;
-    if (inputSource?.targetRaySpace) {
+    if (inputSource?.targetRaySpace && frame) {
       try {
-        const xrFrame = (gl.xr as any).getFrame() as XRFrame | null;
+        const xrFrame = frame as XRFrame;
         const refSpace = (gl.xr as any).getReferenceSpace() as XRReferenceSpace | null;
-        if (xrFrame && refSpace) {
+        if (refSpace) {
           const pose = xrFrame.getPose(inputSource.targetRaySpace, refSpace);
           if (pose) {
             const p = pose.transform.position;
             const o = pose.transform.orientation;
             pos.set(p.x, p.y, p.z);
             rayQuat.current.set(o.x, o.y, o.z, o.w);
-            // Target ray fires along the -Z axis of the ray space
+            // Target ray fires along -Z of the ray space (WebXR spec)
             dir.set(0, 0, -1).applyQuaternion(rayQuat.current);
             gotTargetRay = true;
           }
@@ -133,7 +133,10 @@ export function XRControllerRay({
       }
     }
 
-    // ── Fallback: grip space (works when XR frame isn't available) ───────────
+    // ── Fallback: grip space ─────────────────────────────────────────────────
+    // THREE.Object3D.getWorldDirection() returns the object's -Z world axis,
+    // which is the pointing/forward direction in Three.js convention. Do NOT
+    // negate — the grip object in @react-three/xr already faces the aiming dir.
     if (!gotTargetRay) {
       const ctrlObj = ctrlState?.object;
       if (!ctrlObj) {
@@ -147,8 +150,7 @@ export function XRControllerRay({
         return;
       }
       ctrlObj.getWorldPosition(pos);
-      // Grip space +Z is the object's back; WebXR controllers point along -Z
-      ctrlObj.getWorldDirection(dir).multiplyScalar(-1);
+      ctrlObj.getWorldDirection(dir);
     }
 
     let hitDist = 8;
