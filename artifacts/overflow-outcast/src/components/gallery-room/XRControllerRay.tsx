@@ -8,30 +8,15 @@ export interface XRControllerRayProps {
   handedness?: "left" | "right";
   onArtworkHover?: (artwork: ArtworkData | null) => void;
   onArtworkSelect?: (id: number) => void;
-  // Reports the right-hand trigger hold state (pressed → true, released →
-  // false). Drives the VR "hold to reveal info on every artwork frame" mode.
-  // Suppressed while teleport mode owns the trigger (suppressRef).
   onTriggerHoldChange?: (held: boolean) => void;
   accentColor?: string;
-  // When this ref is true, teleport mode owns the right trigger — suppress our
-  // own select handling so a single trigger press doesn't both teleport and
-  // select an artwork.
   suppressRef?: React.RefObject<boolean>;
-  // When true, fall back to head-gaze targeting whenever the controller ray
-  // isn't pointing at an artwork: whatever artwork the user is looking at gets
-  // highlighted and can be selected with the trigger. "Both" mode — controller
-  // when aiming, gaze when not.
   enableGaze?: boolean;
-  // When true, artwork targeting/highlight/selection is paused (e.g. while the
-  // detail panel is open) so the user can only press the panel's EXIT button to
-  // return to roaming, rather than re-selecting artworks behind it. In-scene UI
-  // buttons (userData.onVRSelect) stay interactive.
   selectionPaused?: boolean;
 }
 
-// Refresh the cached artwork root list every N frames. Artworks rarely
-// change at runtime so we don't need to walk the whole scene each frame.
-const ARTWORK_CACHE_REFRESH_FRAMES = 30;
+// Refresh the cached artwork root list every N frames.
+const ARTWORK_CACHE_REFRESH_FRAMES = 3;
 
 export function XRControllerRay({
   handedness = "right",
@@ -54,19 +39,13 @@ export function XRControllerRay({
   const gazePos = useRef(new THREE.Vector3());
   const gazeQuat = useRef(new THREE.Quaternion());
   const gazeDir = useRef(new THREE.Vector3());
-  // Reused per-frame temporaries — avoid allocating new vectors every frame.
   const posV = useRef(new THREE.Vector3());
   const dirV = useRef(new THREE.Vector3());
   const endV = useRef(new THREE.Vector3());
+  const rayQuat = useRef(new THREE.Quaternion());
 
-  // Whether this controller has any work to do beyond drawing its ray.
-  // Left controller with no handlers becomes nearly free — we still
-  // draw the ray but skip raycasting entirely.
   const needsHitTest = !!(onArtworkHover || onArtworkSelect);
 
-  // Amber wireframe box drawn around the currently targeted artwork (whether
-  // aimed at by the controller or looked at via gaze) so the user can always
-  // see what they're about to select. Built once and repositioned per frame.
   const highlight = useMemo(() => {
     const boxGeo = new THREE.BoxGeometry(1, 1, 1);
     const edges = new THREE.EdgesGeometry(boxGeo);
@@ -84,9 +63,15 @@ export function XRControllerRay({
     const posAttr = new THREE.BufferAttribute(positions, 3);
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute("position", posAttr);
-    const material = new THREE.LineBasicMaterial({ color: accentColor, transparent: true, opacity: 0.8 });
+    const material = new THREE.LineBasicMaterial({
+      color: accentColor,
+      transparent: true,
+      opacity: 0.85,
+      depthTest: false,
+    });
     const line = new THREE.Line(geometry, material);
     line.frustumCulled = false;
+    line.renderOrder = 999;
     return { posAttr, line };
   }, [accentColor]);
 
@@ -105,8 +90,6 @@ export function XRControllerRay({
 
   const ctrlState = useXRInputSourceState("controller", handedness);
 
-  // On unmount (e.g. XR session ends), force release so a held trigger doesn't
-  // leave the info-reveal mode latched on for the next session.
   useEffect(() => {
     return () => {
       if (holdRef.current) {
@@ -118,42 +101,64 @@ export function XRControllerRay({
   }, []);
 
   useFrame(() => {
-    // ctrlState.object is the controller's tracked 3D node in the scene.
-    // Earlier we looked it up by name, but @react-three/xr v6 doesn't tag
-    // controllers that way — so the ray defaulted to a static spot and
-    // never hit anything. Using the state object directly fixes that.
-    const ctrlObj = ctrlState?.object;
-    if (!ctrlObj) {
-      const arr = posAttr.array as Float32Array;
-      arr.fill(0);
-      posAttr.needsUpdate = true;
-      // Controller lost tracking while a hold was active → report release so
-      // the info overlays don't get stuck on.
-      if (holdRef.current) {
-        holdRef.current = false;
-        onTriggerHoldChange?.(false);
-      }
-      return;
-    }
-
     const pos = posV.current;
     const dir = dirV.current;
-    ctrlObj.getWorldPosition(pos);
-    // `getWorldDirection` returns the object's local +Z in world space.
-    // WebXR controllers (like cameras) point down −Z, so negate — otherwise
-    // the ray fires backward into the user's wrist and never hits artwork.
-    ctrlObj.getWorldDirection(dir).multiplyScalar(-1);
 
-    let hitDist = 10;
+    // ── Universal controller pointing via XR target ray space ────────────────
+    // The target ray space is the standard WebXR "pointing" direction — it's
+    // what Quest 2, Quest 3, Index, WMR, and every other runtime calibrates
+    // for the user's natural aiming angle. The grip space (ctrlState.object)
+    // is aligned with the physical grip and aims ~40° off on most controllers.
+    let gotTargetRay = false;
+
+    const inputSource = ctrlState?.inputSource as XRInputSource | undefined;
+    if (inputSource?.targetRaySpace) {
+      try {
+        const xrFrame = (gl.xr as any).getFrame() as XRFrame | null;
+        const refSpace = (gl.xr as any).getReferenceSpace() as XRReferenceSpace | null;
+        if (xrFrame && refSpace) {
+          const pose = xrFrame.getPose(inputSource.targetRaySpace, refSpace);
+          if (pose) {
+            const p = pose.transform.position;
+            const o = pose.transform.orientation;
+            pos.set(p.x, p.y, p.z);
+            rayQuat.current.set(o.x, o.y, o.z, o.w);
+            // Target ray fires along the -Z axis of the ray space
+            dir.set(0, 0, -1).applyQuaternion(rayQuat.current);
+            gotTargetRay = true;
+          }
+        }
+      } catch {
+        /* fall through to grip-space fallback */
+      }
+    }
+
+    // ── Fallback: grip space (works when XR frame isn't available) ───────────
+    if (!gotTargetRay) {
+      const ctrlObj = ctrlState?.object;
+      if (!ctrlObj) {
+        const arr = posAttr.array as Float32Array;
+        arr.fill(0);
+        posAttr.needsUpdate = true;
+        if (holdRef.current) {
+          holdRef.current = false;
+          onTriggerHoldChange?.(false);
+        }
+        return;
+      }
+      ctrlObj.getWorldPosition(pos);
+      // Grip space +Z is the object's back; WebXR controllers point along -Z
+      ctrlObj.getWorldDirection(dir).multiplyScalar(-1);
+    }
+
+    let hitDist = 8;
     let hitArtworkId: number | null = null;
     let hitUISelect: (() => void) | null = null;
 
     if (needsHitTest) {
-      // Refresh the interactive-root cache periodically. Walking the whole
-      // scene every frame was the single biggest perf cost in VR. We track
-      // both artwork frames (userData.artworkId) and in-scene 3D UI buttons
-      // (userData.onVRSelect — e.g. the info-panel close button) so the same
-      // ray can drive both.
+      // Refresh interactive root cache every N frames — much faster than
+      // walking the whole scene each frame while still catching newly mounted
+      // panels (VRMenuPanel, VRDetailPanel) within a few frames.
       if (frameCountRef.current % ARTWORK_CACHE_REFRESH_FRAMES === 0) {
         const roots: THREE.Object3D[] = [];
         scene.traverse((o) => {
@@ -166,24 +171,20 @@ export function XRControllerRay({
       frameCountRef.current++;
 
       raycaster.current.set(pos, dir);
-      // Recurse only into the small interactive subtree, not the whole scene
-      // (walls, floor, decor props, lights, etc. are all skipped).
       const intersects = raycaster.current.intersectObjects(interactiveRootsRef.current, true);
 
-      // The frame group (the object carrying userData.artworkId) of whatever
-      // we're targeting — used to draw the highlight box around it.
       let hitGroup: THREE.Object3D | null = null;
 
       for (const hit of intersects) {
         let obj: THREE.Object3D | null = hit.object;
         while (obj) {
           if (typeof obj.userData.onVRSelect === "function") {
-            hitDist = Math.min(hit.distance, 10);
+            hitDist = Math.min(hit.distance, 8);
             hitUISelect = obj.userData.onVRSelect as () => void;
             break;
           }
           if (!selectionPaused && obj.userData.artworkId !== undefined) {
-            hitDist = Math.min(hit.distance, 10);
+            hitDist = Math.min(hit.distance, 8);
             hitArtworkId = obj.userData.artworkId as number;
             hitGroup = obj;
             break;
@@ -193,11 +194,7 @@ export function XRControllerRay({
         if (hitArtworkId !== null || hitUISelect !== null) break;
       }
 
-      // Gaze fallback: when the controller isn't pointing at anything
-      // interactive, target whatever artwork the headset is looking at. This is
-      // the "gaze when I'm not pointing" half of the Both selection mode. Gaze
-      // only targets artworks (never UI buttons), so a user can't accidentally
-      // trigger a button just by looking near it.
+      // Gaze fallback
       let gazeArtworkId: number | null = null;
       if (enableGaze && !selectionPaused && hitArtworkId === null && hitUISelect === null) {
         const cam = gl.xr.isPresenting ? (gl.xr.getCamera() as unknown as THREE.Camera) : camera;
@@ -220,10 +217,8 @@ export function XRControllerRay({
         }
       }
 
-      // What a trigger press would activate / what we highlight.
       const targetArtworkId = hitArtworkId ?? gazeArtworkId;
 
-      // Position the highlight box around the targeted artwork frame.
       if (hitGroup && targetArtworkId !== null) {
         box3.current.setFromObject(hitGroup);
         if (!box3.current.isEmpty()) {
@@ -239,7 +234,7 @@ export function XRControllerRay({
         highlight.visible = false;
       }
 
-      // Hover haptic feedback (right hand only, on enter)
+      // Hover haptics (right hand only, on enter)
       const hoverKey = hitUISelect
         ? "ui"
         : targetArtworkId !== null
@@ -253,10 +248,7 @@ export function XRControllerRay({
         }
       }
 
-      // Trigger rising-edge → activate (right hand only). A 3D UI button
-      // (close, save, …) takes priority over selecting an artwork behind it.
-      // Use the parsed component state instead of raw gamepad indices —
-      // Quest / Index / WMR all expose the trigger under this id.
+      // Trigger rising-edge → activate
       const triggerPressed =
         ctrlState?.gamepad?.["xr-standard-trigger"]?.state === "pressed";
       if (triggerPressed && !prevTriggerRef.current && handedness === "right" && !suppressRef?.current) {
@@ -273,10 +265,7 @@ export function XRControllerRay({
       prevTriggerRef.current = triggerPressed;
     }
 
-    // Trigger hold → global "reveal info on every artwork frame" mode (VR).
-    // Independent of hit-testing so it works even when this ray does no
-    // targeting. While teleport mode owns the trigger (suppressRef) we report
-    // not-held so a teleport confirm doesn't also flash the info overlays.
+    // Trigger hold → global "reveal info" mode
     if (handedness === "right" && onTriggerHoldChange) {
       const held =
         ctrlState?.gamepad?.["xr-standard-trigger"]?.state === "pressed" &&
@@ -291,7 +280,7 @@ export function XRControllerRay({
       }
     }
 
-    // Update ray geometry
+    // Draw ray from target ray origin to hit point (or max distance)
     const end = endV.current.copy(pos).addScaledVector(dir, hitDist);
     const arr = posAttr.array as Float32Array;
     arr[0] = pos.x; arr[1] = pos.y; arr[2] = pos.z;

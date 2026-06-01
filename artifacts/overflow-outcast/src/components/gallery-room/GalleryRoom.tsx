@@ -193,12 +193,15 @@ function HoverHintStrip({ hoverState, editMode }: { hoverState: HoverState; edit
 }
 
 // ─── Gallery entrance overlay ──────────────────────────────────────────────────
-function EntranceOverlay({ galleryTitle, artistName, isOwner, onEnter, onEnterEditMode }: {
+function EntranceOverlay({ galleryTitle, artistName, isOwner, onEnter, onEnterEditMode,
+  vrSupported, isPresenting, onEnterVR,
+}: {
   galleryTitle?: string; artistName?: string; isOwner?: boolean;
   onEnter: () => void; onEnterEditMode?: () => void;
+  vrSupported?: boolean; isPresenting?: boolean; onEnterVR?: () => void;
 }) {
   return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 backdrop-blur-sm z-20">
+    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 backdrop-blur-sm z-[70]">
       <div className="text-center px-10 py-10 max-w-lg">
         <p className="font-mono text-[10px] tracking-[0.35em] text-white/30 mb-4 uppercase">Virtual Art Space</p>
         {galleryTitle && (
@@ -210,9 +213,15 @@ function EntranceOverlay({ galleryTitle, artistName, isOwner, onEnter, onEnterEd
             className="inline-flex items-center gap-3 px-8 py-3 bg-amber-500/90 hover:bg-amber-400 text-black font-display text-base italic font-semibold rounded-sm transition-all duration-200 hover:scale-105">
             Enter Gallery →
           </button>
+          {vrSupported && onEnterVR && !isPresenting && (
+            <button onClick={onEnterVR}
+              className="inline-flex items-center gap-2 px-7 py-2.5 border-2 border-amber-500/70 text-amber-300 hover:bg-amber-500/15 font-sans text-sm font-medium rounded-sm transition-all duration-200 backdrop-blur-md">
+              ◈ Enter VR Mode
+            </button>
+          )}
           {isOwner && onEnterEditMode && (
             <button onClick={onEnterEditMode}
-              className="inline-flex items-center gap-2 px-6 py-2 border border-amber-500/50 text-amber-400 hover:bg-amber-500/10 font-sans text-sm rounded-sm transition-all duration-200">
+              className="inline-flex items-center gap-2 px-6 py-2 border border-white/20 text-white/50 hover:bg-white/5 font-sans text-sm rounded-sm transition-all duration-200">
               ✏ Edit Gallery
             </button>
           )}
@@ -230,18 +239,20 @@ function PauseOverlay({
   galleryTitle, artistName, isOwner, audioMuted, walkSpeed, onWalkSpeedChange,
   lookSensitivity, onLookSensitivityChange, isMobile,
   onResume, onExit, onEnterEditMode, onToggleAudio,
+  vrSupported, isPresenting, onEnterVR,
 }: {
   galleryTitle?: string; artistName?: string; isOwner?: boolean; audioMuted: boolean;
   walkSpeed: number; onWalkSpeedChange: (v: number) => void;
   lookSensitivity?: number; onLookSensitivityChange?: (v: number) => void;
   isMobile?: boolean;
   onResume: () => void; onExit?: () => void; onEnterEditMode?: () => void; onToggleAudio: () => void;
+  vrSupported?: boolean; isPresenting?: boolean; onEnterVR?: () => void;
 }) {
   return (
     <div
-      className="fixed inset-0 flex flex-col items-center justify-center bg-black/85 backdrop-blur-md z-[60] overflow-y-auto"
+      className="fixed inset-0 flex flex-col items-center justify-start bg-black/85 backdrop-blur-md z-[70] overflow-y-auto"
       style={{
-        paddingTop: "max(2rem, env(safe-area-inset-top))",
+        paddingTop: "max(3.5rem, env(safe-area-inset-top))",
         paddingBottom: "max(2rem, env(safe-area-inset-bottom))",
       }}
     >
@@ -249,16 +260,22 @@ function PauseOverlay({
         {galleryTitle && (
           <h2 className="font-display text-xl italic text-white mb-1">{galleryTitle}</h2>
         )}
-        {artistName && <p className="font-sans text-xs text-white/40 mb-8">{artistName}</p>}
+        {artistName && <p className="font-sans text-xs text-white/40 mb-6">{artistName}</p>}
 
         <div className="flex flex-col gap-3">
           <button onClick={onResume}
             className="w-full py-3 bg-amber-500/90 hover:bg-amber-400 text-black font-display italic font-semibold rounded-sm transition-all">
             Resume Exploring
           </button>
+          {vrSupported && onEnterVR && !isPresenting && (
+            <button onClick={onEnterVR}
+              className="w-full py-2.5 border-2 border-amber-500/70 text-amber-300 hover:bg-amber-500/15 font-sans text-sm font-medium rounded-sm transition-all">
+              ◈ Enter VR Mode
+            </button>
+          )}
           {isOwner && onEnterEditMode && (
             <button onClick={onEnterEditMode}
-              className="w-full py-2.5 border border-amber-500/60 text-amber-400 hover:bg-amber-500/10 font-sans text-sm rounded-sm transition-all">
+              className="w-full py-2.5 border border-amber-500/40 text-amber-400/80 hover:bg-amber-500/10 font-sans text-sm rounded-sm transition-all">
               Edit Gallery
             </button>
           )}
@@ -269,7 +286,6 @@ function PauseOverlay({
         </div>
 
         <div className="mt-6 pt-5 border-t border-white/10 space-y-4">
-          {/* Walk speed slider */}
           <div className="flex items-center gap-3">
             <span className="font-mono text-[9px] tracking-widest text-white/40 w-16 text-left">SPEED</span>
             <input
@@ -279,7 +295,6 @@ function PauseOverlay({
             />
             <span className="font-mono text-[10px] text-amber-400/70 w-8 text-right">{walkSpeed.toFixed(1)}</span>
           </div>
-          {/* Look sensitivity (mobile only — desktop uses mouse) */}
           {isMobile && onLookSensitivityChange && lookSensitivity !== undefined && (
             <div className="flex items-center gap-3">
               <span className="font-mono text-[9px] tracking-widest text-white/40 w-16 text-left">LOOK</span>
@@ -291,7 +306,6 @@ function PauseOverlay({
               <span className="font-mono text-[10px] text-amber-400/70 w-8 text-right">{lookSensitivity.toFixed(1)}</span>
             </div>
           )}
-          {/* Audio toggle */}
           <button onClick={onToggleAudio}
             className="flex items-center gap-2 mx-auto text-sm text-white/50 hover:text-white/80 font-sans transition-colors">
             <span>{audioMuted ? "🔇" : "🔊"}</span>
@@ -786,10 +800,10 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner, onSaved }
           style={{ boxShadow: "inset 0 0 0 3px rgba(245,192,96,0.7)", animation: "editPulse 2s ease-in-out infinite" }} />
       )}
 
-      {/* Top-right controls row (visible when locked / in edit mode, not in VR) */}
+      {/* Top-right controls row (visible when exploring, not in VR) */}
       {webglSupported && hasEntered && !isPaused && !selectedArtwork && !isPresenting && (
         <div
-          className="absolute right-3 z-40 flex items-center gap-2 pointer-events-auto"
+          className="absolute right-3 z-[60] flex items-center gap-2 pointer-events-auto"
           style={{ top: "max(0.75rem, env(safe-area-inset-top))" }}
         >
           {/* Audio toggle */}
@@ -797,12 +811,13 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner, onSaved }
             className="w-8 h-8 rounded-full bg-black/50 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/40 hover:text-white/80 transition-colors text-sm">
             {audioMuted ? "🔇" : "🔊"}
           </button>
-          {/* VR button */}
+          {/* VR button — only shown on non-mobile when VR is supported */}
           {vrSupported && !isMobile && (
             <VRButton
               isPresenting={isPresenting}
               onEnter={() => xrStore.enterVR()}
               onExit={() => xrStore.getState().session?.end()}
+              size="sm"
             />
           )}
         </div>
@@ -819,6 +834,9 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner, onSaved }
               isOwner={isOwner}
               onEnter={handleEnter}
               onEnterEditMode={isOwner ? handleEnterEditMode : undefined}
+              vrSupported={vrSupported}
+              isPresenting={isPresenting}
+              onEnterVR={() => { handleEnter(); setTimeout(() => xrStore.enterVR(), 100); }}
             />
           )}
 
@@ -839,6 +857,9 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner, onSaved }
               onExit={onExit}
               onEnterEditMode={isOwner && !isEditMode ? handleEnterEditMode : undefined}
               onToggleAudio={handleToggleAudio}
+              vrSupported={vrSupported}
+              isPresenting={isPresenting}
+              onEnterVR={() => { setIsPaused(false); setTimeout(() => xrStore.enterVR(), 100); }}
             />
           )}
 
@@ -943,6 +964,9 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner, onSaved }
               onExit={onExit}
               onEnterEditMode={isOwner && !isEditMode ? handleEnterEditMode : undefined}
               onToggleAudio={handleToggleAudio}
+              vrSupported={vrSupported}
+              isPresenting={isPresenting}
+              onEnterVR={() => { setIsPaused(false); setTimeout(() => xrStore.enterVR(), 100); }}
             />
           )}
 

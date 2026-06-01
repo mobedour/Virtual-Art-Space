@@ -3,15 +3,15 @@ import { createXRStore } from "@react-three/xr";
 
 // Global XR store — created once, reused for session lifecycle.
 //
-// We explicitly turn OFF every scene-understanding / AR feature. By default
-// @pmndrs/xr requests anchors, hand-tracking, layers, mesh-detection,
-// plane-detection, hit-test and dom-overlay as *optional* features. On the
-// Meta Quest browser, requesting mesh/plane detection (passthrough scene
-// features) makes the headset demand passthrough/space-setup permission and
-// throws an error before the gallery can start. This is a pure seated/standing
-// VR experience — none of those features are used — so disabling them removes
-// the prompt and lets the session start cleanly.
+// We disable ALL optional scene-understanding / AR features AND controller
+// model fetching. By default @pmndrs/xr requests anchors, hand-tracking,
+// layers, mesh/plane detection, hit-test and dom-overlay as optional features
+// and also loads controller glTF models from the CDN. On Quest the passthrough
+// features cause a permission error; the CDN model load adds several seconds to
+// VR entry. Since we draw our own ray-line, we don't need rendered controller
+// models at all.
 export const xrStore = createXRStore({
+  controller: { model: false },
   hand: false,
   handTracking: false,
   anchors: false,
@@ -44,23 +44,29 @@ interface VRButtonProps {
   onEnter: () => void;
   onExit: () => void;
   className?: string;
+  size?: "sm" | "md";
 }
 
-export function VRButton({ isPresenting, onEnter, onExit, className = "" }: VRButtonProps) {
+export function VRButton({ isPresenting, onEnter, onExit, className = "", size = "md" }: VRButtonProps) {
   const { supported, checking } = useVRSupport();
 
   if (checking || !supported) return null;
 
+  const sizeClass = size === "sm"
+    ? "px-3 py-1.5 text-xs gap-1.5"
+    : "px-4 py-2 text-sm gap-2";
+
   return (
     <button
       onClick={isPresenting ? onExit : onEnter}
-      className={`flex items-center gap-2 px-4 py-2 rounded-sm border text-sm font-sans transition-all ${
+      className={`flex items-center rounded-sm border font-sans transition-all ${sizeClass} ${
         isPresenting
           ? "border-amber-500 bg-amber-500/20 text-amber-400 hover:bg-amber-500/30"
-          : "border-white/30 bg-black/50 text-white/70 hover:text-white hover:bg-white/10 backdrop-blur-md"
+          : "border-amber-500/60 bg-black/60 text-amber-300 hover:bg-amber-500/15 hover:border-amber-400 backdrop-blur-md"
       } ${className}`}
     >
-      {isPresenting ? "Exit VR" : "Enter VR"}
+      <span>{isPresenting ? "⬚" : "◈"}</span>
+      <span>{isPresenting ? "Exit VR" : "Enter VR"}</span>
     </button>
   );
 }

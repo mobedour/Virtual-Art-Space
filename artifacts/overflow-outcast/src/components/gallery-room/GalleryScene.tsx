@@ -405,22 +405,6 @@ function MovementController({
   return null;
 }
 
-// ─── Per-artwork museum spotlight ─────────────────────────────────────────────
-function ArtworkSpot({ position, targetPos, color, intensity }: {
-  position: [number,number,number]; targetPos: [number,number,number]; color: string; intensity: number;
-}) {
-  const targetRef = useRef<THREE.Object3D>(null);
-  const lightRef  = useRef<THREE.SpotLight>(null);
-  useEffect(() => { if (lightRef.current && targetRef.current) lightRef.current.target = targetRef.current; }, []);
-  return (
-    <>
-      <object3D ref={targetRef} position={targetPos} />
-      <spotLight ref={lightRef} position={position} color={color} intensity={intensity}
-        angle={0.35} penumbra={0.7} distance={14} castShadow={false} />
-    </>
-  );
-}
-
 interface GallerySceneProps {
   artworks: ArtworkData[];
   roomTheme: string;
@@ -578,12 +562,15 @@ export function GalleryScene({
   const CORNICE_H   = 0.16;
   const CORNICE_Y   = ceilHalfH - CORNICE_H / 2;
 
-  const artworkSpots = placedArtworks.slice(0, 10).map(({ position, rotationY }) => {
-    const lx = position[0] + Math.sin(rotationY) * 3;
-    const lz = position[2] + Math.cos(rotationY) * 3;
+  // Per-artwork point lights (replaces spotlight targets which caused flicker
+  // when the number of active lights exceeded the WebGL per-material batch
+  // limit and Three.js swapped which lights were active each frame).
+  // Capped at 6 to stay comfortably under the combined light budget.
+  const artworkSpots = placedArtworks.slice(0, 6).map(({ position, rotationY }) => {
+    const lx = position[0] + Math.sin(rotationY) * 1.5;
+    const lz = position[2] + Math.cos(rotationY) * 1.5;
     return {
-      lightPos: [lx, ceilHalfH - 0.8, lz] as [number,number,number],
-      targetPos: position,
+      lightPos: [lx, ceilHalfH - 0.7, lz] as [number,number,number],
     };
   });
 
@@ -627,10 +614,16 @@ export function GalleryScene({
           intensity={theme.spotIntensity * 32 * ambientMood} color={fillColor} distance={18 * fogScale} decay={2} />
       ))}
 
-      {/* ── Per-artwork museum spotlights ── */}
-      {artworkSpots.map(({ lightPos, targetPos }, i) => (
-        <ArtworkSpot key={i} position={lightPos} targetPos={targetPos}
-          color={theme.accentLight} intensity={theme.spotIntensity * 55 * ambientMood} />
+      {/* ── Per-artwork warm fill lights (point lights — no targets, no flicker) ── */}
+      {artworkSpots.map(({ lightPos }, i) => (
+        <pointLight
+          key={`spot-${i}`}
+          position={lightPos}
+          color={theme.accentLight}
+          intensity={theme.spotIntensity * 40 * ambientMood}
+          distance={10}
+          decay={2}
+        />
       ))}
 
       {/* ── Floor ── */}
