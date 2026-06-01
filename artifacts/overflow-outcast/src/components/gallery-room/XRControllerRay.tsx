@@ -134,9 +134,9 @@ export function XRControllerRay({
     }
 
     // ── Fallback: grip space ─────────────────────────────────────────────────
-    // THREE.Object3D.getWorldDirection() returns the object's -Z world axis,
-    // which is the pointing/forward direction in Three.js convention. Do NOT
-    // negate — the grip object in @react-three/xr already faces the aiming dir.
+    // THREE.Object3D.getWorldDirection() returns the +Z world axis (confirmed
+    // empirically). The WebXR grip space has +Z pointing toward the user's arm
+    // (away from the barrel), so we negate to get the forward pointing direction.
     if (!gotTargetRay) {
       const ctrlObj = ctrlState?.object;
       if (!ctrlObj) {
@@ -150,7 +150,7 @@ export function XRControllerRay({
         return;
       }
       ctrlObj.getWorldPosition(pos);
-      ctrlObj.getWorldDirection(dir);
+      ctrlObj.getWorldDirection(dir).multiplyScalar(-1);
     }
 
     let hitDist = 8;

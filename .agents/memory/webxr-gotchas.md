@@ -32,6 +32,20 @@ description: Non-obvious constraints when building immersive WebXR (VR) scenes w
   `isPresenting` or view feels inverted/fighting. Reference space is hardcoded to `local-floor` with
   XROrigin at `[0,-1.6,0]`; do not change reference space or the height offset breaks.
 
+- **`THREE.Object3D.getWorldDirection()` returns the +Z world axis (confirmed empirically in r3f
+  Three.js).** The WebXR grip space has +Z pointing toward the user's arm (away from barrel), so to
+  get the pointing/forward direction you must negate: `getWorldDirection(dir).multiplyScalar(-1)`.
+  The target ray space approach (correct primary path) fires `dir.set(0,0,-1).applyQuaternion(q)`.
+  Do NOT remove the negation from grip-space fallbacks.
+  **Why:** an earlier incorrect assumption that getWorldDirection returned -Z led to removing the
+  negation, which caused the ray to point backward into the user's wrist.
+
+- **Get the live XRFrame via useFrame's 3rd arg, not `gl.xr.getFrame()`.** R3F passes the current
+  `XRFrame` as the third argument to `useFrame((_state, _delta, frame) => {})`. Calling
+  `(gl.xr as any).getFrame()` outside a browser XR animation frame always returns null, so any
+  code gated on it silently falls through to the fallback.
+  **Why:** target ray space raycasting was silently dead because getFrame() was null every call.
+
 - **Custom `THREE.Line` ray objects added via `scene.add` must dispose geometry + material on
   cleanup**, not just `scene.remove`, or long VR sessions leak GPU resources.
 
