@@ -5,12 +5,39 @@ description: Non-obvious constraints when building immersive WebXR (VR) scenes w
 
 # WebXR / @react-three/xr gotchas
 
+- **Use the library's NATIVE pointer-events for VR interaction — do NOT roll your own raycaster.**
+  @react-three/xr v6 ships a complete pointer-events system (`@pmndrs/pointer-events`): the default
+  controller's ray pointer fires standard R3F `onClick` / `onPointerOver` / `onPointerOut` on any
+  mesh, with the ray correctly originating from the user's hand. A hand-rolled `XRControllerRay`
+  that draws its own line + raycasts runs *alongside* this and the two fight — the symptom was a
+  second ray "from the middle of the screen" plus the user seeing "the original controls".
+  **Why:** weeks of VR-control bugs were all this dual-ray conflict; `ArtworkFrame` already had a
+  working R3F `onClick`, it was just disabled in VR in favour of the custom ray.
+  **How to apply:** build VR UI as in-scene meshes and attach `onClick` (with `e.stopPropagation()`)
+  directly. Block clicks on objects behind a panel by putting `onClick`+`onPointerDown`
+  stopPropagation on the panel backing mesh. Gate clicks during teleport-aim via a shared
+  `suppressRef` so one trigger pull doesn't both teleport and click.
+
+- **`controller: { model: false }` only hides the MODEL — the ray pointer STILL renders.** To get a
+  visible, hand-originating selection ray you do NOT need a custom line; keep the default controller.
+  Only disable the teleport pointer if you have custom locomotion:
+  `createXRStore({ controller: { teleportPointer: false }, ... })`. Setting `controller:false`
+  entirely would remove the ray pointer too.
+
+- **drei `<Text>` and `TextureLoader` images render BLACK / never appear in immersive WebXR; use a
+  synchronous `CanvasTexture` instead.** A bare `meshBasicMaterial` backing renders fine in the
+  headset but the async troika font fetch behind `<Text>` (and sometimes `TextureLoader`) does not
+  resolve in-session — the symptom was VR menu/detail panels showing only a black backing with no
+  text/buttons. Floor/wall `CanvasTexture`s (drawn synchronously) always work.
+  **How to apply:** render whole panels (background, border, title, body text, button labels) by
+  drawing to an HTMLCanvas with Canvas2D `fillText`/`fillRect` and wrapping in `THREE.CanvasTexture`
+  (set `colorSpace = SRGBColorSpace`, material `toneMapped={false}`, dispose on unmount). `fillText`
+  uses always-available system fonts. Keep loaded artwork images on a separate textured mesh.
+
 - **drei `<Html>` is invisible in immersive WebXR.** A DOM overlay is not composited into the
   headset framebuffer, so any panel/toolbar built with `<Html>` simply does not render in VR
-  (it works fine on desktop). Anything that must be visible/interactable inside the headset has
-  to be real in-scene 3D (meshes + drei `<Text>` + textures). DOM toolbars/modals are desktop-only.
-  **How to apply:** for VR UI, build 3D panels and make buttons ray-pressable via a
-  `userData.onVRSelect` callback that the controller-ray raycast picks up.
+  (it works fine on desktop). Anything visible/interactable inside the headset must be real in-scene
+  3D (meshes + CanvasTexture; see above). DOM toolbars/modals are desktop-only.
 
 - **`createXRStore()` defaults request AR/scene-understanding features.** By default it requests
   meshDetection, planeDetection, anchors, hitTest, handTracking, layers, depthSensing, domOverlay
@@ -21,11 +48,18 @@ description: Non-obvious constraints when building immersive WebXR (VR) scenes w
   `createXRStore({ meshDetection:false, planeDetection:false, anchors:false, hitTest:false,
   handTracking:false, hand:false, layers:false, depthSensing:false, domOverlay:false })`.
 
-- **Right-trigger input has multiple consumers — needs explicit arbitration.** Locomotion
-  (teleport-on-trigger when teleport mode is toggled by squeeze), the artwork-select ray, and the
-  VR edit grab-controller all poll the right trigger rising-edge. Without a shared owner flag, one
-  press fires several actions. **How to apply:** share a `teleportActiveRef` boolean ref; the ray /
-  edit controllers skip their trigger handling while it is true.
+- **Right-trigger input has multiple consumers — needs explicit arbitration, and the suppression
+  flag must outlive the press.** Locomotion confirms a teleport on the trigger *rising* edge, but the
+  pointer-events system dispatches its `click` on the trigger *release* (select-end). So clearing a
+  shared `teleportActiveRef` in the same frame the teleport fires is NOT enough — by release the flag
+  is already false and the click slips through, teleporting AND selecting in one pull.
+  **How to apply:** keep a `suppressUntilTriggerUp` ref set true on teleport-confirm; publish
+  `teleportActiveRef.current = teleportMode || suppressUntilTriggerUp` every frame; clear
+  `suppressUntilTriggerUp` ONE frame AFTER the trigger releases (a deferred-release ref) so the
+  release-frame click is gated regardless of event/useFrame ordering. Consumers (panel buttons,
+  artwork onClick) bail when the shared ref is true. **Also reset the shared ref + teleport state in
+  the locomotion component's unmount cleanup** — a session ended mid-teleport-aim otherwise latches
+  the flag true into the next session and silently eats all clicks.
 
 - **Camera pose is owned by the headset.** Never write `camera.position` in VR (overwritten each
   frame). Translate the XROrigin rig instead. Desktop/mobile look controllers must be disabled when

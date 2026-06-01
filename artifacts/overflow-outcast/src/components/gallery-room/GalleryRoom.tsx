@@ -16,7 +16,6 @@ import {
 } from "./GalleryEditMode";
 import { VRButton, xrStore, useVRSupport } from "./VRButton";
 import { XRLocomotion } from "./XRLocomotion";
-import { XRControllerRay } from "./XRControllerRay";
 import { XRVREditController, VREditPanel } from "./VREditMode";
 import { VRDetailPanel, VRMenuPanel } from "./VROverlayPanels";
 import { getRoomDims } from "./room-dimensions";
@@ -681,7 +680,18 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner, onSaved }
                   joystickRef={joystickRef}
                   onLock={handleLock}
                   onUnlock={handleUnlock}
-                  onArtworkSelect={isPresenting ? () => {} : handleArtworkSelect}
+                  onArtworkSelect={isPresenting
+                    ? (a) => {
+                        // VR selection: ArtworkFrame's R3F onClick is fired by
+                        // the library's controller ray pointer. Open the VR
+                        // detail panel (and dismiss the menu if it was open).
+                        // Ignore while teleport-aim owns the trigger, so one
+                        // pull doesn't both teleport and select.
+                        if (isEditMode || teleportActiveRef.current) return;
+                        setVrMenuOpen(false);
+                        setVrSelectedArtwork(a);
+                      }
+                    : handleArtworkSelect}
                   onHoverStateChange={setHoverState}
                   inspectCallbackRef={inspectRef}
                   onSceneReady={() => setTimeout(() => setSceneVisible(true), 200)}
@@ -722,7 +732,6 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner, onSaved }
                         setVrMenuOpen((o) => !o);
                       }}
                     />
-                    <XRControllerRay handedness="left" />
 
                     {isEditMode && !editState.isPreviewing ? (
                       <>
@@ -755,25 +764,17 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner, onSaved }
                       </>
                     ) : (
                       <>
-                        <XRControllerRay
-                          handedness="right"
-                          suppressRef={teleportActiveRef}
-                          enableGaze
-                          selectionPaused={vrSelectedArtwork !== null || vrMenuOpen}
-                          onArtworkSelect={(id) => {
-                            const art = activeArtworks.find((a) => a.id === id);
-                            if (art) { setVrMenuOpen(false); setVrSelectedArtwork(art); }
-                          }}
-                        />
                         {vrSelectedArtwork && (
                           <VRDetailPanel
                             artwork={vrSelectedArtwork}
+                            suppressRef={teleportActiveRef}
                             onClose={() => setVrSelectedArtwork(null)}
                           />
                         )}
                         {vrMenuOpen && (
                           <VRMenuPanel
                             isOwner={isOwner}
+                            suppressRef={teleportActiveRef}
                             onEditRoom={() => { setVrMenuOpen(false); handleEnterEditMode(); }}
                             onExitVR={() => xrStore.getState().session?.end()}
                             onClose={() => setVrMenuOpen(false)}

@@ -1,10 +1,81 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import { Text } from "@react-three/drei";
 import * as THREE from "three";
 import type { ArtworkData } from "./ArtworkFrame";
 
+// ─── Canvas drawing helpers ─────────────────────────────────────────────────────
+// We render every panel as a synchronous CanvasTexture instead of drei <Text>.
+// In an immersive WebXR session the async troika font fetch behind <Text> often
+// never resolves (the panels render as a bare black backing) — whereas a
+// CanvasTexture is drawn immediately and works in the headset exactly like the
+// floor/wall textures do. ctx.fillText also uses always-available system fonts.
+
+function hexA(hex: string, alpha: number): string {
+  const h = hex.replace("#", "");
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function wrapText(
+  ctx: CanvasRenderingContext2D, text: string, x: number, yStart: number,
+  maxWidth: number, lineHeight: number, maxLines: number,
+): number {
+  const words = text.split(/\s+/);
+  let line = "";
+  let y = yStart;
+  let lines = 0;
+  for (let n = 0; n < words.length; n++) {
+    const test = line ? line + " " + words[n] : words[n];
+    if (ctx.measureText(test).width > maxWidth && line) {
+      ctx.fillText(line, x, y);
+      line = words[n];
+      y += lineHeight;
+      lines++;
+      if (lines >= maxLines - 1) {
+        let rest = words.slice(n).join(" ");
+        while (rest.length && ctx.measureText(rest + "…").width > maxWidth) rest = rest.slice(0, -1);
+        if (rest) ctx.fillText(rest + "…", x, y);
+        return y;
+      }
+    } else {
+      line = test;
+    }
+  }
+  if (line) ctx.fillText(line, x, y);
+  return y;
+}
+
+function makeCanvasTexture(w: number, h: number, draw: (ctx: CanvasRenderingContext2D) => void): THREE.CanvasTexture {
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d")!;
+  draw(ctx);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  tex.minFilter = THREE.LinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  tex.needsUpdate = true;
+  return tex;
+}
+
 // ─── Shared head-anchor hook ───────────────────────────────────────────────────
+// Anchors a panel in front of the user the moment it appears, then billboards it
+// to keep facing them. Reads the LIVE XR camera (gl.xr.getCamera()), since
+// useThree().camera is only the rig-local head offset in @react-three/xr v6.
 function useHeadAnchor(
   groupRef: React.RefObject<THREE.Group | null>,
   { distance = 1.5, yOffset = 0 }: { distance?: number; yOffset?: number } = {},
@@ -38,7 +109,10 @@ function useHeadAnchor(
   });
 }
 
-// ─── Ray-pressable 3D button ────────────────────────────────────────────────────
+// ─── Ray-pressable 3D button (canvas texture + native pointer events) ───────────
+// Interaction uses the library's own controller ray pointer via standard R3F
+// onClick / onPointerOver events — the same mechanism wall artworks already use.
+// No custom raycasting, so the ray always originates from the user's hand.
 interface VRPanelButtonProps {
   position: [number, number, number];
   width?: number;
@@ -47,48 +121,64 @@ interface VRPanelButtonProps {
   color?: string;
   enabled?: boolean;
   onSelect: () => void;
+  // While true (teleport-aim mode), the trigger is owned by locomotion, so the
+  // button ignores clicks to avoid a single trigger pull both teleporting and
+  // pressing a button.
+  suppressRef?: React.RefObject<boolean>;
 }
 
 export function VRPanelButton({
-  position, width = 0.5, height = 0.12, label, color = "#f5c060", enabled = true, onSelect,
+  position, width = 0.5, height = 0.12, label, color = "#f5c060", enabled = true, onSelect, suppressRef,
 }: VRPanelButtonProps) {
-  const baseRO = 1002;
+  const [hovered, setHovered] = useState(false);
+
+  const texture = useMemo(() => {
+    const W = 512;
+    const H = Math.round((height / width) * W);
+    return makeCanvasTexture(W, H, (ctx) => {
+      ctx.clearRect(0, 0, W, H);
+      const pad = 6;
+      const radius = Math.min(H, W) * 0.22;
+      ctx.fillStyle = enabled ? hexA(color, hovered ? 0.55 : 0.22) : hexA(color, 0.05);
+      roundRect(ctx, pad, pad, W - pad * 2, H - pad * 2, radius);
+      ctx.fill();
+      ctx.strokeStyle = enabled ? color : hexA(color, 0.25);
+      ctx.lineWidth = hovered ? 8 : 4;
+      roundRect(ctx, pad, pad, W - pad * 2, H - pad * 2, radius);
+      ctx.stroke();
+      ctx.fillStyle = enabled ? "#ffffff" : "rgba(255,255,255,0.3)";
+      ctx.font = `700 ${Math.round(H * 0.42)}px 'Plus Jakarta Sans', system-ui, sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(label, W / 2, H / 2 + H * 0.02);
+    });
+  }, [label, color, hovered, enabled, width, height]);
+
+  useEffect(() => () => texture.dispose(), [texture]);
+
   return (
-    <group position={position} userData={enabled ? { onVRSelect: onSelect } : {}}>
-      <mesh renderOrder={baseRO}>
-        <planeGeometry args={[width, height]} />
-        <meshBasicMaterial
-          color={color}
-          transparent
-          opacity={enabled ? 0.28 : 0.05}
-          side={THREE.DoubleSide}
-          depthTest={false}
-          depthWrite={false}
-        />
-      </mesh>
-      <lineSegments renderOrder={baseRO + 1}>
-        <edgesGeometry args={[new THREE.PlaneGeometry(width, height)]} />
-        <lineBasicMaterial
-          color={color}
-          transparent
-          opacity={enabled ? 0.8 : 0.2}
-          depthTest={false}
-        />
-      </lineSegments>
-      <Text
-        position={[0, 0, 0.003]}
-        fontSize={0.042}
-        color={color}
-        fillOpacity={enabled ? 1 : 0.3}
-        anchorX="center"
-        anchorY="middle"
-        outlineWidth={0.0022}
-        outlineColor="#000000"
-        renderOrder={baseRO + 2}
-      >
-        {label}
-      </Text>
-    </group>
+    <mesh
+      position={position}
+      renderOrder={1003}
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (suppressRef?.current) return;
+        if (enabled) onSelect();
+      }}
+      onPointerOver={(e) => { e.stopPropagation(); if (enabled) setHovered(true); }}
+      onPointerOut={() => setHovered(false)}
+    >
+      <planeGeometry args={[width, height]} />
+      <meshBasicMaterial
+        map={texture}
+        transparent
+        toneMapped={false}
+        side={THREE.DoubleSide}
+        depthTest={false}
+        depthWrite={false}
+      />
+    </mesh>
   );
 }
 
@@ -97,6 +187,7 @@ function useArtworkTexture(imageUrl?: string): { texture: THREE.Texture | null; 
   const [texture, setTexture] = useState<THREE.Texture | null>(null);
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
+  const texRef = useRef<THREE.Texture | null>(null);
 
   useEffect(() => {
     if (!imageUrl) {
@@ -114,11 +205,12 @@ function useArtworkTexture(imageUrl?: string): { texture: THREE.Texture | null; 
     loader.load(
       imageUrl,
       (tex) => {
-        if (cancelled) return;
+        if (cancelled) { tex.dispose(); return; }
         tex.colorSpace = THREE.SRGBColorSpace;
         tex.minFilter = THREE.LinearMipmapLinearFilter;
         tex.magFilter = THREE.LinearFilter;
         tex.generateMipmaps = true;
+        texRef.current = tex;
         setTexture(tex);
         setLoading(false);
       },
@@ -131,6 +223,11 @@ function useArtworkTexture(imageUrl?: string): { texture: THREE.Texture | null; 
     );
     return () => {
       cancelled = true;
+      // Free the GPU texture when the artwork changes or the panel closes.
+      if (texRef.current) {
+        texRef.current.dispose();
+        texRef.current = null;
+      }
     };
   }, [imageUrl]);
 
@@ -141,170 +238,122 @@ function useArtworkTexture(imageUrl?: string): { texture: THREE.Texture | null; 
 interface VRDetailPanelProps {
   artwork: ArtworkData;
   onClose: () => void;
+  suppressRef?: React.RefObject<boolean>;
 }
 
-export function VRDetailPanel({ artwork, onClose }: VRDetailPanelProps) {
+const DETAIL_W = 1.15;
+const DETAIL_H = 1.6;
+const DETAIL_IMG = 0.86;
+// Image sits in the upper area; text is drawn below it on the backing canvas.
+const DETAIL_IMG_CY = DETAIL_H / 2 - 0.1 - DETAIL_IMG / 2;
+
+export function VRDetailPanel({ artwork, onClose, suppressRef }: VRDetailPanelProps) {
   const groupRef = useRef<THREE.Group>(null);
   useHeadAnchor(groupRef, { distance: 1.4, yOffset: 0 });
   const { texture, loading, failed } = useArtworkTexture(artwork.imageUrl);
 
-  const PANEL_W = 1.15;
-  const PANEL_H = 1.6;
-  const IMG_W = 0.82;
-  const IMG_H = 0.82 * 1.25;
-
-  const imgCenterY = PANEL_H / 2 - 0.14 - IMG_H / 2;
-  const textTop = imgCenterY - IMG_H / 2 - 0.06;
-
   const meta = [artwork.year, artwork.medium].filter(Boolean).join("   ·   ");
-  const desc = artwork.description
-    ? (artwork.description.length > 260 ? artwork.description.slice(0, 257) + "…" : artwork.description)
-    : "";
+  const desc = artwork.description ?? "";
 
-  // Z-layers (panel faces +Z toward camera after billboarding):
-  //   backing  = -0.015  (furthest back)
-  //   border   = -0.013
-  //   image    = +0.005  (clearly in front of backing)
-  //   text     = +0.008
-  //   button   = +0.010
+  // Backing canvas: panel chrome + all text + image placeholder. Redraws when
+  // the image load state changes so the "Loading…"/"unavailable" hint is right.
+  const backingTex = useMemo(() => {
+    const W = 800;
+    const H = Math.round((DETAIL_H / DETAIL_W) * W); // 1114
+    return makeCanvasTexture(W, H, (ctx) => {
+      ctx.clearRect(0, 0, W, H);
+      // Panel background
+      ctx.fillStyle = "rgba(13,11,9,0.97)";
+      roundRect(ctx, 0, 0, W, H, 26);
+      ctx.fill();
+      // Border
+      ctx.strokeStyle = hexA("#f5c060", 0.6);
+      ctx.lineWidth = 5;
+      roundRect(ctx, 4, 4, W - 8, H - 8, 24);
+      ctx.stroke();
 
-  const BACK_Z = -0.015;
-  const IMG_Z  =  0.005;
-  const TEXT_Z =  0.008;
-  const BTN_Z  =  0.010;
+      // Image placeholder region (covered by the image mesh once loaded)
+      const imgW = (DETAIL_IMG / DETAIL_W) * W;
+      const imgH = (DETAIL_IMG / DETAIL_H) * H;
+      const imgX = (W - imgW) / 2;
+      const imgY = (0.5 - DETAIL_IMG_CY / DETAIL_H) * H - imgH / 2;
+      ctx.fillStyle = "#1e1a14";
+      ctx.fillRect(imgX, imgY, imgW, imgH);
+      if (loading || failed) {
+        ctx.fillStyle = loading ? hexA("#f5c060", 0.8) : "rgba(120,108,90,0.8)";
+        ctx.font = `500 ${Math.round(imgH * 0.06)}px 'Plus Jakarta Sans', system-ui, sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(loading ? "Loading image…" : "Image unavailable", W / 2, imgY + imgH / 2);
+      }
+
+      // Text block below the image
+      let y = imgY + imgH + 64;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "alphabetic";
+
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "700 52px 'Playfair Display', Georgia, serif";
+      y = wrapText(ctx, artwork.title, W / 2, y, W - 90, 60, 2) + 56;
+
+      if (artwork.artistName) {
+        ctx.fillStyle = "#f5c060";
+        ctx.font = "600 36px 'Plus Jakarta Sans', system-ui, sans-serif";
+        ctx.fillText(artwork.artistName, W / 2, y);
+        y += 48;
+      }
+
+      if (meta) {
+        ctx.fillStyle = "rgba(255,255,255,0.65)";
+        ctx.font = "400 30px 'Plus Jakarta Sans', system-ui, sans-serif";
+        ctx.fillText(meta, W / 2, y);
+        y += 46;
+      }
+
+      if (desc) {
+        ctx.fillStyle = "rgba(255,255,255,0.78)";
+        ctx.font = "400 28px 'Plus Jakarta Sans', system-ui, sans-serif";
+        wrapText(ctx, desc, W / 2, y, W - 110, 38, 6);
+      }
+    });
+  }, [artwork.title, artwork.artistName, meta, desc, loading, failed]);
+
+  useEffect(() => () => backingTex.dispose(), [backingTex]);
 
   return (
-    <group ref={groupRef} renderOrder={1000}>
-      {/* Backing panel */}
-      <mesh position={[0, 0, BACK_Z]} renderOrder={1000}>
-        <planeGeometry args={[PANEL_W, PANEL_H]} />
-        <meshBasicMaterial
-          color="#0d0b09"
-          transparent
-          opacity={0.97}
-          side={THREE.DoubleSide}
-          depthTest={false}
-          depthWrite={false}
-        />
-      </mesh>
-
-      {/* Border */}
-      <lineSegments position={[0, 0, BACK_Z + 0.002]} renderOrder={1001}>
-        <edgesGeometry args={[new THREE.PlaneGeometry(PANEL_W, PANEL_H)]} />
-        <lineBasicMaterial color="#f5c060" transparent opacity={0.6} depthTest={false} />
-      </lineSegments>
-
-      {/* Image area */}
-      <mesh position={[0, imgCenterY, IMG_Z]} renderOrder={1001}>
-        <planeGeometry args={[IMG_W, IMG_H]} />
-        {texture ? (
-          <meshBasicMaterial
-            map={texture}
-            toneMapped={false}
-            depthTest={false}
-            depthWrite={false}
-          />
-        ) : (
-          <meshBasicMaterial
-            color={loading ? "#1e1a14" : failed ? "#0f0c09" : "#1e1a14"}
-            transparent
-            opacity={1}
-            depthTest={false}
-            depthWrite={false}
-          />
-        )}
-      </mesh>
-
-      {/* Loading / no-image label */}
-      {(loading || (!texture && failed)) && (
-        <Text
-          position={[0, imgCenterY, IMG_Z + 0.002]}
-          fontSize={0.032}
-          color={loading ? "#f5c060" : "#4a4035"}
-          fillOpacity={0.7}
-          anchorX="center"
-          anchorY="middle"
-          renderOrder={1002}
-          depthOffset={-1}
-        >
-          {loading ? "Loading image…" : "Image unavailable"}
-        </Text>
-      )}
-
-      {/* Title */}
-      <Text
-        position={[0, textTop, TEXT_Z]}
-        fontSize={0.056}
-        color="#ffffff"
-        anchorX="center"
-        anchorY="top"
-        maxWidth={PANEL_W - 0.12}
-        textAlign="center"
-        outlineWidth={0.0022}
-        outlineColor="#000000"
-        renderOrder={1002}
-        depthOffset={-1}
+    <group ref={groupRef}>
+      {/* Backing — also captures the ray so artworks behind the panel aren't clicked */}
+      <mesh
+        position={[0, 0, 0]}
+        renderOrder={1000}
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
       >
-        {artwork.title}
-      </Text>
+        <planeGeometry args={[DETAIL_W, DETAIL_H]} />
+        <meshBasicMaterial map={backingTex} transparent toneMapped={false} side={THREE.DoubleSide} depthTest={false} depthWrite={false} />
+      </mesh>
 
-      {artwork.artistName && (
-        <Text
-          position={[0, textTop - 0.1, TEXT_Z]}
-          fontSize={0.038}
-          color="#f5c060"
-          anchorX="center"
-          anchorY="top"
-          maxWidth={PANEL_W - 0.12}
-          textAlign="center"
-          renderOrder={1002}
-          depthOffset={-1}
+      {/* Artwork image (separate mesh, same loader the wall frames use) */}
+      {texture && (
+        <mesh
+          position={[0, DETAIL_IMG_CY, 0.01]}
+          renderOrder={1001}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
         >
-          {artwork.artistName}
-        </Text>
-      )}
-
-      {meta && (
-        <Text
-          position={[0, textTop - 0.17, TEXT_Z]}
-          fontSize={0.030}
-          color="#ffffff"
-          fillOpacity={0.65}
-          anchorX="center"
-          anchorY="top"
-          maxWidth={PANEL_W - 0.12}
-          textAlign="center"
-          renderOrder={1002}
-          depthOffset={-1}
-        >
-          {meta}
-        </Text>
-      )}
-
-      {desc && (
-        <Text
-          position={[0, textTop - 0.24, TEXT_Z]}
-          fontSize={0.028}
-          color="#ffffff"
-          fillOpacity={0.75}
-          anchorX="center"
-          anchorY="top"
-          lineHeight={1.45}
-          maxWidth={PANEL_W - 0.16}
-          textAlign="center"
-          renderOrder={1002}
-          depthOffset={-1}
-        >
-          {desc}
-        </Text>
+          <planeGeometry args={[DETAIL_IMG, DETAIL_IMG]} />
+          <meshBasicMaterial map={texture} toneMapped={false} side={THREE.DoubleSide} depthTest={false} depthWrite={false} />
+        </mesh>
       )}
 
       {/* Close button */}
       <VRPanelButton
-        position={[0, -PANEL_H / 2 + 0.13, BTN_Z]}
+        position={[0, -DETAIL_H / 2 + 0.12, 0.02]}
         width={0.52}
+        height={0.13}
         label="✕  CLOSE"
         color="#e5777a"
+        suppressRef={suppressRef}
         onSelect={onClose}
       />
     </group>
@@ -317,9 +366,10 @@ interface VRMenuPanelProps {
   onEditRoom: () => void;
   onExitVR: () => void;
   onClose: () => void;
+  suppressRef?: React.RefObject<boolean>;
 }
 
-export function VRMenuPanel({ isOwner, onEditRoom, onExitVR, onClose }: VRMenuPanelProps) {
+export function VRMenuPanel({ isOwner, onEditRoom, onExitVR, onClose, suppressRef }: VRMenuPanelProps) {
   const groupRef = useRef<THREE.Group>(null);
   useHeadAnchor(groupRef, { distance: 1.3, yOffset: -0.05 });
 
@@ -334,72 +384,57 @@ export function VRMenuPanel({ isOwner, onEditRoom, onExitVR, onClose }: VRMenuPa
     return list;
   }, [isOwner, onEditRoom, onClose, onExitVR]);
 
-  const startY = PANEL_H / 2 - 0.22;
+  const startY = PANEL_H / 2 - 0.24;
   const step = 0.18;
 
-  const BACK_Z = -0.015;
-  const TEXT_Z =  0.005;
-  const BTN_Z  =  0.008;
+  const backingTex = useMemo(() => {
+    const W = 512;
+    const H = Math.round((PANEL_H / PANEL_W) * W);
+    return makeCanvasTexture(W, H, (ctx) => {
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = "rgba(13,11,9,0.97)";
+      roundRect(ctx, 0, 0, W, H, 22);
+      ctx.fill();
+      ctx.strokeStyle = hexA("#f5c060", 0.6);
+      ctx.lineWidth = 4;
+      roundRect(ctx, 3, 3, W - 6, H - 6, 20);
+      ctx.stroke();
+
+      ctx.textAlign = "center";
+      ctx.fillStyle = "#f5c060";
+      ctx.font = "700 46px 'Playfair Display', Georgia, serif";
+      ctx.textBaseline = "alphabetic";
+      ctx.fillText("MENU", W / 2, 58);
+
+      ctx.fillStyle = "rgba(255,255,255,0.4)";
+      ctx.font = "400 20px 'Plus Jakarta Sans', system-ui, sans-serif";
+      ctx.fillText("Point & pull trigger to select", W / 2, 88);
+    });
+  }, [PANEL_W, PANEL_H]);
+
+  useEffect(() => () => backingTex.dispose(), [backingTex]);
 
   return (
-    <group ref={groupRef} renderOrder={1000}>
-      {/* Backing */}
-      <mesh position={[0, 0, BACK_Z]} renderOrder={1000}>
+    <group ref={groupRef}>
+      <mesh
+        position={[0, 0, 0]}
+        renderOrder={1000}
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+      >
         <planeGeometry args={[PANEL_W, PANEL_H]} />
-        <meshBasicMaterial
-          color="#0d0b09"
-          transparent
-          opacity={0.97}
-          side={THREE.DoubleSide}
-          depthTest={false}
-          depthWrite={false}
-        />
+        <meshBasicMaterial map={backingTex} transparent toneMapped={false} side={THREE.DoubleSide} depthTest={false} depthWrite={false} />
       </mesh>
-
-      {/* Border */}
-      <lineSegments position={[0, 0, BACK_Z + 0.002]} renderOrder={1001}>
-        <edgesGeometry args={[new THREE.PlaneGeometry(PANEL_W, PANEL_H)]} />
-        <lineBasicMaterial color="#f5c060" transparent opacity={0.6} depthTest={false} />
-      </lineSegments>
-
-      {/* Header */}
-      <Text
-        position={[0, PANEL_H / 2 - 0.09, TEXT_Z]}
-        fontSize={0.052}
-        color="#f5c060"
-        anchorX="center"
-        anchorY="middle"
-        letterSpacing={0.18}
-        outlineWidth={0.002}
-        outlineColor="#000000"
-        renderOrder={1002}
-        depthOffset={-1}
-      >
-        MENU
-      </Text>
-
-      {/* Hint */}
-      <Text
-        position={[0, PANEL_H / 2 - 0.15, TEXT_Z]}
-        fontSize={0.022}
-        color="#ffffff"
-        fillOpacity={0.35}
-        anchorX="center"
-        anchorY="middle"
-        renderOrder={1002}
-        depthOffset={-1}
-      >
-        Point &amp; pull trigger to select
-      </Text>
 
       {buttons.map((b, i) => (
         <VRPanelButton
           key={b.label}
-          position={[0, startY - i * step, BTN_Z]}
+          position={[0, startY - i * step, 0.01]}
           width={0.58}
           height={0.13}
           label={b.label}
           color={b.color}
+          suppressRef={suppressRef}
           onSelect={b.onSelect}
         />
       ))}

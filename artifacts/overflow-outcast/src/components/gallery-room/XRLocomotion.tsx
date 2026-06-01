@@ -178,10 +178,16 @@ export function XRLocomotion({ halfW, halfD, xrOriginRef, teleportActiveRef, onE
   const vrVignette = localStorage.getItem("vas_vrVignette") !== "false";
 
   const [teleportVisible, setTeleportVisible] = useState(false);
-  const internalTeleportRef = useRef(false);
-  // Use the shared ref when provided so other VR systems can observe teleport
-  // mode; fall back to a local ref otherwise.
-  const teleportModeRef = teleportActiveRef ?? internalTeleportRef;
+  // Teleport-aim mode (arc visible, right trigger confirms). Kept as a local
+  // ref so the *shared* suppression flag (teleportActiveRef) can stay true a
+  // little longer than aim mode — see suppressUntilTriggerUp below.
+  const teleportModeRef = useRef(false);
+  // True from the moment a teleport is confirmed until the trigger is fully
+  // released. The pointer system dispatches its `click` on select-end (trigger
+  // release), so without holding suppression across the release the same
+  // trigger pull could both teleport AND fire a panel/artwork onClick.
+  const suppressUntilTriggerUp = useRef(false);
+  const releaseDeferRef = useRef(false);
   const targetRef = useRef<THREE.Vector3 | null>(null);
   const vignetteIntensity = useRef(0);
   const prevSqueezeRef = useRef(false);
@@ -192,6 +198,17 @@ export function XRLocomotion({ halfW, halfD, xrOriginRef, teleportActiveRef, onE
 
   const rightCtrl = useXRInputSourceState("controller", "right");
   const leftCtrl = useXRInputSourceState("controller", "left");
+
+  // Reset all shared/teleport state when locomotion unmounts (XR session ends).
+  // Otherwise a session ended while teleport-aim was active leaves the shared
+  // suppression flag latched true into the next session, silently swallowing
+  // clicks until the user squeezes again.
+  useEffect(() => () => {
+    if (teleportActiveRef) teleportActiveRef.current = false;
+    teleportModeRef.current = false;
+    suppressUntilTriggerUp.current = false;
+    releaseDeferRef.current = false;
+  }, [teleportActiveRef]);
 
   // Smooth locomotion — translate the player rig (XROrigin), not the camera.
   // Writing camera.position in WebXR has no effect because the headset pose
@@ -279,8 +296,26 @@ export function XRLocomotion({ halfW, halfD, xrOriginRef, teleportActiveRef, onE
       teleportModeRef.current = false;
       setTeleportVisible(false);
       targetRef.current = null;
+      // Keep suppressing clicks until this trigger is fully released — the
+      // pointer system fires its click on select-end (the release).
+      suppressUntilTriggerUp.current = true;
+      releaseDeferRef.current = false;
+    }
+    // Clear post-teleport suppression one frame AFTER the trigger releases, so
+    // the release-frame click is still gated regardless of event/frame order.
+    if (!trigger && prevTriggerRef.current) {
+      releaseDeferRef.current = true;
+    } else if (!trigger && releaseDeferRef.current) {
+      suppressUntilTriggerUp.current = false;
+      releaseDeferRef.current = false;
     }
     prevTriggerRef.current = trigger;
+
+    // Publish the shared suppression flag: clicks are owned by teleport while
+    // aiming, and through the confirm trigger's release.
+    if (teleportActiveRef) {
+      teleportActiveRef.current = teleportModeRef.current || suppressUntilTriggerUp.current;
+    }
   });
 
   return (

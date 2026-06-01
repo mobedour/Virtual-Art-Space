@@ -3,15 +3,19 @@ import { createXRStore } from "@react-three/xr";
 
 // Global XR store — created once, reused for session lifecycle.
 //
-// We disable ALL optional scene-understanding / AR features AND controller
-// model fetching. By default @pmndrs/xr requests anchors, hand-tracking,
-// layers, mesh/plane detection, hit-test and dom-overlay as optional features
-// and also loads controller glTF models from the CDN. On Quest the passthrough
-// features cause a permission error; the CDN model load adds several seconds to
-// VR entry. Since we draw our own ray-line, we don't need rendered controller
-// models at all.
+// We disable ALL optional scene-understanding / AR features (on Quest the
+// passthrough / space-setup features otherwise throw a permission error before
+// the session starts).
+//
+// We KEEP the default controller — its model AND its built-in ray pointer.
+// @react-three/xr v6 ships a complete pointer-events system: the controller's
+// ray pointer fires standard R3F onClick / onPointerOver events on any mesh,
+// with the ray correctly originating from the user's hand. We rely on that for
+// all VR interaction instead of a hand-rolled raycaster, so the pointer never
+// comes from "the middle of the screen". Only the teleport pointer is disabled,
+// because locomotion is handled by our own snap-turn / teleport system.
 export const xrStore = createXRStore({
-  controller: { model: false },
+  controller: { teleportPointer: false },
   hand: false,
   handTracking: false,
   anchors: false,
