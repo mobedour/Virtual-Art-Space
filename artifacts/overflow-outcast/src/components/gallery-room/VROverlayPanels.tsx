@@ -378,26 +378,25 @@ export function VRDetailPanel({ artwork, onClose, suppressRef }: VRDetailPanelPr
 // ─── VR Menu Panel ──────────────────────────────────────────────────────────────
 interface VRMenuPanelProps {
   isOwner?: boolean;
-  onEditRoom: () => void;
+  onEditRoom?: () => void;
   onExitVR: () => void;
   onClose: () => void;
   suppressRef?: React.RefObject<boolean>;
 }
 
-export function VRMenuPanel({ isOwner, onEditRoom, onExitVR, onClose, suppressRef }: VRMenuPanelProps) {
+export function VRMenuPanel({ isOwner, onExitVR, onClose, suppressRef }: VRMenuPanelProps) {
   const groupRef = useRef<THREE.Group>(null);
   useHeadAnchor(groupRef, { distance: 1.3, yOffset: -0.05 });
 
   const PANEL_W = 0.72;
-  const PANEL_H = isOwner ? 0.82 : 0.64;
+  const PANEL_H = isOwner ? 0.76 : 0.64;
 
   const buttons = useMemo(() => {
     const list: { label: string; color?: string; onSelect: () => void }[] = [];
-    if (isOwner) list.push({ label: "EDIT ROOM", onSelect: onEditRoom });
     list.push({ label: "RESUME", color: "#9adf8f", onSelect: onClose });
     list.push({ label: "EXIT VR", color: "#e5777a", onSelect: onExitVR });
     return list;
-  }, [isOwner, onEditRoom, onClose, onExitVR]);
+  }, [onClose, onExitVR]);
 
   const startY = PANEL_H / 2 - 0.24;
   const step = 0.18;
@@ -424,8 +423,21 @@ export function VRMenuPanel({ isOwner, onEditRoom, onExitVR, onClose, suppressRe
       ctx.fillStyle = "rgba(255,255,255,0.4)";
       ctx.font = "400 20px 'Plus Jakarta Sans', system-ui, sans-serif";
       ctx.fillText("Point & pull trigger to select", W / 2, 88);
+
+      if (isOwner) {
+        ctx.strokeStyle = hexA("#f5c060", 0.18);
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(40, H - 68);
+        ctx.lineTo(W - 40, H - 68);
+        ctx.stroke();
+
+        ctx.fillStyle = hexA("#f5c060", 0.5);
+        ctx.font = "italic 600 18px 'Playfair Display', Georgia, serif";
+        ctx.fillText("Gallery editing — coming in the next version", W / 2, H - 44);
+      }
     });
-  }, [PANEL_W, PANEL_H]);
+  }, [PANEL_W, PANEL_H, isOwner]);
 
   useEffect(() => () => backingTex.dispose(), [backingTex]);
 
