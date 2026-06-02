@@ -730,6 +730,15 @@ export function useEditState(
   }, [history, historyIdx, applySnapshot]);
 
   const handleArtworkMoved = useCallback((id: number, patch: Partial<ArtworkData>) => {
+    // Reject any non-finite numeric field. A single NaN/Infinity in a position
+    // or rotation propagates into the three.js transform matrix and blanks the
+    // entire canvas (which, in a headset, looks like the gallery "going black").
+    for (const [k, v] of Object.entries(patch)) {
+      if (typeof v === "number" && !Number.isFinite(v)) {
+        if (import.meta.env.DEV) console.warn(`Dropped non-finite artwork patch field ${k}=${v}`);
+        return;
+      }
+    }
     setArtworks((prev) => prev.map((a) => a.id === id ? { ...a, ...patch } : a));
     setIsDirty(true);
   }, []);

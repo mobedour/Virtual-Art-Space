@@ -10,7 +10,7 @@ import type { ArtworkData } from "./ArtworkFrame";
 // CanvasTexture is drawn immediately and works in the headset exactly like the
 // floor/wall textures do. ctx.fillText also uses always-available system fonts.
 
-function hexA(hex: string, alpha: number): string {
+export function hexA(hex: string, alpha: number): string {
   const h = hex.replace("#", "");
   const r = parseInt(h.slice(0, 2), 16);
   const g = parseInt(h.slice(2, 4), 16);
@@ -18,7 +18,7 @@ function hexA(hex: string, alpha: number): string {
   return `rgba(${r},${g},${b},${alpha})`;
 }
 
-function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+export function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
   ctx.arcTo(x + w, y, x + w, y + h, r);
@@ -57,7 +57,7 @@ function wrapText(
   return y;
 }
 
-function makeCanvasTexture(w: number, h: number, draw: (ctx: CanvasRenderingContext2D) => void): THREE.CanvasTexture {
+export function makeCanvasTexture(w: number, h: number, draw: (ctx: CanvasRenderingContext2D) => void): THREE.CanvasTexture {
   const canvas = document.createElement("canvas");
   canvas.width = w;
   canvas.height = h;
@@ -182,56 +182,60 @@ export function VRPanelButton({
   );
 }
 
-// ─── Artwork image texture loader ────────────────────────────────────────────────
-function useArtworkTexture(imageUrl?: string): { texture: THREE.Texture | null; loading: boolean; failed: boolean } {
-  const [texture, setTexture] = useState<THREE.Texture | null>(null);
+// ─── Artwork image loader ────────────────────────────────────────────────────────
+// Loads the artwork into a plain HTMLImageElement so it can be composited
+// directly onto the panel's CanvasTexture via ctx.drawImage. This is the exact
+// path the floor/wall textures use and renders reliably in the headset, unlike a
+// separate transparent TextureLoader mesh which could appear black in WebXR.
+function useArtworkImage(imageUrl?: string): { img: HTMLImageElement | null; loading: boolean; failed: boolean } {
+  const [img, setImg] = useState<HTMLImageElement | null>(null);
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
-  const texRef = useRef<THREE.Texture | null>(null);
 
   useEffect(() => {
     if (!imageUrl) {
-      setTexture(null);
+      setImg(null);
       setLoading(false);
       setFailed(true);
       return;
     }
     let cancelled = false;
+    setImg(null);
     setLoading(true);
     setFailed(false);
-    setTexture(null);
-    const loader = new THREE.TextureLoader();
-    loader.crossOrigin = "anonymous";
-    loader.load(
-      imageUrl,
-      (tex) => {
-        if (cancelled) { tex.dispose(); return; }
-        tex.colorSpace = THREE.SRGBColorSpace;
-        tex.minFilter = THREE.LinearMipmapLinearFilter;
-        tex.magFilter = THREE.LinearFilter;
-        tex.generateMipmaps = true;
-        texRef.current = tex;
-        setTexture(tex);
-        setLoading(false);
-      },
-      undefined,
-      () => {
-        if (cancelled) return;
-        setFailed(true);
-        setLoading(false);
-      },
-    );
-    return () => {
-      cancelled = true;
-      // Free the GPU texture when the artwork changes or the panel closes.
-      if (texRef.current) {
-        texRef.current.dispose();
-        texRef.current = null;
-      }
+    const el = new Image();
+    el.crossOrigin = "anonymous";
+    el.onload = () => {
+      if (cancelled) return;
+      setImg(el);
+      setLoading(false);
     };
+    el.onerror = () => {
+      if (cancelled) return;
+      setFailed(true);
+      setLoading(false);
+    };
+    el.src = imageUrl;
+    return () => { cancelled = true; };
   }, [imageUrl]);
 
-  return { texture, loading, failed };
+  return { img, loading, failed };
+}
+
+// Draw an image into a target rect using object-fit: contain semantics.
+function drawImageContain(
+  ctx: CanvasRenderingContext2D, img: HTMLImageElement,
+  rx: number, ry: number, rw: number, rh: number,
+) {
+  const iw = img.naturalWidth || img.width;
+  const ih = img.naturalHeight || img.height;
+  if (!iw || !ih) return;
+  const scale = Math.min(rw / iw, rh / ih);
+  const dw = iw * scale;
+  const dh = ih * scale;
+  const dx = rx + (rw - dw) / 2;
+  const dy = ry + (rh - dh) / 2;
+  ctx.drawImage(img, dx, dy, dw, dh);
 }
 
 // ─── VR Artwork Detail Panel ────────────────────────────────────────────────────
@@ -250,7 +254,7 @@ const DETAIL_IMG_CY = DETAIL_H / 2 - 0.1 - DETAIL_IMG / 2;
 export function VRDetailPanel({ artwork, onClose, suppressRef }: VRDetailPanelProps) {
   const groupRef = useRef<THREE.Group>(null);
   useHeadAnchor(groupRef, { distance: 1.4, yOffset: 0 });
-  const { texture, loading, failed } = useArtworkTexture(artwork.imageUrl);
+  const { img, loading, failed } = useArtworkImage(artwork.imageUrl);
 
   const meta = [artwork.year, artwork.medium].filter(Boolean).join("   ·   ");
   const desc = artwork.description ?? "";
@@ -272,14 +276,26 @@ export function VRDetailPanel({ artwork, onClose, suppressRef }: VRDetailPanelPr
       roundRect(ctx, 4, 4, W - 8, H - 8, 24);
       ctx.stroke();
 
-      // Image placeholder region (covered by the image mesh once loaded)
+      // Image region — the artwork is composited straight onto the canvas (the
+      // same reliable path the wall/floor textures use) rather than a separate
+      // transparent mesh, which can render black in a WebXR session.
       const imgW = (DETAIL_IMG / DETAIL_W) * W;
       const imgH = (DETAIL_IMG / DETAIL_H) * H;
       const imgX = (W - imgW) / 2;
       const imgY = (0.5 - DETAIL_IMG_CY / DETAIL_H) * H - imgH / 2;
       ctx.fillStyle = "#1e1a14";
       ctx.fillRect(imgX, imgY, imgW, imgH);
-      if (loading || failed) {
+      if (img) {
+        try {
+          drawImageContain(ctx, img, imgX, imgY, imgW, imgH);
+        } catch {
+          ctx.fillStyle = "rgba(120,108,90,0.8)";
+          ctx.font = `500 ${Math.round(imgH * 0.06)}px 'Plus Jakarta Sans', system-ui, sans-serif`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText("Image unavailable", W / 2, imgY + imgH / 2);
+        }
+      } else if (loading || failed) {
         ctx.fillStyle = loading ? hexA("#f5c060", 0.8) : "rgba(120,108,90,0.8)";
         ctx.font = `500 ${Math.round(imgH * 0.06)}px 'Plus Jakarta Sans', system-ui, sans-serif`;
         ctx.textAlign = "center";
@@ -316,7 +332,7 @@ export function VRDetailPanel({ artwork, onClose, suppressRef }: VRDetailPanelPr
         wrapText(ctx, desc, W / 2, y, W - 110, 38, 6);
       }
     });
-  }, [artwork.title, artwork.artistName, meta, desc, loading, failed]);
+  }, [artwork.title, artwork.artistName, meta, desc, img, loading, failed]);
 
   useEffect(() => () => backingTex.dispose(), [backingTex]);
 
@@ -332,19 +348,6 @@ export function VRDetailPanel({ artwork, onClose, suppressRef }: VRDetailPanelPr
         <planeGeometry args={[DETAIL_W, DETAIL_H]} />
         <meshBasicMaterial map={backingTex} transparent toneMapped={false} side={THREE.DoubleSide} depthTest={false} depthWrite={false} />
       </mesh>
-
-      {/* Artwork image (separate mesh, same loader the wall frames use) */}
-      {texture && (
-        <mesh
-          position={[0, DETAIL_IMG_CY, 0.01]}
-          renderOrder={1001}
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <planeGeometry args={[DETAIL_IMG, DETAIL_IMG]} />
-          <meshBasicMaterial map={texture} toneMapped={false} side={THREE.DoubleSide} depthTest={false} depthWrite={false} />
-        </mesh>
-      )}
 
       {/* Close button */}
       <VRPanelButton

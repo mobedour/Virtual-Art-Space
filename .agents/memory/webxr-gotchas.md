@@ -32,7 +32,13 @@ description: Non-obvious constraints when building immersive WebXR (VR) scenes w
   **How to apply:** render whole panels (background, border, title, body text, button labels) by
   drawing to an HTMLCanvas with Canvas2D `fillText`/`fillRect` and wrapping in `THREE.CanvasTexture`
   (set `colorSpace = SRGBColorSpace`, material `toneMapped={false}`, dispose on unmount). `fillText`
-  uses always-available system fonts. Keep loaded artwork images on a separate textured mesh.
+  uses always-available system fonts. **For images on a head-locked/billboarded panel, composite the
+  image INTO the same CanvasTexture via `HTMLImageElement` + `ctx.drawImage` (object-fit contain) —
+  do NOT use a separate transparent `TextureLoader` mesh.** A separate transparent image mesh can
+  render black in-session even when wall-mounted `TextureLoader` art renders fine (the wall mesh is
+  opaque, depth-tested, world-anchored; the panel mesh was transparent + `depthTest:false` +
+  head-locked). Load via `new Image()` (onload→setState) and add the loaded img to the backing
+  CanvasTexture's `useMemo` deps so it redraws once decoded.
 
 - **drei `<Html>` is invisible in immersive WebXR.** A DOM overlay is not composited into the
   headset framebuffer, so any panel/toolbar built with `<Html>` simply does not render in VR
@@ -82,6 +88,23 @@ description: Non-obvious constraints when building immersive WebXR (VR) scenes w
 
 - **Custom `THREE.Line` ray objects added via `scene.add` must dispose geometry + material on
   cleanup**, not just `scene.remove`, or long VR sessions leak GPU resources.
+
+- **A `useFrame` drag handler that calls a React setState EVERY frame = the VR edit lag.** A grab-to-
+  move controller that pushes the held object's new position via `onArtworkMoved(...)` on every frame
+  triggers a full-scene re-render ~90×/sec. **How to apply:** dedupe at the source — keep a
+  `lastEmitRef` of the last-sent {x,y,z,wall}; only call the setState callback when the snapped target
+  actually changed (grid-snapped positions only change when crossing a cell), and reset the ref on
+  pickup/drop. Frame order matters: update drag position BEFORE handling the trigger-edge so the final
+  snapped position is emitted before the drop commit.
+
+- **A single NaN/Infinity in a position/rotation blanks the ENTIRE three.js canvas — and in a headset
+  that reads as "the gallery went black".** The `CanvasErrorBoundary` only catches React throws, and
+  its DOM fallback is invisible in-session anyway, so a poisoned transform matrix just shows black.
+  **How to apply:** guard the central state chokepoint (e.g. `handleArtworkMoved`) with
+  `Number.isFinite` on every numeric patch field and drop the update if any is non-finite; also guard
+  before emitting from the VR controller. Wrap the per-frame trigger handler + haptic `pulse()` in
+  try/catch (reconciling drag/selection state in the catch) so a stray controller error can't tear
+  down the XR canvas.
 
 - **`useThree().camera` is NOT the live headset pose in @react-three/xr v6.** It is the desktop
   fallback camera; in an immersive session it stays near the rig origin. Anything positioned from
