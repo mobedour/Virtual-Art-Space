@@ -183,59 +183,75 @@ export function VRPanelButton({
 }
 
 // ─── Artwork image loader ────────────────────────────────────────────────────────
-// Loads the artwork into a plain HTMLImageElement so it can be composited
-// directly onto the panel's CanvasTexture via ctx.drawImage. This is the exact
-// path the floor/wall textures use and renders reliably in the headset, unlike a
-// separate transparent TextureLoader mesh which could appear black in WebXR.
-function useArtworkImage(imageUrl?: string): { img: HTMLImageElement | null; loading: boolean; failed: boolean } {
-  const [img, setImg] = useState<HTMLImageElement | null>(null);
+// Loads the artwork via THREE.TextureLoader — the same loader the wall/floor
+// artwork frames use, which is proven to render in the headset. The texture is
+// shown on its OWN mesh (see VRDetailImage) rather than composited into the
+// panel's CanvasTexture, because an HTMLImageElement drawn onto the panel canvas
+// was not appearing in-headset (text on the same canvas did).
+function useArtworkTexture(imageUrl?: string): {
+  texture: THREE.Texture | null; loading: boolean; failed: boolean; aspect: number;
+} {
+  const [texture, setTexture] = useState<THREE.Texture | null>(null);
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [aspect, setAspect] = useState(1);
 
   useEffect(() => {
     if (!imageUrl) {
-      setImg(null);
+      setTexture(null);
       setLoading(false);
       setFailed(true);
       return;
     }
     let cancelled = false;
-    setImg(null);
+    setTexture(null);
     setLoading(true);
     setFailed(false);
-    const el = new Image();
-    el.crossOrigin = "anonymous";
-    el.onload = () => {
-      if (cancelled) return;
-      setImg(el);
-      setLoading(false);
-    };
-    el.onerror = () => {
-      if (cancelled) return;
-      setFailed(true);
-      setLoading(false);
-    };
-    el.src = imageUrl;
+    const loader = new THREE.TextureLoader();
+    loader.crossOrigin = "anonymous";
+    loader.load(
+      imageUrl,
+      (tex) => {
+        if (cancelled) { tex.dispose(); return; }
+        tex.colorSpace = THREE.SRGBColorSpace;
+        const im = tex.image as { width?: number; height?: number } | undefined;
+        if (im?.width && im?.height) setAspect(im.width / im.height);
+        setTexture(tex);
+        setLoading(false);
+      },
+      undefined,
+      () => { if (!cancelled) { setFailed(true); setLoading(false); } },
+    );
     return () => { cancelled = true; };
   }, [imageUrl]);
 
-  return { img, loading, failed };
+  // Dispose the GPU texture when it is replaced or the panel unmounts.
+  useEffect(() => () => { texture?.dispose(); }, [texture]);
+
+  return { texture, loading, failed, aspect };
 }
 
-// Draw an image into a target rect using object-fit: contain semantics.
-function drawImageContain(
-  ctx: CanvasRenderingContext2D, img: HTMLImageElement,
-  rx: number, ry: number, rw: number, rh: number,
-) {
-  const iw = img.naturalWidth || img.width;
-  const ih = img.naturalHeight || img.height;
-  if (!iw || !ih) return;
-  const scale = Math.min(rw / iw, rh / ih);
-  const dw = iw * scale;
-  const dh = ih * scale;
-  const dx = rx + (rw - dw) / 2;
-  const dy = ry + (rh - dh) / 2;
-  ctx.drawImage(img, dx, dy, dw, dh);
+// Mesh that shows the artwork texture, sized object-fit: contain inside a square
+// box of side `box` and centred at panel-local height `cy`.
+//
+// It must render in the SAME (transparent) pass as the panel backing and at a
+// HIGHER renderOrder, otherwise the backing paints over it. Three.js always
+// draws transparent objects after all opaque ones regardless of renderOrder, so
+// an opaque image mesh (even at a higher renderOrder) is overdrawn by the
+// alpha-0.97 backing and effectively vanishes. Matching the backing's
+// transparent + depthTest:false config — the exact path the panel text/buttons
+// already use successfully in-headset — keeps the image on top and visible.
+function VRDetailImage({ texture, aspect, box, cy }: {
+  texture: THREE.Texture; aspect: number; box: number; cy: number;
+}) {
+  const w = aspect >= 1 ? box : box * aspect;
+  const h = aspect >= 1 ? box / aspect : box;
+  return (
+    <mesh position={[0, cy, 0.012]} renderOrder={1001}>
+      <planeGeometry args={[w, h]} />
+      <meshBasicMaterial map={texture} toneMapped={false} transparent depthTest={false} depthWrite={false} />
+    </mesh>
+  );
 }
 
 // ─── VR Artwork Detail Panel ────────────────────────────────────────────────────
@@ -254,7 +270,7 @@ const DETAIL_IMG_CY = DETAIL_H / 2 - 0.1 - DETAIL_IMG / 2;
 export function VRDetailPanel({ artwork, onClose, suppressRef }: VRDetailPanelProps) {
   const groupRef = useRef<THREE.Group>(null);
   useHeadAnchor(groupRef, { distance: 1.4, yOffset: 0 });
-  const { img, loading, failed } = useArtworkImage(artwork.imageUrl);
+  const { texture, loading, failed, aspect } = useArtworkTexture(artwork.imageUrl);
 
   const meta = [artwork.year, artwork.medium].filter(Boolean).join("   ·   ");
   const desc = artwork.description ?? "";
@@ -276,26 +292,17 @@ export function VRDetailPanel({ artwork, onClose, suppressRef }: VRDetailPanelPr
       roundRect(ctx, 4, 4, W - 8, H - 8, 24);
       ctx.stroke();
 
-      // Image region — the artwork is composited straight onto the canvas (the
-      // same reliable path the wall/floor textures use) rather than a separate
-      // transparent mesh, which can render black in a WebXR session.
+      // Image region — a dark backing rect plus load-state text. The actual
+      // artwork pixels are drawn by the opaque VRDetailImage mesh layered on top
+      // (the proven wall path); the canvas only shows the placeholder while it
+      // loads or if it fails, which the opaque mesh then covers once ready.
       const imgW = (DETAIL_IMG / DETAIL_W) * W;
       const imgH = (DETAIL_IMG / DETAIL_H) * H;
       const imgX = (W - imgW) / 2;
       const imgY = (0.5 - DETAIL_IMG_CY / DETAIL_H) * H - imgH / 2;
       ctx.fillStyle = "#1e1a14";
       ctx.fillRect(imgX, imgY, imgW, imgH);
-      if (img) {
-        try {
-          drawImageContain(ctx, img, imgX, imgY, imgW, imgH);
-        } catch {
-          ctx.fillStyle = "rgba(120,108,90,0.8)";
-          ctx.font = `500 ${Math.round(imgH * 0.06)}px 'Plus Jakarta Sans', system-ui, sans-serif`;
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillText("Image unavailable", W / 2, imgY + imgH / 2);
-        }
-      } else if (loading || failed) {
+      if (loading || failed) {
         ctx.fillStyle = loading ? hexA("#f5c060", 0.8) : "rgba(120,108,90,0.8)";
         ctx.font = `500 ${Math.round(imgH * 0.06)}px 'Plus Jakarta Sans', system-ui, sans-serif`;
         ctx.textAlign = "center";
@@ -332,7 +339,7 @@ export function VRDetailPanel({ artwork, onClose, suppressRef }: VRDetailPanelPr
         wrapText(ctx, desc, W / 2, y, W - 110, 38, 6);
       }
     });
-  }, [artwork.title, artwork.artistName, meta, desc, img, loading, failed]);
+  }, [artwork.title, artwork.artistName, meta, desc, loading, failed]);
 
   useEffect(() => () => backingTex.dispose(), [backingTex]);
 
@@ -348,6 +355,11 @@ export function VRDetailPanel({ artwork, onClose, suppressRef }: VRDetailPanelPr
         <planeGeometry args={[DETAIL_W, DETAIL_H]} />
         <meshBasicMaterial map={backingTex} transparent toneMapped={false} side={THREE.DoubleSide} depthTest={false} depthWrite={false} />
       </mesh>
+
+      {/* Artwork image — drawn in the transparent pass above the backing */}
+      {texture && (
+        <VRDetailImage texture={texture} aspect={aspect} box={DETAIL_IMG} cy={DETAIL_IMG_CY} />
+      )}
 
       {/* Close button */}
       <VRPanelButton

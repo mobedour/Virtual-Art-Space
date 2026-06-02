@@ -10,6 +10,7 @@ const WALL_INSET = 0.12;
 const WALL_ROTATIONS = [0, -Math.PI / 2, Math.PI, Math.PI / 2];
 
 interface XRVREditControllerProps {
+  artworks: ArtworkData[];
   halfW: number;
   halfD: number;
   halfH: number;
@@ -28,13 +29,25 @@ interface XRVREditControllerProps {
  * pointer-lock based and therefore useless in VR). The controller's own native
  * ray pointer is used as the visible aim line — we do NOT draw a second ray, so
  * the user never sees a confusing dual-ray. Hit detection for pickup/drop/
- * button-press runs invisibly off the controller transform each frame:
- *  - Point at an artwork + press trigger → pick it up.
- *  - While held, the artwork follows the aim along its wall (snapped to grid).
- *  - Press trigger again → drop & commit to undo history.
- *  - Point at a 3D edit-panel button + press trigger → activate it.
+ * button-press runs invisibly off the controller transform each frame.
+ *
+ * Interaction model — HOLD to drag, RELEASE to drop. This is what hands expect
+ * in a headset; the earlier click-to-grab / click-to-drop model meant users
+ * grabbed a piece, dragged it, released (nothing happened because it was still
+ * attached), then a later trigger pull dropped it wherever they happened to be
+ * aiming — usually a far corner — so it looked like the piece "couldn't move"
+ * and then "went missing". Now:
+ *  - Point at an artwork + PRESS the trigger → pick it up.
+ *  - A grab-offset is captured so the piece moves 1:1 with the controller
+ *    instead of teleporting onto the ray, then it follows the aim along its
+ *    wall (snapped to grid) for as long as the trigger is held.
+ *  - RELEASE the trigger → drop & commit to undo history.
+ *  - Quick press on a 3D edit-panel button → activate it.
+ *  - Losing controller tracking while held auto-drops (never leaves a piece
+ *    stuck to a dead controller).
  */
 export function XRVREditController({
+  artworks,
   halfW,
   halfD,
   halfH,
@@ -53,6 +66,10 @@ export function XRVREditController({
   const hitPt = useRef(new THREE.Vector3());
   const posV = useRef(new THREE.Vector3());
   const dirV = useRef(new THREE.Vector3());
+  // Offset between the grabbed artwork's position and where the ray first hit
+  // its wall plane, so the piece tracks the controller relative to the grab
+  // point rather than snapping its centre onto the ray.
+  const grabOffset = useRef(new THREE.Vector3());
   const interactiveRootsRef = useRef<THREE.Object3D[]>([]);
   const frameCountRef = useRef(0);
   // Last position pushed for the held artwork — used to avoid firing a React
@@ -68,9 +85,26 @@ export function XRVREditController({
     }
   };
 
+  // Set `plane.current` to the interior face of wall `w`.
+  const applyWallPlane = (w: number) => {
+    if (w === 0) plane.current.set(new THREE.Vector3(0, 0, 1), halfD - WALL_INSET);
+    else if (w === 1) plane.current.set(new THREE.Vector3(-1, 0, 0), -(halfW - WALL_INSET));
+    else if (w === 2) plane.current.set(new THREE.Vector3(0, 0, -1), halfD - WALL_INSET);
+    else plane.current.set(new THREE.Vector3(1, 0, 0), -(halfW - WALL_INSET));
+  };
+
   useFrame(() => {
     const ctrlObj = ctrlState?.object;
-    if (!ctrlObj) return;
+    if (!ctrlObj) {
+      // Tracking lost mid-drag → drop so a piece is never left attached to a
+      // dead controller (which then "teleports" on the next stray frame).
+      if (draggingRef.current) {
+        draggingRef.current = null;
+        lastEmitRef.current = null;
+        onDrop?.();
+      }
+      return;
+    }
     if (!Number.isFinite(halfW) || !Number.isFinite(halfD) || !Number.isFinite(halfH)) return;
 
     const pos = posV.current;
@@ -80,15 +114,20 @@ export function XRVREditController({
 
     raycaster.current.set(pos, dir);
 
-    // ── While dragging: slide the held artwork along its wall ──────────────
-    if (draggingRef.current) {
+    const triggerPressed = ctrlState?.gamepad?.["xr-standard-trigger"]?.state === "pressed";
+    const rising = triggerPressed && !prevTriggerRef.current;
+    const falling = !triggerPressed && prevTriggerRef.current;
+
+    // ── While the trigger is HELD: slide the held artwork along its wall ────
+    if (draggingRef.current && triggerPressed) {
       const w = draggingRef.current.wallIdx;
-      if (w === 0) plane.current.set(new THREE.Vector3(0, 0, 1), halfD - WALL_INSET);
-      if (w === 1) plane.current.set(new THREE.Vector3(-1, 0, 0), -(halfW - WALL_INSET));
-      if (w === 2) plane.current.set(new THREE.Vector3(0, 0, -1), halfD - WALL_INSET);
-      if (w === 3) plane.current.set(new THREE.Vector3(1, 0, 0), -(halfW - WALL_INSET));
+      applyWallPlane(w);
 
       if (raycaster.current.ray.intersectPlane(plane.current, hitPt.current)) {
+        // Apply the grab offset so the piece follows the controller relative to
+        // where it was grabbed (prevents a jump-to-corner on pickup).
+        hitPt.current.add(grabOffset.current);
+
         let x = snapToGrid(hitPt.current.x);
         let y = Math.max(-halfH + 0.5, Math.min(halfH - 0.5, snapToGrid(hitPt.current.y)));
         let z = snapToGrid(hitPt.current.z);
@@ -149,22 +188,31 @@ export function XRVREditController({
       }
     }
 
-    // ── Trigger rising-edge ────────────────────────────────────────────────
-    const triggerPressed = ctrlState?.gamepad?.["xr-standard-trigger"]?.state === "pressed";
-    if (triggerPressed && !prevTriggerRef.current && !suppressRef?.current) {
+    // ── PRESS (rising edge): activate a button, or grab an artwork ──────────
+    if (rising && !suppressRef?.current && !draggingRef.current) {
       try {
-        if (draggingRef.current) {
-          // Drop & commit
-          draggingRef.current = null;
-          lastEmitRef.current = null;
-          onDrop?.();
-          pulse(0.5, 60);
-        } else if (hitUISelect) {
+        if (hitUISelect) {
           hitUISelect();
           pulse(0.6, 70);
         } else if (hitArtworkId !== null && hitPoint) {
-          // Pick up — anchor to the nearest wall of the hit point
           const wallIdx = getNearestWallPlane(hitPoint, halfW, halfD);
+          // Capture the grab offset on the chosen wall plane so the piece
+          // doesn't teleport its centre onto the ray on the first drag frame.
+          grabOffset.current.set(0, 0, 0);
+          applyWallPlane(wallIdx);
+          const grabHit = hitPt.current;
+          const aw = artworks.find((a) => a.id === hitArtworkId);
+          if (
+            raycaster.current.ray.intersectPlane(plane.current, grabHit) &&
+            aw && aw.xPosition != null && aw.yPosition != null && aw.zPosition != null &&
+            Number.isFinite(aw.xPosition) && Number.isFinite(aw.yPosition) && Number.isFinite(aw.zPosition)
+          ) {
+            grabOffset.current.set(
+              aw.xPosition - grabHit.x,
+              aw.yPosition - grabHit.y,
+              aw.zPosition - grabHit.z,
+            );
+          }
           draggingRef.current = { artworkId: hitArtworkId, wallIdx };
           lastEmitRef.current = null;
           onArtworkSelected?.(hitArtworkId);
@@ -182,6 +230,16 @@ export function XRVREditController({
         onArtworkSelected?.(null);
       }
     }
+
+    // ── RELEASE (falling edge): drop & commit. Processed regardless of the
+    //    teleport-suppress flag so a held piece is never left stuck. ──────────
+    if (falling && draggingRef.current) {
+      draggingRef.current = null;
+      lastEmitRef.current = null;
+      onDrop?.();
+      pulse(0.5, 60);
+    }
+
     prevTriggerRef.current = triggerPressed;
   });
 
@@ -288,7 +346,7 @@ export function VREditPanel({
 
       ctx.fillStyle = "rgba(255,255,255,0.55)";
       ctx.font = "400 22px 'Plus Jakarta Sans', system-ui, sans-serif";
-      ctx.fillText(isDragging ? "Aim & pull trigger to drop" : "Point at art · trigger to grab", W / 2, 100);
+      ctx.fillText(isDragging ? "Move it · release trigger to drop" : "Point at art · hold trigger to move", W / 2, 100);
     });
   }, [isDragging, PANEL_W, PANEL_H]);
 

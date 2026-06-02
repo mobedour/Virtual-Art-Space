@@ -32,13 +32,23 @@ description: Non-obvious constraints when building immersive WebXR (VR) scenes w
   **How to apply:** render whole panels (background, border, title, body text, button labels) by
   drawing to an HTMLCanvas with Canvas2D `fillText`/`fillRect` and wrapping in `THREE.CanvasTexture`
   (set `colorSpace = SRGBColorSpace`, material `toneMapped={false}`, dispose on unmount). `fillText`
-  uses always-available system fonts. **For images on a head-locked/billboarded panel, composite the
-  image INTO the same CanvasTexture via `HTMLImageElement` + `ctx.drawImage` (object-fit contain) —
-  do NOT use a separate transparent `TextureLoader` mesh.** A separate transparent image mesh can
-  render black in-session even when wall-mounted `TextureLoader` art renders fine (the wall mesh is
-  opaque, depth-tested, world-anchored; the panel mesh was transparent + `depthTest:false` +
-  head-locked). Load via `new Image()` (onload→setState) and add the loaded img to the backing
-  CanvasTexture's `useMemo` deps so it redraws once decoded.
+  uses always-available system fonts.
+
+- **An image composited INTO a panel CanvasTexture via `ctx.drawImage` does NOT appear in-headset
+  (even though text drawn on the same canvas does); render the artwork as its OWN `TextureLoader`
+  mesh that draws in the TRANSPARENT pass ABOVE the backing.** Two things matter:
+  1. Use `THREE.TextureLoader` (the wall/floor loader, proven in-session), not `new Image()` +
+     `ctx.drawImage` onto the panel canvas — the latter silently never shows the picture.
+  2. The panel backing is a *transparent* (`alpha ~0.97`, `depthTest:false`) head-locked mesh.
+     Three.js draws ALL transparent objects AFTER all opaque ones regardless of `renderOrder`, so an
+     *opaque* image mesh — even at a higher renderOrder — is overdrawn by the backing and vanishes.
+     Give the image mesh the SAME config as the backing/text/buttons (`transparent`,
+     `depthTest={false}`, `depthWrite={false}`) and a `renderOrder` just above the backing's, so it
+     lands in the transparent pass on top. This is exactly how the panel's text/button label meshes
+     already render correctly in-headset. Size with object-fit:contain from the texture aspect.
+  **Why:** earlier notes claimed "composite into canvas, never a separate transparent TextureLoader
+  mesh" — that was wrong. The canvas-composite image was the thing that didn't show; a transparent
+  TextureLoader mesh ordered above the backing is what works.
 
 - **drei `<Html>` is invisible in immersive WebXR.** A DOM overlay is not composited into the
   headset framebuffer, so any panel/toolbar built with `<Html>` simply does not render in VR
@@ -133,6 +143,18 @@ description: Non-obvious constraints when building immersive WebXR (VR) scenes w
 - **Controller face-button ids vary by vendor.** The left upper button is `y-button` on Quest,
   `b-button`/`secondary-button` elsewhere — check several ids. A rarely-used button (left upper) makes
   a good "exit VR / exit gallery" shortcut; end the session with `xrStore.getState().session?.end()`.
+
+- **VR move/drag MUST be hold-to-drag (rising edge grab → held follows → falling edge drop), NOT
+  click-to-grab/click-to-drop.** In a headset users instinctively HOLD the trigger to drag and
+  RELEASE to drop. A click-grab/click-drop model meant they grabbed, dragged, released (nothing
+  committed — still attached), then a *later* unrelated trigger pull dropped the piece wherever they
+  happened to aim (often a far corner). Symptom report: "can't move the picture" AND "after exiting
+  edit mode one picture is gone" — same bug, the piece silently relocated off-view.
+  **How to apply:** grab only on the trigger rising edge when not already dragging; move only while
+  `dragging && triggerPressed`; commit the drop on the falling edge. Capture a grab-offset at pickup
+  (`artworkPos - wallPlaneHit`) and re-apply it each frame before snap/clamp so the piece tracks the
+  controller 1:1 instead of snapping its centre onto the ray. Auto-drop (treat as falling edge) if
+  the controller object becomes null mid-drag, so lost tracking never latches a held piece.
 
 - **A "hold the trigger" VR mode must force-release on every exit path, or it latches on.**
   When a controller-ray reports a held-trigger boolean up to React state (e.g. "hold to reveal

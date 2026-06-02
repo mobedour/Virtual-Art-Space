@@ -736,6 +736,7 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner, onSaved }
                     {isEditMode && !editState.isPreviewing ? (
                       <>
                         <XRVREditController
+                          artworks={activeArtworks}
                           halfW={activeHalfW}
                           halfD={activeHalfD}
                           halfH={halfH}
