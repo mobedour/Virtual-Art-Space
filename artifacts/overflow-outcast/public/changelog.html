@@ -25,6 +25,8 @@
         --green-dim: rgba(74, 222, 128, 0.1);
         --amber: #f59e0b;
         --blue: #60a5fa;
+        --orange: #fb923c;
+        --orange-dim: rgba(251, 146, 60, 0.1);
       }
 
       * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -37,7 +39,6 @@
         overflow-x: hidden;
       }
 
-      /* Ambient glow */
       body::before {
         content: "";
         position: fixed;
@@ -75,6 +76,16 @@
         color: var(--gold);
         border: 1px solid rgba(200,164,90,0.28);
         padding: 3px 9px;
+      }
+      .tag.beta {
+        background: rgba(245,158,11,0.12);
+        color: #f59e0b;
+        border-color: rgba(245,158,11,0.3);
+      }
+      .tag.version {
+        background: rgba(96, 165, 250, 0.08);
+        color: var(--blue);
+        border-color: rgba(96, 165, 250, 0.22);
       }
       .topbar-text {
         font-family: "DM Mono", monospace;
@@ -142,16 +153,39 @@
         line-height: 1.7; max-width: 520px;
         margin-bottom: 24px;
       }
-      .beta-notice {
+
+      /* Beta milestone banner */
+      .milestone-banner {
+        display: flex; align-items: flex-start; gap: 10px;
+        background: linear-gradient(135deg, rgba(200,164,90,0.08) 0%, rgba(200,164,90,0.04) 100%);
+        border: 1px solid rgba(200,164,90,0.25);
+        border-left: 3px solid var(--gold);
+        padding: 14px 18px;
+        margin-bottom: 22px;
+      }
+      .milestone-icon { font-size: 18px; flex-shrink: 0; line-height: 1.4; }
+      .milestone-text { flex: 1; }
+      .milestone-title {
+        font-family: "Playfair Display", serif;
+        font-size: 14px; font-weight: 700;
+        color: var(--gold); margin-bottom: 4px;
+      }
+      .milestone-desc {
+        font-size: 12.5px; color: rgba(240,232,216,0.6);
+        line-height: 1.6;
+      }
+      .milestone-desc strong { color: rgba(240,232,216,0.85); font-weight: 600; }
+
+      .pending-notice {
         display: flex; align-items: flex-start; gap: 8px;
-        font-size: 12.5px; color: rgba(245,158,11,0.8);
-        background: rgba(245,158,11,0.07);
-        border: 1px solid rgba(245,158,11,0.2);
-        border-left: 2px solid #f59e0b;
+        font-size: 12px; color: rgba(251,146,60,0.8);
+        background: rgba(251,146,60,0.07);
+        border: 1px solid rgba(251,146,60,0.18);
+        border-left: 2px solid var(--orange);
         padding: 10px 14px;
         line-height: 1.6; margin-bottom: 22px;
       }
-      .beta-notice strong { color: #f59e0b; font-weight: 600; }
+      .pending-notice strong { color: var(--orange); font-weight: 600; }
 
       .btn-download {
         display: inline-flex; align-items: center; gap: 8px;
@@ -167,39 +201,33 @@
       .btn-download:hover { background: var(--gold-dim); border-color: var(--gold); color: var(--gold-light); }
       .btn-download svg { width: 13px; height: 13px; flex-shrink: 0; }
 
-      /* Overall ring */
-      .hero-right { display: flex; flex-direction: column; align-items: center; gap: 10px; padding-top: 8px; }
-      .ring-wrap { position: relative; width: 130px; height: 130px; }
-      .ring-wrap svg { transform: rotate(-90deg); }
-      .ring-bg { fill: none; stroke: var(--surface2); stroke-width: 8; }
-      .ring-fill {
-        fill: none; stroke: url(#goldGrad); stroke-width: 8;
-        stroke-linecap: round;
-        stroke-dasharray: 339.3;
-        stroke-dashoffset: 339.3;
-        transition: stroke-dashoffset 1.4s cubic-bezier(.4,0,.2,1);
+      /* Stats row */
+      .hero-right {
+        display: flex; flex-direction: column; align-items: flex-end; gap: 12px; padding-top: 8px;
+        min-width: 180px;
       }
-      .ring-label {
-        position: absolute; inset: 0;
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
+      .stat-block {
+        text-align: right;
       }
-      .ring-pct {
+      .stat-num {
         font-family: "Playfair Display", serif;
-        font-size: 28px; font-weight: 700; color: var(--text);
-        line-height: 1;
+        font-size: 32px; font-weight: 700;
+        color: var(--text); line-height: 1;
       }
-      .ring-caption {
+      .stat-num span { color: var(--gold); }
+      .stat-label {
         font-family: "DM Mono", monospace;
-        font-size: 8.5px; letter-spacing: 0.15em; text-transform: uppercase;
-        color: var(--muted); margin-top: 4px;
+        font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase;
+        color: var(--muted); margin-top: 3px;
       }
+      .stat-divider { width: 100%; height: 1px; background: var(--border2); }
       .ring-note {
         font-family: "DM Mono", monospace;
         font-size: 9px; color: var(--muted2);
-        text-align: center; letter-spacing: 0.08em;
+        text-align: right; letter-spacing: 0.08em;
       }
 
-      /* ── Stage grid ── */
+      /* ── Section label ── */
       .section-label {
         font-family: "DM Mono", monospace;
         font-size: 9px; letter-spacing: 0.22em; text-transform: uppercase;
@@ -208,6 +236,7 @@
       }
       .section-label::after { content:""; flex:1; height:1px; background: var(--border); }
 
+      /* ── Stage grid ── */
       .stages-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
@@ -225,10 +254,10 @@
       }
       .stage-card:hover { border-color: var(--border); }
       .stage-card.done { border-left: 2px solid var(--green); }
-      .stage-card.next { border-left: 2px solid var(--gold); }
+      .stage-card.beta { border-left: 2px solid var(--gold); }
+      .stage-card.next { border-left: 2px solid var(--orange); }
       .stage-card.planned { border-left: 2px solid var(--muted2); }
 
-      /* top shimmer */
       .stage-card::before {
         content: "";
         position: absolute; top: 0; left: 0; right: 0; height: 1px;
@@ -255,7 +284,8 @@
         padding: 3px 9px; flex-shrink: 0; margin-top: 2px;
       }
       .status-badge.done { background: var(--green-dim); color: var(--green); border: 1px solid rgba(74,222,128,.2); }
-      .status-badge.next { background: var(--gold-dim); color: var(--gold); border: 1px solid rgba(200,164,90,.25); }
+      .status-badge.beta { background: var(--gold-dim); color: var(--gold); border: 1px solid rgba(200,164,90,.25); }
+      .status-badge.next { background: var(--orange-dim); color: var(--orange); border: 1px solid rgba(251,146,60,.22); }
       .status-badge.planned { background: rgba(90,78,66,.12); color: var(--muted); border: 1px solid rgba(90,78,66,.2); }
 
       /* Progress bar */
@@ -271,7 +301,9 @@
         transition: width 1.2s cubic-bezier(.4,0,.2,1);
       }
       .stage-card.done .progress-fill { background: linear-gradient(90deg, var(--green), #86efac); }
+      .stage-card.next .progress-fill { background: linear-gradient(90deg, var(--orange), #fdba74); }
       .stage-card.planned .progress-fill { background: var(--muted2); }
+
       .progress-label {
         font-family: "DM Mono", monospace;
         font-size: 10px; color: var(--muted); flex-shrink: 0; min-width: 30px;
@@ -293,7 +325,46 @@
       }
       .feat-icon.done { color: var(--green); }
       .feat-icon.pending { color: var(--muted2); }
-      .feat-icon.next { color: var(--gold); }
+      .feat-icon.next { color: var(--orange); }
+      .feat-icon.gold { color: var(--gold); }
+
+      /* ── Pending items panel ── */
+      .pending-panel {
+        background: var(--surface);
+        border: 1px solid var(--border2);
+        border-top: 2px solid rgba(251,146,60,0.4);
+        padding: 22px 24px;
+        margin-bottom: 48px;
+      }
+      .pending-panel-header {
+        display: flex; align-items: center; gap: 10px;
+        margin-bottom: 16px;
+      }
+      .pending-panel-title {
+        font-family: "Playfair Display", serif;
+        font-size: 15px; font-weight: 700; color: var(--text);
+      }
+      .pending-items {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 12px;
+      }
+      .pending-item {
+        display: flex; align-items: flex-start; gap: 10px;
+        padding: 12px 14px;
+        background: var(--surface2);
+        border: 1px solid var(--border2);
+      }
+      .pending-item-icon { font-size: 16px; flex-shrink: 0; line-height: 1.3; }
+      .pending-item-text {}
+      .pending-item-name {
+        font-size: 12.5px; font-weight: 600; color: var(--text);
+        margin-bottom: 3px; line-height: 1.3;
+      }
+      .pending-item-desc {
+        font-size: 11px; color: var(--muted);
+        line-height: 1.45;
+      }
 
       /* ── Timeline ── */
       .timeline { margin-bottom: 48px; }
@@ -317,7 +388,8 @@
         flex-shrink: 0; margin-top: 18px; position: relative; z-index: 1;
       }
       .tl-dot.done { background: var(--green); box-shadow: 0 0 0 3px rgba(74,222,128,.15); }
-      .tl-dot.next { background: var(--gold); box-shadow: 0 0 0 3px rgba(200,164,90,.15); }
+      .tl-dot.beta { background: var(--gold); box-shadow: 0 0 0 3px rgba(200,164,90,.2); animation: pulse 2.5s ease-in-out infinite; }
+      .tl-dot.next { background: var(--orange); box-shadow: 0 0 0 3px rgba(251,146,60,.15); }
       .tl-dot.planned { background: var(--muted2); }
       .tl-line {
         flex: 1; width: 1px; background: var(--border);
@@ -333,7 +405,8 @@
         margin-bottom: 4px;
       }
       .tl-label.done { color: var(--green); }
-      .tl-label.next { color: var(--gold); }
+      .tl-label.beta { color: var(--gold); }
+      .tl-label.next { color: var(--orange); }
       .tl-label.planned { color: var(--muted); }
       .tl-title {
         font-family: "Playfair Display", serif;
@@ -379,7 +452,6 @@
       .technical-content.open { display: block; }
       .technical-inner { padding: 32px 36px 36px; }
 
-      /* Markdown inside technical */
       .technical-inner h1 {
         font-family: "Playfair Display", serif;
         font-size: 1.6rem; font-weight: 700; color: var(--text);
@@ -437,16 +509,16 @@
       .footer-brand { font-family: "Playfair Display", serif; font-size: 13px; color: var(--gold); }
       .footer-note { font-family: "DM Mono", monospace; font-size: 10px; color: var(--muted2); }
 
-      /* ── Flash ── */
       @keyframes flashIn { 0%{background:rgba(200,164,90,.09)} 100%{background:transparent} }
       .flash { animation: flashIn 1.4s ease-out; }
 
       @media (max-width: 600px) {
         .wrapper { padding: 32px 16px 60px; }
         .hero { flex-direction: column; }
-        .hero-right { flex-direction: row; gap: 20px; align-items: center; }
+        .hero-right { flex-direction: row; gap: 20px; align-items: center; align-self: flex-start; }
         .technical-inner { padding: 20px 18px 24px; }
         .stages-grid { grid-template-columns: 1fr; }
+        .pending-items { grid-template-columns: 1fr; }
       }
     </style>
   </head>
@@ -455,11 +527,11 @@
     <!-- Top bar -->
     <div class="topbar">
       <div class="topbar-left">
-        <span class="tag">Live Updates</span>
-        <span class="tag" style="background:rgba(245,158,11,0.12);color:#f59e0b;border-color:rgba(245,158,11,0.3);">Beta</span>
+        <span class="tag version">v1.0.0-beta.1</span>
+        <span class="tag beta">First Beta</span>
         <span class="topbar-text">
           <strong>Virtual Art Space</strong> &nbsp;·&nbsp;
-          Project progress &amp; changelog — updates automatically in real time
+          Project progress &amp; changelog
         </span>
       </div>
       <div id="livePill" class="live-pill">
@@ -475,16 +547,32 @@
         <div class="hero-left">
           <div class="brand">Virtual Art Space</div>
           <div class="gold-rule"></div>
-          <h1 class="hero-title">Project <em>Progress</em></h1>
-          <div class="hero-sub">Amman Art Scene · Jordan · 2026</div>
+          <h1 class="hero-title">First <em>Beta</em> Release</h1>
+          <div class="hero-sub">Amman Art Scene · Jordan · June 2026</div>
           <p class="hero-desc">
             An immersive virtual reality art exhibition platform — artists create and share
             3D gallery rooms, visitors walk through them in the browser on any device.
+            The platform has reached its first major milestone.
           </p>
-          <div class="beta-notice">
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><circle cx="8" cy="8" r="6"/><path d="M8 5v3M8 11v.5"/></svg>
-            The platform is currently in <strong>beta</strong> — all stages are actively under development. Features and timelines may change.
+
+          <div class="milestone-banner">
+            <div class="milestone-icon">🏛️</div>
+            <div class="milestone-text">
+              <div class="milestone-title">v1.0.0-beta.1 — June 2026</div>
+              <div class="milestone-desc">
+                <strong>Stages 1, 2, and 3 are complete.</strong> The platform ships with full auth,
+                gallery &amp; artwork management, an immersive 3D viewer with 6 room themes,
+                live in-room edit mode, ambient audio, VR/WebXR headset support, room decorations,
+                and desktop + mobile controls. Reviewing scope for the next version.
+              </div>
+            </div>
           </div>
+
+          <div class="pending-notice">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><circle cx="8" cy="8" r="6"/><path d="M8 5v3M8 11v.5"/></svg>
+            <span><strong>Pending before v1.0 stable:</strong> dedicated object storage for artwork images (replacing base64), custom domain acquisition, and next-version scope decision.</span>
+          </div>
+
           <a class="btn-download" href="/api/changelog/download" download="technical_changelog.md">
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
               <path d="M8 2v8M5 8l3 3 3-3M2 12v1a1 1 0 001 1h10a1 1 0 001-1v-1"/>
@@ -493,8 +581,18 @@
           </a>
         </div>
 
-        <div class="hero-right" style="padding-top:8px;">
-          <div class="ring-note" id="lastUpdated" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted2);"></div>
+        <div class="hero-right">
+          <div class="stat-block">
+            <div class="stat-num">3<span>/4</span></div>
+            <div class="stat-label">Stages complete</div>
+          </div>
+          <div class="stat-divider"></div>
+          <div class="stat-block">
+            <div class="stat-num" style="font-size:22px;">Beta</div>
+            <div class="stat-label">Current release</div>
+          </div>
+          <div class="stat-divider"></div>
+          <div class="ring-note" id="lastUpdated"></div>
         </div>
       </div>
 
@@ -518,7 +616,7 @@
           <ul class="feature-list">
             <li>
               <svg class="feat-icon done" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l3.5 3.5L13 4.5"/></svg>
-              Artist registration &amp; login (Google OAuth + email)
+              Artist auth — Google OAuth &amp; email (Clerk)
             </li>
             <li>
               <svg class="feat-icon done" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l3.5 3.5L13 4.5"/></svg>
@@ -526,7 +624,7 @@
             </li>
             <li>
               <svg class="feat-icon done" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l3.5 3.5L13 4.5"/></svg>
-              Gallery creation, editing &amp; publishing
+              Gallery creation, editing &amp; publishing with auto slugs
             </li>
             <li>
               <svg class="feat-icon done" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l3.5 3.5L13 4.5"/></svg>
@@ -555,64 +653,72 @@
           <ul class="feature-list">
             <li>
               <svg class="feat-icon done" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l3.5 3.5L13 4.5"/></svg>
-              Immersive first-person 3D gallery room (React Three Fiber)
+              Immersive first-person 3D room (React Three Fiber)
             </li>
             <li>
               <svg class="feat-icon done" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l3.5 3.5L13 4.5"/></svg>
-              Desktop controls (WASD + mouse look)
+              Desktop: WASD + pointer-lock mouse look
             </li>
             <li>
               <svg class="feat-icon done" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l3.5 3.5L13 4.5"/></svg>
-              Mobile controls (touch + virtual joystick)
+              Mobile: touch-drag look + virtual joystick
             </li>
             <li>
               <svg class="feat-icon done" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l3.5 3.5L13 4.5"/></svg>
-              Artworks displayed as framed images on walls
+              Click / tap artwork to open detail modal
             </li>
             <li>
               <svg class="feat-icon done" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l3.5 3.5L13 4.5"/></svg>
-              Artwork detail modal — click any piece to view info
+              5 room themes with lighting &amp; fog presets
             </li>
             <li>
               <svg class="feat-icon done" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l3.5 3.5L13 4.5"/></svg>
-              5 room themes (Dark Void, Neon Grid, Concrete, and more)
+              Spatial placement: wall / slot / height picker
             </li>
           </ul>
         </div>
 
         <!-- Stage 3 -->
-        <div class="stage-card next">
+        <div class="stage-card beta">
           <div class="stage-header">
             <div>
               <div class="stage-num">Stage 03</div>
-              <div class="stage-name">Advanced Features</div>
+              <div class="stage-name">Immersion &amp; VR</div>
             </div>
-            <span class="status-badge next">Up Next</span>
+            <span class="status-badge beta">Beta</span>
           </div>
           <div class="progress-wrap">
-            <div class="progress-track"><div class="progress-fill" data-pct="0"></div></div>
-            <span class="progress-label" data-pct="0"></span>
+            <div class="progress-track"><div class="progress-fill" data-pct="85"></div></div>
+            <span class="progress-label" data-pct="85"></span>
           </div>
           <ul class="feature-list">
             <li>
-              <svg class="feat-icon next" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>
-              Artwork upload to cloud storage (any file size)
+              <svg class="feat-icon done" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l3.5 3.5L13 4.5"/></svg>
+              Live in-room edit mode (drag, scale, rotate artworks)
+            </li>
+            <li>
+              <svg class="feat-icon done" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l3.5 3.5L13 4.5"/></svg>
+              Ambient audio per theme (Web Audio API)
+            </li>
+            <li>
+              <svg class="feat-icon done" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l3.5 3.5L13 4.5"/></svg>
+              6th theme: Amman Limestone (terracotta tile, warm sandstone)
+            </li>
+            <li>
+              <svg class="feat-icon done" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l3.5 3.5L13 4.5"/></svg>
+              Room decorations — benches, plinths, plants, lamps
+            </li>
+            <li>
+              <svg class="feat-icon done" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l3.5 3.5L13 4.5"/></svg>
+              VR / WebXR headset support (Quest, Vision Pro)
+            </li>
+            <li>
+              <svg class="feat-icon done" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l3.5 3.5L13 4.5"/></svg>
+              Smooth movement, head bob, sprint, proximity glow
             </li>
             <li>
               <svg class="feat-icon next" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>
-              VR / WebXR headset support (Meta Quest, Vision Pro)
-            </li>
-            <li>
-              <svg class="feat-icon next" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>
-              Social features — follows, likes, comments
-            </li>
-            <li>
-              <svg class="feat-icon next" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>
-              Custom room theme builder
-            </li>
-            <li>
-              <svg class="feat-icon next" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>
-              Drag-to-place artwork floor plan editor
+              Object storage for artwork images (replaces base64)
             </li>
           </ul>
         </div>
@@ -622,7 +728,7 @@
           <div class="stage-header">
             <div>
               <div class="stage-num">Stage 04</div>
-              <div class="stage-name">Scalability</div>
+              <div class="stage-name">Social &amp; Scale</div>
             </div>
             <span class="status-badge planned">Planned</span>
           </div>
@@ -633,19 +739,19 @@
           <ul class="feature-list">
             <li>
               <svg class="feat-icon pending" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>
-              Multi-region CDN for low-latency 3D asset delivery
+              Social features — follows, likes, comments
             </li>
             <li>
               <svg class="feat-icon pending" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>
-              Database sharding &amp; read replicas for high traffic
+              Visitor analytics — heatmaps, engagement, dwell time
             </li>
             <li>
               <svg class="feat-icon pending" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>
-              Image &amp; 3D asset optimisation pipeline (WebP, DRACO)
+              Multi-region CDN for 3D asset delivery
             </li>
             <li>
               <svg class="feat-icon pending" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>
-              Analytics dashboard — visitor heatmaps, engagement metrics
+              Asset optimisation pipeline (WebP, DRACO compression)
             </li>
             <li>
               <svg class="feat-icon pending" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>
@@ -654,6 +760,41 @@
           </ul>
         </div>
 
+      </div>
+
+      <!-- ── Pending before v1 stable ── -->
+      <div class="section-label">Pending Before v1.0 Stable</div>
+      <div class="pending-panel">
+        <div class="pending-items">
+          <div class="pending-item">
+            <div class="pending-item-icon">🗄️</div>
+            <div class="pending-item-text">
+              <div class="pending-item-name">Dedicated Object Storage</div>
+              <div class="pending-item-desc">Artwork images are currently stored as base64 strings. A CDN-backed object store (Cloudflare R2 / AWS S3) is needed for production scale.</div>
+            </div>
+          </div>
+          <div class="pending-item">
+            <div class="pending-item-icon">🌐</div>
+            <div class="pending-item-text">
+              <div class="pending-item-name">Custom Domain</div>
+              <div class="pending-item-desc">Domain acquisition and DNS configuration pending. Platform name decision will inform the domain choice.</div>
+            </div>
+          </div>
+          <div class="pending-item">
+            <div class="pending-item-icon">📋</div>
+            <div class="pending-item-text">
+              <div class="pending-item-name">Next Version Scope</div>
+              <div class="pending-item-desc">Reviewing Stage 3 beta, gathering feedback, and deciding which Stage 4 features to prioritise in v1.1.</div>
+            </div>
+          </div>
+          <div class="pending-item">
+            <div class="pending-item-icon">🏷️</div>
+            <div class="pending-item-text">
+              <div class="pending-item-name">Platform Name</div>
+              <div class="pending-item-desc">"Virtual Art Space" is the working title. Final name to be confirmed before domain purchase and public launch.</div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- ── Timeline ── -->
@@ -669,7 +810,7 @@
           <div class="timeline-col-content">
             <div class="tl-label done">Delivered</div>
             <div class="tl-title">Stage 1 — Core Platform</div>
-            <div class="tl-desc">Auth, dashboard, gallery management, artwork upload, public browsing — fully live.</div>
+            <div class="tl-desc">Auth, dashboard, gallery &amp; artwork management, profile editing, public browsing — fully live.</div>
           </div>
         </div>
 
@@ -682,7 +823,20 @@
           <div class="timeline-col-content">
             <div class="tl-label done">Delivered</div>
             <div class="tl-title">Stage 2 — 3D Gallery Viewer</div>
-            <div class="tl-desc">First-person 3D room, desktop &amp; mobile controls, wall-mounted artworks, detail modal, room themes.</div>
+            <div class="tl-desc">First-person 3D room, desktop &amp; mobile controls, wall-mounted artworks, detail modal, 5 room themes, spatial placement.</div>
+          </div>
+        </div>
+
+        <div class="timeline-row">
+          <div class="timeline-col-date">Jun 2026</div>
+          <div class="timeline-col-dot">
+            <div class="tl-dot beta"></div>
+            <div class="tl-line"></div>
+          </div>
+          <div class="timeline-col-content">
+            <div class="tl-label beta">▶ v1.0.0-beta.1 — Now</div>
+            <div class="tl-title">Stage 3 — Immersion &amp; VR</div>
+            <div class="tl-desc">Live edit mode, ambient audio, Amman Limestone theme, room decorations, VR/WebXR support, smooth movement. Object storage pending.</div>
           </div>
         </div>
 
@@ -694,8 +848,8 @@
           </div>
           <div class="timeline-col-content">
             <div class="tl-label next">Up Next</div>
-            <div class="tl-title">Stage 3 — Advanced Features</div>
-            <div class="tl-desc">Cloud artwork storage, VR headset support, social features, custom room themes.</div>
+            <div class="tl-title">v1.0 Stable — Object Storage + Domain</div>
+            <div class="tl-desc">Migrate artwork images to cloud object storage, acquire custom domain, confirm platform name, resolve any beta feedback.</div>
           </div>
         </div>
 
@@ -707,8 +861,8 @@
           </div>
           <div class="timeline-col-content">
             <div class="tl-label planned">Planned</div>
-            <div class="tl-title">Stage 4 — Scalability</div>
-            <div class="tl-desc">CDN delivery, database scaling, asset optimisation, analytics, and multi-tenant support.</div>
+            <div class="tl-title">Stage 4 — Social &amp; Scalability</div>
+            <div class="tl-desc">Social features (follows, likes, comments), analytics dashboard, CDN delivery, asset optimisation pipeline, multi-tenant support.</div>
           </div>
         </div>
 
@@ -719,8 +873,8 @@
           </div>
           <div class="timeline-col-content" style="padding-bottom:0">
             <div class="tl-label planned">Planned</div>
-            <div class="tl-title">Full Launch</div>
-            <div class="tl-desc">Public launch of Virtual Art Space to the Amman art community.</div>
+            <div class="tl-title">Public Launch</div>
+            <div class="tl-desc">Full public launch of Virtual Art Space to the Amman art community and beyond.</div>
           </div>
         </div>
 
@@ -746,7 +900,7 @@
       <!-- Footer -->
       <div class="page-footer">
         <div class="footer-brand">Virtual Art Space</div>
-        <div class="footer-note">Amman · Jordan · 2026 &nbsp;·&nbsp; <span id="footerUpdated"></span></div>
+        <div class="footer-note">Amman · Jordan · 2026 &nbsp;·&nbsp; v1.0.0-beta.1 &nbsp;·&nbsp; <span id="footerUpdated"></span></div>
       </div>
 
     </div>
@@ -770,7 +924,6 @@
         el.textContent = pct + "%";
       });
 
-      // ── Time helper ──
       function fmt(d) {
         return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
       }
@@ -782,13 +935,11 @@
         footerUpd.textContent = t;
       }
 
-      // ── Toggle ──
       function toggleTech() {
         const open = techContent.classList.toggle("open");
         toggleArrow.classList.toggle("open", open);
       }
 
-      // ── SSE ──
       function setLive(on) {
         livePill.classList.toggle("off", !on);
         liveLabel.textContent = on ? "Live" : "Disconnected";
