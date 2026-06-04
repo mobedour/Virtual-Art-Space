@@ -194,13 +194,14 @@ export function EditDragController({
     const handleClick = (e: MouseEvent) => {
       if (!isEditing) return;
 
-      // On desktop, require pointer lock before processing pick/drop.
-      // This prevents the synthetic canvas.click() that requests the lock
-      // from accidentally picking up an artwork, and prevents stray toolbar
-      // interactions from affecting the drag state.
-      if (!isMobile && !document.pointerLockElement) {
-        // If we fired this click to request pointer lock, clear the guard
-        // so the very next real click (once locked) is processed normally.
+      // Block only the very first click after entering edit mode — that
+      // click is the synthetic canvas.click() that requests pointer lock,
+      // not a real pick/drop intent.  lockPendingRef is armed when isEditing
+      // becomes true and cleared here (or by pointerlockchange, whichever
+      // fires first).  Do NOT block subsequent clicks based on pointer-lock
+      // state: if the user accidentally exits pointer lock (Escape, focus
+      // change, etc.) and then clicks an artwork, we should still honour it.
+      if (!isMobile && lockPendingRef.current) {
         lockPendingRef.current = false;
         return;
       }
@@ -836,7 +837,7 @@ export function useEditState(
   }, [pushHistory]);
 
   const handleRoomResize = useCallback((dir: "north" | "south" | "east" | "west", delta: number) => {
-    setRoomSize((prev) => Math.max(3, Math.min(12, prev + delta * 0.5)));
+    setRoomSize((prev) => Math.max(3, Math.min(12, Math.round(prev + delta))));
     pushHistory();
     setIsDirty(true);
   }, [pushHistory]);
