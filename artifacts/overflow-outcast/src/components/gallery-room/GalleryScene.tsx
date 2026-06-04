@@ -767,6 +767,7 @@ export function GalleryScene({
           halfW={halfW}
           halfD={halfD}
           halfH={halfH}
+          isMobile={isMobile}
           onArtworkMoved={onArtworkMoved}
           onDrop={onArtworkDropped}
           onArtworkSelected={onArtworkSelected}

@@ -79,6 +79,7 @@ export function EditDragController({
   halfW,
   halfD,
   halfH,
+  isMobile = false,
   onArtworkMoved,
   onDrop,
   onArtworkSelected,
@@ -89,6 +90,7 @@ export function EditDragController({
   halfW: number;
   halfD: number;
   halfH: number;
+  isMobile?: boolean;
   onArtworkMoved: (id: number, patch: Partial<ArtworkData>) => void;
   onDrop?: () => void;
   onArtworkSelected?: (id: number | null) => void;
@@ -101,6 +103,35 @@ export function EditDragController({
   const rc = useRef(new THREE.Raycaster());
   const plane = useRef(new THREE.Plane());
   const hitPt = useRef(new THREE.Vector3());
+
+  // Keep stable refs to callbacks so the click-listener effect doesn't need
+  // them in its dependency array.  Without this, every frame during a drag
+  // (handleArtworkMoved → setArtworks → snapshot → pushHistory →
+  // handleArtworkMovedCommit) produces a new function identity for onDrop,
+  // which causes the useEffect below to tear down and re-register the window
+  // click listener ~60 times/second — swallowing clicks and making some
+  // artworks appear uneditable.
+  const onDropRef = useRef(onDrop);
+  const onArtworkSelectedRef = useRef(onArtworkSelected);
+  const onDraggingChangeRef = useRef(onDraggingChange);
+  useEffect(() => { onDropRef.current = onDrop; }, [onDrop]);
+  useEffect(() => { onArtworkSelectedRef.current = onArtworkSelected; }, [onArtworkSelected]);
+  useEffect(() => { onDraggingChangeRef.current = onDraggingChange; }, [onDraggingChange]);
+
+  // Guard: swallow clicks that arrive while we are still waiting for pointer
+  // lock to be acquired on desktop (e.g. the synthetic canvas.click() fired
+  // by handleEnterEditMode to request the lock).  Without this, that
+  // synthetic click can accidentally pick up whichever artwork happens to be
+  // under the crosshair the moment edit mode is entered.
+  const lockPendingRef = useRef(false);
+
+  // On desktop, detect when pointer lock changes so we can clear the guard.
+  useEffect(() => {
+    if (isMobile) return;
+    const onLockChange = () => { lockPendingRef.current = false; };
+    document.addEventListener("pointerlockchange", onLockChange);
+    return () => document.removeEventListener("pointerlockchange", onLockChange);
+  }, [isMobile]);
 
   useFrame(() => {
     if (!isEditing || !draggingRef.current) return;
@@ -134,9 +165,16 @@ export function EditDragController({
     onArtworkMoved(artworkId, patch);
   });
 
-  // Click-to-pick, click-to-drop drag model
+  // Click-to-pick, click-to-drop drag model.
+  // Dependency array intentionally omits the callback props — they are
+  // accessed via stable refs above so the listener is registered exactly once
+  // per isEditing/camera/scene/halfW/halfD change, not on every re-render.
   useEffect(() => {
     if (!isEditing) { draggingRef.current = null; return; }
+
+    // Arm the lock-pending guard each time edit mode (re-)activates so the
+    // first synthetic canvas.click() that requests pointer lock is ignored.
+    if (!isMobile) lockPendingRef.current = true;
 
     const findArtworkHit = (): { artworkId: number; point: THREE.Vector3 } | null => {
       rc.current.setFromCamera(new THREE.Vector2(0, 0), camera);
@@ -155,6 +193,18 @@ export function EditDragController({
 
     const handleClick = (e: MouseEvent) => {
       if (!isEditing) return;
+
+      // On desktop, require pointer lock before processing pick/drop.
+      // This prevents the synthetic canvas.click() that requests the lock
+      // from accidentally picking up an artwork, and prevents stray toolbar
+      // interactions from affecting the drag state.
+      if (!isMobile && !document.pointerLockElement) {
+        // If we fired this click to request pointer lock, clear the guard
+        // so the very next real click (once locked) is processed normally.
+        lockPendingRef.current = false;
+        return;
+      }
+
       // Ignore clicks that originated inside an interactive UI overlay —
       // toolbar buttons, joystick, control cluster, etc. — so tapping a
       // mobile control doesn't pick/drop an artwork under the crosshair.
@@ -162,31 +212,34 @@ export function EditDragController({
       if (target && target.closest("button, input, a, [data-controls], [data-joystick], [role='dialog']")) {
         return;
       }
+
       const artworkHit = findArtworkHit();
 
       if (draggingRef.current) {
         // Drop: commit to undo history
         draggingRef.current = null;
         pendingPatchRef.current = null;
-        onDraggingChange?.(false);
-        onDrop?.();
+        onDraggingChangeRef.current?.(false);
+        onDropRef.current?.();
       } else if (artworkHit) {
         // Pick up
         const wallIdx = getNearestWallPlane(artworkHit.point, halfW, halfD);
         draggingRef.current = { artworkId: artworkHit.artworkId, wallIdx };
-        onDraggingChange?.(true);
+        onDraggingChangeRef.current?.(true);
       } else {
         // Click on empty space — deselect
-        onArtworkSelected?.(null);
+        onArtworkSelectedRef.current?.(null);
       }
     };
 
     const handleContextMenu = (e: MouseEvent) => {
       if (!isEditing) return;
       e.preventDefault();
+      // Same pointer-lock guard as handleClick
+      if (!isMobile && !document.pointerLockElement) return;
       const artworkHit = findArtworkHit();
       if (artworkHit) {
-        onArtworkSelected?.(artworkHit.artworkId);
+        onArtworkSelectedRef.current?.(artworkHit.artworkId);
       }
     };
 
@@ -200,14 +253,14 @@ export function EditDragController({
       if (draggingRef.current) {
         draggingRef.current = null;
         pendingPatchRef.current = null;
-        onDraggingChange?.(false);
-        onDrop?.();
+        onDraggingChangeRef.current?.(false);
+        onDropRef.current?.();
       } else if (artworkHit) {
         const wallIdx = getNearestWallPlane(artworkHit.point, halfW, halfD);
         draggingRef.current = { artworkId: artworkHit.artworkId, wallIdx };
-        onDraggingChange?.(true);
+        onDraggingChangeRef.current?.(true);
       } else {
-        onArtworkSelected?.(null);
+        onArtworkSelectedRef.current?.(null);
       }
     };
 
@@ -219,7 +272,8 @@ export function EditDragController({
       window.removeEventListener("contextmenu", handleContextMenu);
       window.removeEventListener("vas:pick-drop", handlePickDropTrigger);
     };
-  }, [isEditing, camera, scene, halfW, halfD, onDrop, onArtworkSelected, onDraggingChange]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditing, isMobile, camera, scene, halfW, halfD]);
 
   return null;
 }
