@@ -527,8 +527,8 @@
     <!-- Top bar -->
     <div class="topbar">
       <div class="topbar-left">
-        <span class="tag version">v1.0.0-beta.1</span>
-        <span class="tag beta">First Beta</span>
+        <span class="tag version">v1.0.0-beta.2</span>
+        <span class="tag beta">Beta</span>
         <span class="topbar-text">
           <strong>Virtual Art Space</strong> &nbsp;·&nbsp;
           Project progress &amp; changelog
@@ -558,7 +558,7 @@
           <div class="milestone-banner">
             <div class="milestone-icon">🏛️</div>
             <div class="milestone-text">
-              <div class="milestone-title">v1.0.0-beta.1 — June 2026</div>
+              <div class="milestone-title">v1.0.0-beta.2 — June 2026</div>
               <div class="milestone-desc">
                 <strong>Stages 1, 2, and 3 are complete.</strong> The platform ships with full auth,
                 gallery &amp; artwork management, an immersive 3D viewer with 6 room themes,
@@ -830,13 +830,26 @@
         <div class="timeline-row">
           <div class="timeline-col-date">Jun 2026</div>
           <div class="timeline-col-dot">
+            <div class="tl-dot done"></div>
+            <div class="tl-line"></div>
+          </div>
+          <div class="timeline-col-content">
+            <div class="tl-label done">Delivered</div>
+            <div class="tl-title">Stage 3 — Immersion &amp; VR</div>
+            <div class="tl-desc">Live edit mode, ambient audio, Amman Limestone theme, room decorations, VR/WebXR support, smooth movement. Object storage pending.</div>
+          </div>
+        </div>
+
+        <div class="timeline-row">
+          <div class="timeline-col-date">Jun 2026</div>
+          <div class="timeline-col-dot">
             <div class="tl-dot beta"></div>
             <div class="tl-line"></div>
           </div>
           <div class="timeline-col-content">
-            <div class="tl-label beta">▶ v1.0.0-beta.1 — Now</div>
-            <div class="tl-title">Stage 3 — Immersion &amp; VR</div>
-            <div class="tl-desc">Live edit mode, ambient audio, Amman Limestone theme, room decorations, VR/WebXR support, smooth movement. Object storage pending.</div>
+            <div class="tl-label beta">▶ v1.0.0-beta.2 — Now</div>
+            <div class="tl-title">Performance Patch — Three.js Deduplication</div>
+            <div class="tl-desc">Eliminated duplicate Three.js instances across <code style="font-family:'DM Mono',monospace;font-size:11px;background:rgba(200,164,90,.07);color:#e0c876;padding:1px 4px;border:1px solid rgba(200,164,90,.13)">@react-three/fiber</code>, <code style="font-family:'DM Mono',monospace;font-size:11px;background:rgba(200,164,90,.07);color:#e0c876;padding:1px 4px;border:1px solid rgba(200,164,90,.13)">drei</code>, and <code style="font-family:'DM Mono',monospace;font-size:11px;background:rgba(200,164,90,.07);color:#e0c876;padding:1px 4px;border:1px solid rgba(200,164,90,.13)">@react-three/xr</code>. Added to Vite <code style="font-family:'DM Mono',monospace;font-size:11px;background:rgba(200,164,90,.07);color:#e0c876;padding:1px 4px;border:1px solid rgba(200,164,90,.13)">resolve.dedupe</code> and <code style="font-family:'DM Mono',monospace;font-size:11px;background:rgba(200,164,90,.07);color:#e0c876;padding:1px 4px;border:1px solid rgba(200,164,90,.13)">optimizeDeps.include</code>. Zero type errors. Vite cold start 289ms.</div>
           </div>
         </div>
 
@@ -900,7 +913,7 @@
       <!-- Footer -->
       <div class="page-footer">
         <div class="footer-brand">Virtual Art Space</div>
-        <div class="footer-note">Amman · Jordan · 2026 &nbsp;·&nbsp; v1.0.0-beta.1 &nbsp;·&nbsp; <span id="footerUpdated"></span></div>
+        <div class="footer-note">Amman · Jordan · 2026 &nbsp;·&nbsp; v1.0.0-beta.2 &nbsp;·&nbsp; <span id="footerUpdated"></span></div>
       </div>
 
     </div>

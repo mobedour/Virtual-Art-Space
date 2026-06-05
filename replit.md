@@ -57,6 +57,7 @@ An immersive virtual reality art exhibition platform for the Amman art scene —
 - Vite configs use env var fallbacks (`PORT ?? default`, `BASE_PATH ?? "/"`) so `pnpm run build` works in deployment without those vars being set.
 - VR is purely additive: the 2D browser experience is completely unchanged when no headset is present. `@react-three/xr` wraps the existing Canvas with `<XR>`, `XROrigin` maps floor-level tracking to EYE_Y.
 - Edit mode access-controlled by comparing `gallery.userId` with `useGetAuthMe()` — owner only, button absent from DOM for visitors.
+- Three.js deduplication: `three`, `@react-three/fiber`, `@react-three/drei`, and `@react-three/xr` are listed in both `resolve.dedupe` and `optimizeDeps.include` in `vite.config.ts`. This prevents each R3F package from bundling its own copy of Three.js (which caused "Multiple instances of Three.js" warnings and wasted GPU memory). Vite cold start is ~289ms.
 
 ## Product
 
@@ -64,7 +65,7 @@ An immersive virtual reality art exhibition platform for the Amman art scene —
 
 **Stage 2 (complete):** 3D gallery room viewer with React Three Fiber, keyboard/mouse/touch movement controls, artwork display as framed images on walls, click-to-view artwork detail modal (responsive for mobile landscape), spatial placement (wall/slot/height picker, conflict detection, floor plan preview).
 
-**Stage 3 (beta — v1.0.0-beta.1, June 2026):**
+**Stage 3 (beta — v1.0.0-beta.2, June 2026):**
 - Live in-room edit mode: drag/scale/rotate artwork frames, room reshape, decoration placement, undo/redo
 - Ambient audio per theme via Web Audio API, mute toggle, smooth fade between tracks
 - 6th room theme: Amman Limestone (terracotta tile floor, warm sandstone walls)
@@ -99,6 +100,7 @@ An immersive virtual reality art exhibition platform for the Amman art scene —
 - Never use `format: binary` in the OpenAPI spec — it generates `File`/`Blob` types that don't exist in Node.js and break the typecheck
 - Dev and production Clerk environments have separate user stores — accounts don't carry over between dev and the published app
 - `createXRStore()` must be called at module level (outside component) — calling it inside a component causes passthrough mode errors
+- Always keep `three`, `@react-three/fiber`, `@react-three/drei`, `@react-three/xr` in both `resolve.dedupe` and `optimizeDeps.include` in `vite.config.ts` — removing them causes "Multiple instances of Three.js" warnings and subtle rendering bugs
 - Never write to `camera.position` directly in VR frames — use `XROrigin` offset instead
 - `<Html>` from drei is invisible inside a VR headset — use `<XRDomOverlay>` for any HUD/UI that needs to show in headset
 
