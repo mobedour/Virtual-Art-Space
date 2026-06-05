@@ -85,9 +85,12 @@ export async function setObjectAclPolicy(
 
 export async function getObjectAclPolicy(
   objectFile: File,
+  prefetchedMetadata?: Record<string, unknown>,
 ): Promise<ObjectAclPolicy | null> {
-  const [metadata] = await objectFile.getMetadata();
-  const aclPolicy = metadata?.metadata?.[ACL_POLICY_METADATA_KEY];
+  const metadata = prefetchedMetadata ?? (await objectFile.getMetadata())[0];
+  const aclPolicy = (metadata as Record<string, unknown>)?.metadata
+    ? (metadata as { metadata: Record<string, unknown> }).metadata[ACL_POLICY_METADATA_KEY]
+    : undefined;
   if (!aclPolicy) {
     return null;
   }

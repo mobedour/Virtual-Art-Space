@@ -118,7 +118,8 @@ router.get("/storage/objects/*path", async (req: Request, res: Response) => {
       res.end();
     }
   } catch (error) {
-    if (error instanceof ObjectNotFoundError) {
+    const code = (error as { code?: number })?.code;
+    if (error instanceof ObjectNotFoundError || code === 404) {
       req.log.warn({ err: error }, "Object not found");
       res.status(404).json({ error: "Object not found" });
       return;

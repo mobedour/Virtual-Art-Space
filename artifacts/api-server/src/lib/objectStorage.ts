@@ -87,9 +87,9 @@ export class ObjectStorageService {
     return null;
   }
 
-  async downloadObject(file: File, cacheTtlSec: number = 3600): Promise<Response> {
+  async downloadObject(file: File, cacheTtlSec: number = 86400): Promise<Response> {
     const [metadata] = await file.getMetadata();
-    const aclPolicy = await getObjectAclPolicy(file);
+    const aclPolicy = await getObjectAclPolicy(file, metadata as Record<string, unknown>);
     const isPublic = aclPolicy?.visibility === "public";
 
     const nodeStream = file.createReadStream();
@@ -147,10 +147,6 @@ export class ObjectStorageService {
     const { bucketName, objectName } = parseObjectPath(objectEntityPath);
     const bucket = objectStorageClient.bucket(bucketName);
     const objectFile = bucket.file(objectName);
-    const [exists] = await objectFile.exists();
-    if (!exists) {
-      throw new ObjectNotFoundError();
-    }
     return objectFile;
   }
 
