@@ -24,6 +24,7 @@ An immersive virtual reality art exhibition platform for the Amman art scene —
 - API codegen: Orval (from OpenAPI spec)
 - Build: esbuild (ESM bundle)
 - VR: @react-three/xr v6.6.29
+- Storage: Replit Object Storage (GCS-backed sidecar) — signed upload URLs, public + private object endpoints
 
 ## Where things live
 
@@ -52,7 +53,7 @@ An immersive virtual reality art exhibition platform for the Amman art scene —
 - Auth: Replit-managed Clerk. `ClerkAuthSync` in `App.tsx` registers `getToken()` so `custom-fetch.ts` auto-attaches Bearer tokens to all API calls.
 - JIT provisioning: on first authenticated API call, `requireAuth.ts` creates a local DB user from the Clerk identity. Email collision handled by linking existing account by email.
 - Gallery slugs auto-generated from title + random suffix at creation time.
-- File uploads (artwork images) handled via base64 URL strings — object storage (Cloudflare R2 / AWS S3) is the next infrastructure step before v1.0 stable.
+- File uploads (artwork images) handled via Replit Object Storage (GCS-backed sidecar). Upload flow: client requests a signed upload URL from `POST /api/storage/uploads/request-url`, uploads directly, then stores the returned object path as `imageUrl`. Public assets served via `GET /api/storage/public-objects/*`. Private assets via `GET /api/storage/objects/*` (auth-gated). Base64 image storage has been fully removed.
 - All DB schema lives in `lib/db` composite lib — rebuild with `pnpm run typecheck:libs` before typechecking api-server. -- important
 - Vite configs use env var fallbacks (`PORT ?? default`, `BASE_PATH ?? "/"`) so `pnpm run build` works in deployment without those vars being set.
 - VR is purely additive: the 2D browser experience is completely unchanged when no headset is present. `@react-three/xr` wraps the existing Canvas with `<XR>`, `XROrigin` maps floor-level tracking to EYE_Y.
@@ -65,7 +66,7 @@ An immersive virtual reality art exhibition platform for the Amman art scene —
 
 **Stage 2 (complete):** 3D gallery room viewer with React Three Fiber, keyboard/mouse/touch movement controls, artwork display as framed images on walls, click-to-view artwork detail modal (responsive for mobile landscape), spatial placement (wall/slot/height picker, conflict detection, floor plan preview).
 
-**Stage 3 (beta — v1.0.0-beta.2, June 2026):**
+**Stage 3 (complete — v1.0.0-beta.2, June 2026):**
 - Live in-room edit mode: drag/scale/rotate artwork frames, room reshape, decoration placement, undo/redo
 - Ambient audio per theme via Web Audio API, mute toggle, smooth fade between tracks
 - 6th room theme: Amman Limestone (terracotta tile floor, warm sandstone walls)
@@ -75,10 +76,9 @@ An immersive virtual reality art exhibition platform for the Amman art scene —
 - Artwork proximity glow and crosshair aim state
 - Fade-in on room enter, gallery title card entrance
 - Pause/resume overlay replacing the broken Escape → blank state
-- ⚠️ Pending: object storage for artwork images (still base64)
+- Dedicated object storage for artwork images (Replit Object Storage / GCS-backed) — base64 fully removed
 
 **Pending before v1.0 stable:**
-- Dedicated object storage (Cloudflare R2 or AWS S3) for artwork images — base64 is a hard problem at WebGL/VR GPU memory scale
 - Custom domain acquisition (platform name TBD)
 - Next version scope decision after reviewing beta
 

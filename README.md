@@ -2,6 +2,7 @@
 An immersive virtual 3D gallery platform for the Amman art scene. Artists create and share gallery rooms; visitors explore them in the browser — no headset required. WebXR support is available for VR headsets.
 ![Virtual Art Space](https://img.shields.io/badge/version-v1.0.0--beta.2-orange) ![Node.js](https://img.shields.io/badge/node-24-green) ![License](https://img.shields.io/badge/license-MIT-blue)
 ## Features
+- **Dedicated Object Storage** — artwork images stored in Replit Object Storage (GCS-backed); signed upload URLs, no base64
 - **3D Gallery Rooms** — walk through your gallery with keyboard/mouse, touch, or a VR headset
 - **6 Room Themes** — including Amman Limestone (warm sandstone + terracotta tile)
 - **Live Edit Mode** — drag, scale, and rotate artwork frames in real time; undo/redo
@@ -22,6 +23,7 @@ An immersive virtual 3D gallery platform for the Amman art scene. Artists create
 | Validation | Zod v4 + drizzle-zod |
 | API codegen | Orval (OpenAPI → React Query hooks + Zod schemas) |
 | Build | esbuild (ESM bundle) + pnpm workspaces |
+| Storage | Replit Object Storage (GCS-backed) — signed upload URLs, public + private endpoints |
 
 ### Performance
 - `three`, `@react-three/fiber`, `@react-three/drei`, and `@react-three/xr` are deduplicated via Vite `resolve.dedupe` + `optimizeDeps.include` — eliminates duplicate Three.js instances that previously caused warnings and wasted memory
@@ -67,8 +69,8 @@ Auth, artist dashboard, gallery CRUD, public browse     ✅ Complete
 Live edit mode, ambient audio, VR/WebXR, room themes & decorations      🟡 Beta
 Social features, visitor analytics, CDN delivery, image pipeline        📋 Planned
 Before v1.0 Stable
-Object storage (Cloudflare R2 / AWS S3) for artwork images — currently base64
 Custom domain (platform name to be confirmed)
+Next-version scope decision after beta review
 Controls
 Action  Desktop Mobile
 Move    W A S D or Arrow keys   Virtual joystick
