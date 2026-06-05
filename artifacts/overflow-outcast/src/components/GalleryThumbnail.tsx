@@ -56,6 +56,14 @@ const THEME_DEFS: Record<string, ThemeDef> = {
     pattern: "concrete",
     textColor: "#c8c8c8",
   },
+  amman_limestone: {
+    bg: "#2a1a0e",
+    bg2: "#4a3020",
+    accent: "#d4845a",
+    accentDim: "#d4845a22",
+    pattern: "particles",
+    textColor: "#e8a070",
+  },
   default: {
     bg: "#180e08",
     bg2: "#352c24",
