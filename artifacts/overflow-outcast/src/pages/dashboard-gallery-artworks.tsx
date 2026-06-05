@@ -12,6 +12,7 @@ import {
   getGetGalleryQueryKey,
   getListArtworksQueryKey,
   getGetDashboardStatsQueryKey,
+  requestUploadUrl,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useUser } from "@clerk/react";
@@ -458,6 +459,7 @@ function ArtworkFormDialog({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   const isEdit = !!artwork;
 
@@ -530,16 +532,41 @@ function ArtworkFormDialog({
   const createMutation = useCreateArtwork();
   const updateMutation = useUpdateArtwork();
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      const dataUrl = evt.target?.result as string;
-      form.setValue("imageUrl", dataUrl, { shouldValidate: true });
-      setImagePreview(dataUrl);
-    };
-    reader.readAsDataURL(file);
+
+    const localPreview = URL.createObjectURL(file);
+    setImagePreview(localPreview);
+    setIsUploading(true);
+
+    try {
+      const { uploadURL, objectPath } = await requestUploadUrl({
+        name: file.name,
+        size: file.size,
+        contentType: file.type || "image/jpeg",
+      });
+
+      const putRes = await fetch(uploadURL, {
+        method: "PUT",
+        body: file,
+        headers: { "Content-Type": file.type || "image/jpeg" },
+      });
+
+      if (!putRes.ok) throw new Error("Upload to storage failed");
+
+      const servingUrl = `/api/storage${objectPath}`;
+      form.setValue("imageUrl", servingUrl, { shouldValidate: true });
+      setImagePreview(servingUrl);
+      URL.revokeObjectURL(localPreview);
+    } catch {
+      toast({ variant: "destructive", title: "UPLOAD FAILED", description: "Could not upload image. Please try again." });
+      setImagePreview("");
+      form.setValue("imageUrl", "", { shouldValidate: false });
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   }
 
   function onSubmit(values: FormValues) {
@@ -788,19 +815,28 @@ function ArtworkFormDialog({
                             alt="Artwork preview"
                             className="w-full h-full object-cover"
                           />
-                          <button
-                            type="button"
-                            onClick={() => fileInputRef.current?.click()}
-                            className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity font-mono text-xs text-white tracking-widest"
-                          >
-                            <Upload className="w-4 h-4 mr-2" /> REPLACE IMAGE
-                          </button>
+                          {isUploading && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/70">
+                              <Loader2 className="w-5 h-5 text-primary animate-spin mr-2" />
+                              <span className="font-mono text-xs text-primary tracking-widest">UPLOADING…</span>
+                            </div>
+                          )}
+                          {!isUploading && (
+                            <button
+                              type="button"
+                              onClick={() => fileInputRef.current?.click()}
+                              className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity font-mono text-xs text-white tracking-widest"
+                            >
+                              <Upload className="w-4 h-4 mr-2" /> REPLACE IMAGE
+                            </button>
+                          )}
                         </div>
                       ) : (
                         <button
                           type="button"
                           onClick={() => fileInputRef.current?.click()}
-                          className="w-full aspect-video border border-dashed border-border/50 flex flex-col items-center justify-center gap-3 hover:border-primary/50 hover:bg-primary/5 transition-colors"
+                          disabled={isUploading}
+                          className="w-full aspect-video border border-dashed border-border/50 flex flex-col items-center justify-center gap-3 hover:border-primary/50 hover:bg-primary/5 transition-colors disabled:opacity-50"
                         >
                           <ImageIcon className="w-8 h-8 text-muted-foreground/40" />
                           <span className="font-mono text-xs text-muted-foreground tracking-widest">
@@ -815,10 +851,10 @@ function ArtworkFormDialog({
                         className="hidden"
                         onChange={handleFileChange}
                       />
-                      {imagePreview.startsWith("data:") ? (
+                      {imagePreview && !isUploading && (form.getValues("imageUrl") || "").startsWith("/api/storage") ? (
                         <div className="flex items-center gap-2 px-3 py-2 border border-border/30 bg-background/30">
                           <span className="font-mono text-[10px] text-primary tracking-widest flex-1">
-                            ✓ FILE UPLOADED
+                            ✓ UPLOADED TO STORAGE
                           </span>
                           <button
                             type="button"
@@ -831,7 +867,7 @@ function ArtworkFormDialog({
                             CLEAR
                           </button>
                         </div>
-                      ) : (
+                      ) : !imagePreview && !isUploading ? (
                         <>
                           <div className="flex items-center gap-3">
                             <div className="flex-1 h-px bg-border/40" />
@@ -851,7 +887,7 @@ function ArtworkFormDialog({
                             }}
                           />
                         </>
-                      )}
+                      ) : null}
                     </div>
                     <FormMessage className="font-mono text-xs" />
                   </FormItem>
@@ -1011,10 +1047,10 @@ function ArtworkFormDialog({
               <Button
                 type="submit"
                 className="rounded-none font-mono tracking-widest bg-primary text-white hover:bg-primary/90"
-                disabled={isSubmitting}
+                disabled={isSubmitting || isUploading}
               >
-                {isSubmitting && <Loader2 className="animate-spin w-4 h-4 mr-2" />}
-                {isEdit ? "SAVE_CHANGES" : "ADD_ARTWORK"}
+                {(isSubmitting || isUploading) && <Loader2 className="animate-spin w-4 h-4 mr-2" />}
+                {isUploading ? "UPLOADING…" : isEdit ? "SAVE_CHANGES" : "ADD_ARTWORK"}
               </Button>
             </DialogFooter>
           </form>

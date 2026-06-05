@@ -8,6 +8,7 @@ import decorationsRouter from "./decorations";
 import publicGalleriesRouter from "./publicGalleries";
 import dashboardRouter from "./dashboard";
 import changelogRouter from "./changelog";
+import storageRouter from "./storage";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use(decorationsRouter);
 router.use(publicGalleriesRouter);
 router.use(dashboardRouter);
 router.use(changelogRouter);
+router.use(storageRouter);
 
 export default router;

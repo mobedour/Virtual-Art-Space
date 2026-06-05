@@ -249,6 +249,21 @@ export interface PublicGalleryDetail {
   artworks: Artwork[];
 }
 
+export interface RequestUploadUrlBody {
+  /** @minLength 1 */
+  name: string;
+  /** @minimum 1 */
+  size: number;
+  /** @minLength 1 */
+  contentType: string;
+}
+
+export interface RequestUploadUrlResponse {
+  uploadURL: string;
+  objectPath: string;
+  metadata?: RequestUploadUrlBody;
+}
+
 export interface DashboardStats {
   totalGalleries: number;
   publishedGalleries: number;
