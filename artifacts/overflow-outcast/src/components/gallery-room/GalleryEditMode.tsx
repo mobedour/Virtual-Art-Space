@@ -139,10 +139,16 @@ export function EditDragController({
     rc.current.setFromCamera(new THREE.Vector2(0, 0), camera);
     const w = draggingRef.current.wallIdx;
 
-    if (w === 0) plane.current.set(new THREE.Vector3(0, 0, 1),  halfD - WALL_INSET);
-    if (w === 1) plane.current.set(new THREE.Vector3(-1, 0, 0), -(halfW - WALL_INSET));
-    if (w === 2) plane.current.set(new THREE.Vector3(0, 0, -1), halfD - WALL_INSET);
-    if (w === 3) plane.current.set(new THREE.Vector3(1, 0, 0),  -(halfW - WALL_INSET));
+    // THREE.Plane: normal·point + constant = 0
+    // Wall positions (WALL_INSET from the boundary):
+    //   north (w=0): z = -halfD + WALL_INSET  → normal (0,0,+1), constant = +(halfD - WALL_INSET)
+    //   east  (w=1): x = +halfW - WALL_INSET  → normal (-1,0,0), constant = +(halfW - WALL_INSET)
+    //   south (w=2): z = +halfD - WALL_INSET  → normal (0,0,-1), constant = +(halfD - WALL_INSET)
+    //   west  (w=3): x = -halfW + WALL_INSET  → normal (+1,0,0), constant = +(halfW - WALL_INSET)
+    if (w === 0) plane.current.set(new THREE.Vector3(0, 0,  1),  halfD - WALL_INSET);
+    if (w === 1) plane.current.set(new THREE.Vector3(-1, 0, 0),  halfW - WALL_INSET);
+    if (w === 2) plane.current.set(new THREE.Vector3(0, 0, -1),  halfD - WALL_INSET);
+    if (w === 3) plane.current.set(new THREE.Vector3(1, 0,  0),  halfW - WALL_INSET);
 
     const ok = rc.current.ray.intersectPlane(plane.current, hitPt.current);
     if (!ok) return;
