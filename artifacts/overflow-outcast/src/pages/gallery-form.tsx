@@ -43,6 +43,7 @@ const THEMES = [
   { id: "purple_mist",      name: "Purple Mist",       desc: "Deep violet atmosphere with swirling fog — ethereal." },
   { id: "white_cube",       name: "White Cube",        desc: "Classic clean gallery walls — lets the art speak." },
   { id: "concrete_bunker",  name: "Concrete Bunker",   desc: "Raw brutalist grey — industrial and bold." },
+  { id: "amman_limestone",  name: "Amman Limestone",   desc: "Terracotta tile floor, warm sandstone walls — Jordanian heritage." },
 ];
 
 const ROOM_MODES = [
