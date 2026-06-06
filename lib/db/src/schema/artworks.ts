@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, real, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, real, boolean, timestamp, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { galleriesTable } from "./galleries";
@@ -20,7 +20,9 @@ export const artworksTable = pgTable("artworks", {
   scale: real("scale").notNull().default(1),
   isManuallyPlaced: boolean("is_manually_placed").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [
+  index("artworks_gallery_id_idx").on(t.galleryId),
+]);
 
 export const insertArtworkSchema = createInsertSchema(artworksTable).omit({ id: true, createdAt: true });
 export type InsertArtwork = z.infer<typeof insertArtworkSchema>;

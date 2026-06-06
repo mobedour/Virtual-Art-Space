@@ -35,6 +35,7 @@ router.get("/public/galleries", async (req, res): Promise<void> => {
     )
     .orderBy(sql`${galleriesTable.createdAt} DESC`);
 
+  res.setHeader("Cache-Control", "public, max-age=30, stale-while-revalidate=120");
   res.json(
     galleries.map((g) => ({
       id: g.id,
@@ -84,6 +85,7 @@ router.get("/public/galleries/:slug", async (req, res): Promise<void> => {
     .from(artworksTable)
     .where(eq(artworksTable.galleryId, gallery.id));
 
+  res.setHeader("Cache-Control", "public, max-age=30, stale-while-revalidate=120");
   res.json({
     id: gallery.id,
     userId: gallery.userId,

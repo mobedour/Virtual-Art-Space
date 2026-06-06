@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, real, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, real, boolean, timestamp, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
@@ -18,7 +18,11 @@ export const galleriesTable = pgTable("galleries", {
   roomHeight: integer("room_height").notNull().default(5),
   lightingMood: real("lighting_mood").notNull().default(1.0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [
+  index("galleries_published_idx").on(t.published),
+  index("galleries_user_id_idx").on(t.userId),
+  index("galleries_slug_idx").on(t.slug),
+]);
 
 export const insertGallerySchema = createInsertSchema(galleriesTable).omit({ id: true, createdAt: true });
 export type InsertGallery = z.infer<typeof insertGallerySchema>;
