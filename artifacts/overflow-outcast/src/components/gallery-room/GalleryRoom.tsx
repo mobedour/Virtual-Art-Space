@@ -349,6 +349,11 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner, onSaved }
   // always sees the current intent even when the async pointerlockchange event
   // arrives after a state update has already been queued but not yet rendered.
   const selectedArtworkRef = useRef<ArtworkData | null>(null);
+  // Set to true when the artwork modal is dismissed (X, Escape, or back button).
+  // The very next artwork-select action is silently swallowed so the crosshair
+  // that is still aimed at the same piece doesn't immediately re-open the modal.
+  // Cleared on the first suppressed select; subsequent clicks work normally.
+  const suppressNextSelectRef = useRef(false);
   const xrOriginRef = useRef<THREE.Group>(null);
   // Shared flag: true while VR teleport-aim mode owns the right trigger, so the
   // ray / edit controllers suppress their own trigger handling.
@@ -431,7 +436,7 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner, onSaved }
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.code === "Escape") {
-        if (selectedArtwork) { selectedArtworkRef.current = null; setSelectedArtwork(null); return; }
+        if (selectedArtwork) { suppressNextSelectRef.current = true; selectedArtworkRef.current = null; setSelectedArtwork(null); return; }
         if (isEditMode && !editState.isDirty) { setIsEditMode(false); return; }
         if (isLocked) { setIsLocked(false); setIsPaused(true); }
         else if (isPaused) { setIsPaused(false); }
@@ -450,7 +455,7 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner, onSaved }
     window.history.pushState({ vasImmersive: true }, "");
     const onPop = () => {
       // Pop layers in order; if nothing to pop, the browser will navigate away
-      if (selectedArtwork) { selectedArtworkRef.current = null; setSelectedArtwork(null); window.history.pushState({ vasImmersive: true }, ""); return; }
+      if (selectedArtwork) { suppressNextSelectRef.current = true; selectedArtworkRef.current = null; setSelectedArtwork(null); window.history.pushState({ vasImmersive: true }, ""); return; }
       if (isEditMode) {
         if (editState.isDirty) {
           if (!window.confirm("Discard unsaved edits?")) {
@@ -591,11 +596,16 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner, onSaved }
 
   const handleArtworkSelect = useCallback((artwork: ArtworkData) => {
     if (isEditMode) return; // in edit mode, drag instead of select
+    // After dismissing the artwork modal the crosshair is still aimed at the
+    // same piece. Swallow one select so the user can reorient before the next
+    // click (or tap) opens anything.
+    if (suppressNextSelectRef.current) { suppressNextSelectRef.current = false; return; }
     selectedArtworkRef.current = artwork; // sync ref so handleUnlock sees it immediately
     setSelectedArtwork(artwork); setIsLocked(false); setIsPaused(false);
   }, [isEditMode]);
 
   const handleModalClose = useCallback(() => {
+    suppressNextSelectRef.current = true;  // ignore first re-aim click
     selectedArtworkRef.current = null; // sync ref before state update
     setSelectedArtwork(null);
   }, []);
