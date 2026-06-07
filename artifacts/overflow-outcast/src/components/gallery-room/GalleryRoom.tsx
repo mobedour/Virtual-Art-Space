@@ -354,6 +354,10 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner, onSaved }
   // that is still aimed at the same piece doesn't immediately re-open the modal.
   // Cleared on the first suppressed select; subsequent clicks work normally.
   const suppressNextSelectRef = useRef(false);
+  // When a select is suppressed, GalleryScene has already called controls.unlock()
+  // before handleArtworkSelect can return early. This flag tells handleUnlock to
+  // also skip the pause for that one orphaned unlock event.
+  const suppressNextUnlockRef = useRef(false);
   const xrOriginRef = useRef<THREE.Group>(null);
   // Shared flag: true while VR teleport-aim mode owns the right trigger, so the
   // ray / edit controllers suppress their own trigger handling.
@@ -559,8 +563,12 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner, onSaved }
     //  - artwork modal is open (selectedArtworkRef tracks synchronous intent,
     //    not the potentially-stale React closure, to survive the async gap
     //    between controls.unlock() and the browser's pointerlockchange event), or
+    //  - this unlock is the orphaned event from a suppressed artwork select
+    //    (GalleryScene calls controls.unlock() before handleArtworkSelect can
+    //    return early, so we absorb that one event here), or
     //  - edit mode (pointer intentionally unlocked for the toolbar), or
     //  - user is holding Ctrl to temporarily free the cursor.
+    if (suppressNextUnlockRef.current) { suppressNextUnlockRef.current = false; return; }
     if (!selectedArtworkRef.current && !isEditMode && !ctrlUnlockedRef.current) setIsPaused(true);
   }, [isEditMode]);
 
@@ -599,7 +607,11 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner, onSaved }
     // After dismissing the artwork modal the crosshair is still aimed at the
     // same piece. Swallow one select so the user can reorient before the next
     // click (or tap) opens anything.
-    if (suppressNextSelectRef.current) { suppressNextSelectRef.current = false; return; }
+    if (suppressNextSelectRef.current) {
+      suppressNextSelectRef.current = false;
+      suppressNextUnlockRef.current = true; // absorb the orphaned unlock GalleryScene already fired
+      return;
+    }
     selectedArtworkRef.current = artwork; // sync ref so handleUnlock sees it immediately
     setSelectedArtwork(artwork); setIsLocked(false); setIsPaused(false);
   }, [isEditMode]);
