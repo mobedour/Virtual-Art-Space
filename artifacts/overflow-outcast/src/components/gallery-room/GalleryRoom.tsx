@@ -344,6 +344,11 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner, onSaved }
       if (vrMenuOpen) setVrMenuOpen(false);
     }
   }, [isPresenting, vrSelectedArtwork, vrMenuOpen]);
+  // Mutable ref that mirrors selectedArtwork but is updated synchronously
+  // (before React batches/commits state). handleUnlock reads this ref so it
+  // always sees the current intent even when the async pointerlockchange event
+  // arrives after a state update has already been queued but not yet rendered.
+  const selectedArtworkRef = useRef<ArtworkData | null>(null);
   const xrOriginRef = useRef<THREE.Group>(null);
   // Shared flag: true while VR teleport-aim mode owns the right trigger, so the
   // ray / edit controllers suppress their own trigger handling.
@@ -426,7 +431,7 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner, onSaved }
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.code === "Escape") {
-        if (selectedArtwork) { setSelectedArtwork(null); return; }
+        if (selectedArtwork) { selectedArtworkRef.current = null; setSelectedArtwork(null); return; }
         if (isEditMode && !editState.isDirty) { setIsEditMode(false); return; }
         if (isLocked) { setIsLocked(false); setIsPaused(true); }
         else if (isPaused) { setIsPaused(false); }
@@ -445,7 +450,7 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner, onSaved }
     window.history.pushState({ vasImmersive: true }, "");
     const onPop = () => {
       // Pop layers in order; if nothing to pop, the browser will navigate away
-      if (selectedArtwork) { setSelectedArtwork(null); window.history.pushState({ vasImmersive: true }, ""); return; }
+      if (selectedArtwork) { selectedArtworkRef.current = null; setSelectedArtwork(null); window.history.pushState({ vasImmersive: true }, ""); return; }
       if (isEditMode) {
         if (editState.isDirty) {
           if (!window.confirm("Discard unsaved edits?")) {
@@ -546,10 +551,13 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner, onSaved }
   const handleUnlock     = useCallback(() => {
     setIsLocked(false);
     // Skip pause overlay when:
+    //  - artwork modal is open (selectedArtworkRef tracks synchronous intent,
+    //    not the potentially-stale React closure, to survive the async gap
+    //    between controls.unlock() and the browser's pointerlockchange event), or
     //  - edit mode (pointer intentionally unlocked for the toolbar), or
     //  - user is holding Ctrl to temporarily free the cursor.
-    if (!selectedArtwork && !isEditMode && !ctrlUnlockedRef.current) setIsPaused(true);
-  }, [selectedArtwork, isEditMode]);
+    if (!selectedArtworkRef.current && !isEditMode && !ctrlUnlockedRef.current) setIsPaused(true);
+  }, [isEditMode]);
 
   // Hold Ctrl to release the mouse, release Ctrl to re-lock. Works in both
   // normal walking and edit mode. Desktop only.
@@ -583,10 +591,14 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner, onSaved }
 
   const handleArtworkSelect = useCallback((artwork: ArtworkData) => {
     if (isEditMode) return; // in edit mode, drag instead of select
+    selectedArtworkRef.current = artwork; // sync ref so handleUnlock sees it immediately
     setSelectedArtwork(artwork); setIsLocked(false); setIsPaused(false);
   }, [isEditMode]);
 
-  const handleModalClose = useCallback(() => setSelectedArtwork(null), []);
+  const handleModalClose = useCallback(() => {
+    selectedArtworkRef.current = null; // sync ref before state update
+    setSelectedArtwork(null);
+  }, []);
   const handleMobileActivate = useCallback(() => {
     if (isMobile && !isLocked && !selectedArtwork && hasEntered) setIsLocked(true);
   }, [isMobile, isLocked, selectedArtwork, hasEntered]);
