@@ -3,6 +3,11 @@ import { useFrame } from "@react-three/fiber";
 import { Text } from "@react-three/drei";
 import * as THREE from "three";
 
+export type LiveDragRef = React.MutableRefObject<{
+  draggingId: number | null;
+  x: number; y: number; z: number; rotation: number;
+}>;
+
 const IMAGE_W = 1.6;
 const IMAGE_H = 2.0;
 const BORDER = 0.14;           // moulding border width
@@ -40,6 +45,7 @@ interface ArtworkFrameProps {
   frameColor: string;
   labelColor: string;
   onSelect: (artwork: ArtworkData) => void;
+  liveDragRef?: LiveDragRef;
 }
 
 function makePlaceholderTexture(title: string, frameColor: string): THREE.Texture {
@@ -108,12 +114,14 @@ export function ArtworkFrame({
   frameColor,
   labelColor,
   onSelect,
+  liveDragRef,
 }: ArtworkFrameProps) {
   const [texture, setTexture] = useState<THREE.Texture | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const cancelRef = useRef(false);
   const matEdgeRef = useRef<THREE.MeshStandardMaterial>(null);
   const glowRef = useRef(0);
+  const groupRef = useRef<THREE.Group>(null);
 
   // Proximity glow on the mat edge — lerps emissiveIntensity toward GLOW_MAX
   // when camera is within GLOW_DISTANCE units of the artwork position.
@@ -123,6 +131,16 @@ export function ArtworkFrame({
     const target = dist < GLOW_DISTANCE ? GLOW_MAX * (1 - dist / GLOW_DISTANCE) : 0;
     glowRef.current = THREE.MathUtils.lerp(glowRef.current, target, 0.12);
     matEdgeRef.current.emissiveIntensity = glowRef.current;
+  });
+
+  // During desktop drag, update the Three.js group position directly from
+  // the shared live ref — no React state change, no re-renders, no flashing.
+  useFrame(() => {
+    if (!groupRef.current || !liveDragRef) return;
+    const live = liveDragRef.current;
+    if (live.draggingId !== artwork.id) return;
+    groupRef.current.position.set(live.x, live.y, live.z);
+    groupRef.current.rotation.y = live.rotation;
   });
 
   const placeholderTexture = useMemo(
@@ -166,6 +184,7 @@ export function ArtworkFrame({
 
   return (
     <group
+      ref={groupRef}
       position={position}
       rotation={[0, rotationY, 0]}
       scale={[artworkScale, artworkScale, artworkScale]}

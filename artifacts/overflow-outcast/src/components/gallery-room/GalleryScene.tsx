@@ -8,7 +8,7 @@ import { TouchControls } from "./TouchControls";
 import type { JoystickState } from "./VirtualJoystick";
 import { getRoomDims } from "./room-dimensions";
 import { RoomDecorations } from "./RoomDecorations";
-import { EditDragController } from "./GalleryEditMode";
+import { EditDragController, type LiveDragRef } from "./GalleryEditMode";
 
 export const EYE_Y = 0;
 const WALL_INSET = 0.12;
@@ -426,7 +426,7 @@ interface GallerySceneProps {
   onSceneReady?: () => void;
   isEditMode?: boolean;
   onArtworkMoved?: (id: number, patch: Partial<ArtworkData>) => void;
-  onArtworkDropped?: () => void;
+  onArtworkDropped?: (id: number, patch: Partial<ArtworkData>) => void;
   onArtworkSelected?: (id: number | null) => void;
   onEditDraggingChange?: (dragging: boolean) => void;
   walkSpeed?: number;
@@ -448,6 +448,14 @@ export function GalleryScene({
   const controlsRef = useRef<any>(null);
   const { camera, gl, scene } = useThree();
   const [sceneReadyFired, setSceneReadyFired] = useState(false);
+
+  // Shared mutable ref for live drag position. EditDragController writes to it
+  // every frame during drag; ArtworkFrame reads it in its own useFrame and
+  // applies the position directly to the Three.js group — bypassing React state
+  // so we get zero re-renders (and zero flashing) while the user drags.
+  const liveDragRef = useRef<LiveDragRef["current"]>({
+    draggingId: null, x: 0, y: 0, z: 0, rotation: 0,
+  });
 
   const { halfW, halfH, halfD } = getRoomDims(roomSize);
 
@@ -720,6 +728,7 @@ export function GalleryScene({
       {placedArtworks.map(({ artwork, position, rotationY }) => (
         <ArtworkFrame key={artwork.id} artwork={artwork} position={position} rotationY={rotationY}
           frameColor={theme.frameColor} labelColor={theme.labelColor}
+          liveDragRef={isEditMode ? liveDragRef : undefined}
           onSelect={(a) => {
             // In edit mode, EditDragController owns artwork clicks
             // (pick / drop). Don't unlock the pointer or open the modal
@@ -760,7 +769,7 @@ export function GalleryScene({
           VR: it is mouse / pointer-lock based, and VR editing is handled by
           XRVREditController instead. Mounting both would run two parallel edit
           systems. */}
-      {isEditMode && onArtworkMoved && !isPresenting && (
+      {isEditMode && !isPresenting && (
         <EditDragController
           isEditing={isEditMode}
           artworks={artworks}
@@ -772,6 +781,7 @@ export function GalleryScene({
           onDrop={onArtworkDropped}
           onArtworkSelected={onArtworkSelected}
           onDraggingChange={onEditDraggingChange}
+          liveDragRef={liveDragRef}
         />
       )}
     </>

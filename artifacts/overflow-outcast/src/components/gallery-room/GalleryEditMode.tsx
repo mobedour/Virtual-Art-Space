@@ -73,6 +73,11 @@ export function getNearestWallPlane(pos: THREE.Vector3, halfW: number, halfD: nu
   return dists.sort((a, b) => a.d - b.d)[0].idx;
 }
 
+export type LiveDragRef = React.MutableRefObject<{
+  draggingId: number | null;
+  x: number; y: number; z: number; rotation: number;
+}>;
+
 export function EditDragController({
   isEditing,
   artworks,
@@ -80,10 +85,11 @@ export function EditDragController({
   halfD,
   halfH,
   isMobile = false,
-  onArtworkMoved,
+  onArtworkMoved: _onArtworkMoved,
   onDrop,
   onArtworkSelected,
   onDraggingChange,
+  liveDragRef,
 }: {
   isEditing: boolean;
   artworks: ArtworkData[];
@@ -91,10 +97,11 @@ export function EditDragController({
   halfD: number;
   halfH: number;
   isMobile?: boolean;
-  onArtworkMoved: (id: number, patch: Partial<ArtworkData>) => void;
-  onDrop?: () => void;
+  onArtworkMoved?: (id: number, patch: Partial<ArtworkData>) => void;
+  onDrop?: (id: number, patch: Partial<ArtworkData>) => void;
   onArtworkSelected?: (id: number | null) => void;
   onDraggingChange?: (dragging: boolean) => void;
+  liveDragRef?: LiveDragRef;
 }) {
   const { camera, scene } = useThree();
   const draggingRef = useRef<{ artworkId: number; wallIdx: number } | null>(null);
@@ -168,7 +175,15 @@ export function EditDragController({
       rotation: wallRotations[w], isManuallyPlaced: true,
     };
     pendingPatchRef.current = { id: artworkId, patch };
-    onArtworkMoved(artworkId, patch);
+    // Write to the live ref so ArtworkFrame can update its Three.js position
+    // directly in its own useFrame — no React state update, no re-renders.
+    if (liveDragRef) {
+      liveDragRef.current.draggingId = artworkId;
+      liveDragRef.current.x = x;
+      liveDragRef.current.y = y;
+      liveDragRef.current.z = z;
+      liveDragRef.current.rotation = wallRotations[w];
+    }
   });
 
   // Click-to-pick, click-to-drop drag model.
@@ -223,11 +238,13 @@ export function EditDragController({
       const artworkHit = findArtworkHit();
 
       if (draggingRef.current) {
-        // Drop: commit to undo history
+        // Drop: commit final position to React state + undo history (one update)
+        const finalPatch = pendingPatchRef.current;
         draggingRef.current = null;
         pendingPatchRef.current = null;
+        if (liveDragRef) liveDragRef.current.draggingId = null;
         onDraggingChangeRef.current?.(false);
-        onDropRef.current?.();
+        if (finalPatch) onDropRef.current?.(finalPatch.id, finalPatch.patch);
       } else if (artworkHit) {
         // Pick up
         const wallIdx = getNearestWallPlane(artworkHit.point, halfW, halfD);
@@ -258,10 +275,12 @@ export function EditDragController({
       if (!isEditing) return;
       const artworkHit = findArtworkHit();
       if (draggingRef.current) {
+        const finalPatch = pendingPatchRef.current;
         draggingRef.current = null;
         pendingPatchRef.current = null;
+        if (liveDragRef) liveDragRef.current.draggingId = null;
         onDraggingChangeRef.current?.(false);
-        onDropRef.current?.();
+        if (finalPatch) onDropRef.current?.(finalPatch.id, finalPatch.patch);
       } else if (artworkHit) {
         const wallIdx = getNearestWallPlane(artworkHit.point, halfW, halfD);
         draggingRef.current = { artworkId: artworkHit.artworkId, wallIdx };
@@ -804,9 +823,31 @@ export function useEditState(
     setIsDirty(true);
   }, []);
 
-  const handleArtworkMovedCommit = useCallback(() => {
-    pushHistory();
-  }, [pushHistory]);
+  // When called with (id, patch) — the desktop drag case — we compute the
+  // updated artworks array inline so the snapshot captures the final position
+  // even though setArtworks hasn't committed yet (they're in the same batch).
+  // Called with no args — the VR drag case — it falls back to the usual
+  // snapshot-of-current-state behaviour (VR calls onArtworkMoved every frame
+  // so artworks is already current before onDrop fires).
+  const handleArtworkMovedCommit = useCallback((finalId?: number, finalPatch?: Partial<ArtworkData>) => {
+    const nextArtworks = (finalId !== undefined && finalPatch !== undefined)
+      ? artworks.map((a) => a.id === finalId ? { ...a, ...finalPatch } : a)
+      : artworks;
+    const snap: EditSnapshot = {
+      artworks: nextArtworks.map((a) => ({
+        id: a.id, xPosition: a.xPosition, yPosition: a.yPosition,
+        zPosition: a.zPosition, rotation: a.rotation, scale: a.scale,
+        isManuallyPlaced: a.isManuallyPlaced,
+      })),
+      room: { roomTheme, lightingMood, decorationLevel, roomSize },
+    };
+    setHistory((prev) => [...prev.slice(0, historyIdx + 1), snap].slice(-MAX_HISTORY));
+    setHistoryIdx((i) => Math.min(i + 1, MAX_HISTORY - 1));
+    if (finalId !== undefined && finalPatch !== undefined) {
+      setArtworks(nextArtworks);
+    }
+    setIsDirty(true);
+  }, [artworks, historyIdx, roomTheme, lightingMood, decorationLevel, roomSize]);
 
   const handleArtworkSelected = useCallback((id: number | null) => {
     setSelectedArtworkId(id);

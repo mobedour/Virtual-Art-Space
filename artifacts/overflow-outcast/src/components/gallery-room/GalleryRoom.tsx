@@ -731,7 +731,7 @@ export function GalleryRoom({ gallery, onExit, onEditRequest, isOwner, onSaved }
                   onSceneReady={() => setTimeout(() => setSceneVisible(true), 200)}
                   isEditMode={isEditMode && !editState.isPreviewing}
                   onArtworkMoved={editState.handleArtworkMoved}
-                  onArtworkDropped={editState.handleArtworkMovedCommit}
+                  onArtworkDropped={(id, patch) => editState.handleArtworkMovedCommit(id, patch)}
                   onArtworkSelected={editState.handleArtworkSelected}
                   onEditDraggingChange={setIsEditDragging}
                   walkSpeed={walkSpeed}
