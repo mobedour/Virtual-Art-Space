@@ -1,0 +1,54 @@
+High Priority
+Unpublished galleries are viewable by direct slug
+[publicGalleries.ts (line 76)](/Users/mohammedbedour/Documents/Virtual-Art-Space/artifacts/api-server/src/routes/publicGalleries.ts:76)
+/public/galleries/:slug does not check published = true, so anyone with the slug can open a draft gallery and see its artworks.
+Replit prompt: “Add a published=true filter to public gallery detail lookup without changing the owner dashboard routes.”
+
+Unpublished gallery decorations are also exposed
+[publicGalleries.ts (line 131)](/Users/mohammedbedour/Documents/Virtual-Art-Space/artifacts/api-server/src/routes/publicGalleries.ts:131)
+/public/galleries/:slug/decorations has the same issue. Draft gallery decoration data can be fetched by slug.
+Replit prompt: “Apply the same published=true filter to the public decorations endpoint.”
+
+Anyone can request an upload URL
+[storage.ts (line 20)](/Users/mohammedbedour/Documents/Virtual-Art-Space/artifacts/api-server/src/routes/storage.ts:20)
+POST /storage/uploads/request-url has no requireAuth. A random visitor could generate signed upload URLs and upload files into your storage bucket.
+Replit prompt: “Protect upload URL generation with requireAuth; keep the dashboard artwork upload flow working.”
+
+Private object route is public
+[storage.ts (line 87)](/Users/mohammedbedour/Documents/Virtual-Art-Space/artifacts/api-server/src/routes/storage.ts:87)
+/storage/objects/* serves from PRIVATE_OBJECT_DIR with ACL/auth checks commented out. Since artwork uploads are saved as /api/storage/objects/..., this may be intentional for public galleries, but right now any object path is readable if guessed.
+Replit prompt: “Decide object visibility explicitly: public artworks should remain readable, but private/draft-only objects should not be served without authorization.”
+
+Upload metadata is accepted but not enforced
+[storage.ts (line 28)](/Users/mohammedbedour/Documents/Virtual-Art-Space/artifacts/api-server/src/routes/storage.ts:28), [api.ts (line 557)](/Users/mohammedbedour/Documents/Virtual-Art-Space/lib/api-zod/src/generated/api.ts:557)
+The client sends name, size, and contentType, but the server only checks that they exist. No max size or image-only content type validation is enforced before signing an upload URL.
+Replit prompt: “Validate upload size and content type before signing upload URLs.”
+
+Medium Priority
+Room resize can save values the API rejects
+[GalleryEditMode.tsx (line 846)](/Users/mohammedbedour/Documents/Virtual-Art-Space/artifacts/overflow-outcast/src/components/gallery-room/GalleryEditMode.tsx:846), [galleries.ts (line 21)](/Users/mohammedbedour/Documents/Virtual-Art-Space/artifacts/api-server/src/routes/galleries.ts:21)
+Frontend edit mode allows room size up to 12, but the API/spec only allow max 10. Saving after resizing past 10 can fail.
+Replit prompt: “Make room resize clamp match the API max of 10, or update API/spec/UI consistently.”
+
+Artwork dashboard placement uses hard-coded standard room dimensions
+[dashboard-gallery-artworks.tsx (line 70)](/Users/mohammedbedour/Documents/Virtual-Art-Space/artifacts/overflow-outcast/src/pages/dashboard-gallery-artworks.tsx:70), [dashboard-gallery-artworks.tsx (line 99)](/Users/mohammedbedour/Documents/Virtual-Art-Space/artifacts/overflow-outcast/src/pages/dashboard-gallery-artworks.tsx:99)
+The artwork placement dialog always uses HALF_W = 9 and HALF_D = 9, but real gallery room dimensions depend on roomSize. In small/large rooms, manually placed art from this dashboard may land in the wrong wall position.
+Replit prompt: “Use the gallery’s actual roomSize and getRoomDims() for dashboard artwork placement.”
+
+Linked/provisioned users can end up without a profile
+[requireAuth.ts (line 47)](/Users/mohammedbedour/Documents/Virtual-Art-Space/artifacts/api-server/src/middlewares/requireAuth.ts:47), [profile.ts (line 14)](/Users/mohammedbedour/Documents/Virtual-Art-Space/artifacts/api-server/src/routes/profile.ts:14)
+If user creation succeeds but profile creation fails, or if an existing user is linked by email, the code does not guarantee a profile row exists. Then /profile returns 404 and the profile page can fail for that user.
+Replit prompt: “Ensure requireAuth always creates a missing profile row for authenticated users.”
+
+Public gallery page makes an auth request for signed-out visitors
+[public-gallery-detail.tsx (line 20)](/Users/mohammedbedour/Documents/Virtual-Art-Space/artifacts/overflow-outcast/src/pages/public-gallery-detail.tsx:20)
+useGetMe({}) runs even for anonymous visitors, causing expected 401s/noise on a public route.
+Replit prompt: “Only call useGetMe when Clerk says the visitor is signed in.”
+
+Lower Priority
+VR edit exit can leave save running while exiting edit mode
+   [GalleryRoom.tsx (line 794)](/Users/mohammedbedour/Documents/Virtual-Art-Space/artifacts/overflow-outcast/src/components/gallery-room/GalleryRoom.tsx:794)
+   VR edit panel calls editState.save() without awaiting it, then immediately exits edit mode. If save fails, the user may think edits were saved.
+   Replit prompt: “Await VR edit save before exiting edit mode and show failure feedback.”
+Public changelog endpoint exposes root replit.md
+   [changelog.ts (line 15)](/Users/mohammedbedour/Documents/Virtual-Art-Space/artifacts/api-server/src/routes/changelog.ts:15)
