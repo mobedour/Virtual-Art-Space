@@ -2,6 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { readFile, watch } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { requireAuth } from "../middlewares/requireAuth";
 
 const router: IRouter = Router();
 
@@ -12,7 +13,7 @@ const REPLIT_MD = path.resolve(
   "../../../replit.md"
 );
 
-router.get("/changelog/content", (req: Request, res: Response) => {
+router.get("/changelog/content", requireAuth, (req: Request, res: Response) => {
   readFile(REPLIT_MD, "utf8", (err, data) => {
     if (err) {
       res.status(500).json({ error: "Could not read replit.md" });
@@ -23,7 +24,7 @@ router.get("/changelog/content", (req: Request, res: Response) => {
   });
 });
 
-router.get("/changelog/download", (req: Request, res: Response) => {
+router.get("/changelog/download", requireAuth, (req: Request, res: Response) => {
   readFile(REPLIT_MD, "utf8", (err, data) => {
     if (err) {
       res.status(500).json({ error: "Could not read replit.md" });
@@ -35,7 +36,7 @@ router.get("/changelog/download", (req: Request, res: Response) => {
   });
 });
 
-router.get("/changelog/stream", (req: Request, res: Response) => {
+router.get("/changelog/stream", requireAuth, (req: Request, res: Response) => {
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");

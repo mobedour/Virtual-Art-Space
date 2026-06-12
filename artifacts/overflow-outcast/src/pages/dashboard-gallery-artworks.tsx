@@ -47,6 +47,7 @@ import {
   Upload,
   MapPin,
 } from "lucide-react";
+import { getRoomDims } from "@/components/gallery-room/room-dimensions";
 
 type Artwork = {
   id: number;
@@ -96,19 +97,19 @@ function detectHeightFromY(y: number): number {
   return closest;
 }
 
-function computeArtworkPosition(wallId: number, wallSlot: number, hangY: number) {
+function computeArtworkPosition(wallId: number, wallSlot: number, hangY: number, halfW: number, halfD: number) {
   const along = SLOT_POSITIONS[wallSlot - 1];
   switch (wallId) {
     case 0:
-      return { x: along, y: hangY, z: -(HALF_D - WALL_INSET), rotation: 0 };
+      return { x: along, y: hangY, z: -(halfD - WALL_INSET), rotation: 0 };
     case 1:
-      return { x: HALF_W - WALL_INSET, y: hangY, z: along, rotation: -Math.PI / 2 };
+      return { x: halfW - WALL_INSET, y: hangY, z: along, rotation: -Math.PI / 2 };
     case 2:
-      return { x: along, y: hangY, z: HALF_D - WALL_INSET, rotation: Math.PI };
+      return { x: along, y: hangY, z: halfD - WALL_INSET, rotation: Math.PI };
     case 3:
-      return { x: -(HALF_W - WALL_INSET), y: hangY, z: along, rotation: Math.PI / 2 };
+      return { x: -(halfW - WALL_INSET), y: hangY, z: along, rotation: Math.PI / 2 };
     default:
-      return { x: 0, y: hangY, z: -(HALF_D - WALL_INSET), rotation: 0 };
+      return { x: 0, y: hangY, z: -(halfD - WALL_INSET), rotation: 0 };
   }
 }
 
@@ -447,12 +448,14 @@ function ArtworkFormDialog({
   galleryId,
   artwork,
   existingArtworks,
+  roomSize,
 }: {
   open: boolean;
   onClose: () => void;
   galleryId: number;
   artwork?: Artwork | null;
   existingArtworks: Artwork[];
+  roomSize?: number;
 }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -575,7 +578,8 @@ function ArtworkFormDialog({
     const placementData = values.placementEnabled
       ? (() => {
           const hangY = HANG_HEIGHT_OPTIONS[values.hangHeightIndex].value;
-          const pos = computeArtworkPosition(values.wallId, values.wallSlot, hangY);
+          const { halfW, halfD } = getRoomDims(roomSize ?? 5);
+          const pos = computeArtworkPosition(values.wallId, values.wallSlot, hangY, halfW, halfD);
           return {
             xPosition: pos.x,
             yPosition: pos.y,
@@ -1264,6 +1268,7 @@ export default function DashboardGalleryArtworks() {
         galleryId={galleryId}
         artwork={editingArtwork}
         existingArtworks={artworkList}
+        roomSize={gallery?.roomSize ?? 5}
       />
     </DashboardLayout>
   );

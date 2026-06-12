@@ -843,7 +843,7 @@ export function useEditState(
   }, [pushHistory]);
 
   const handleRoomResize = useCallback((dir: "north" | "south" | "east" | "west", delta: number) => {
-    setRoomSize((prev) => Math.max(3, Math.min(12, Math.round(prev + delta))));
+    setRoomSize((prev) => Math.max(3, Math.min(10, Math.round(prev + delta))));
     pushHistory();
     setIsDirty(true);
   }, [pushHistory]);

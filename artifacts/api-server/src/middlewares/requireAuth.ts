@@ -75,6 +75,14 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
           }
         }
 
+        // Ensure a profile row exists regardless of which code path provisioned the user.
+        if (user) {
+          await db
+            .insert(profilesTable)
+            .values({ userId: user.id })
+            .onConflictDoNothing();
+        }
+
         if (!user) {
           logger.error({ clerkUserId, email }, "requireAuth: failed to provision user");
           res.status(500).json({ error: "Failed to provision user" });

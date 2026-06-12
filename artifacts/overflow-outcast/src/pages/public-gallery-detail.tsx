@@ -1,7 +1,8 @@
 import { useCallback } from "react";
 import { Link, useLocation, useParams } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
-import { useGetPublicGallery, getGetPublicGalleryQueryKey, useGetMe } from "@workspace/api-client-react";
+import { useAuth } from "@clerk/react";
+import { useGetPublicGallery, getGetPublicGalleryQueryKey, useGetMe, getGetMeQueryKey } from "@workspace/api-client-react";
 import { PublicLayout } from "@/components/public-layout";
 import { Button } from "@/components/ui/button";
 import { Loader2, ArrowLeft } from "lucide-react";
@@ -17,7 +18,8 @@ export default function PublicGalleryDetail() {
     query: { queryKey: getGetPublicGalleryQueryKey(slug || ""), enabled: !!slug },
   });
 
-  const { data: me } = useGetMe({});
+  const { isSignedIn } = useAuth();
+  const { data: me } = useGetMe({ query: { queryKey: getGetMeQueryKey(), enabled: isSignedIn === true } });
 
   const handleExit = useCallback(() => setLocation("/galleries"), [setLocation]);
   const handleSaved = useCallback(

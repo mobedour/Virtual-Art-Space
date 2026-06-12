@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, count, sql } from "drizzle-orm";
+import { and, eq, count, sql } from "drizzle-orm";
 import { db, galleriesTable, artworksTable, profilesTable, galleryDecorationsTable } from "@workspace/db";
 
 const router: IRouter = Router();
@@ -73,7 +73,7 @@ router.get("/public/galleries/:slug", async (req, res): Promise<void> => {
     })
     .from(galleriesTable)
     .leftJoin(profilesTable, eq(profilesTable.userId, galleriesTable.userId))
-    .where(eq(galleriesTable.slug, rawSlug));
+    .where(and(eq(galleriesTable.slug, rawSlug), eq(galleriesTable.published, true)));
 
   if (!gallery) {
     res.status(404).json({ error: "Gallery not found" });
@@ -128,7 +128,7 @@ router.get("/public/galleries/:slug/decorations", async (req, res): Promise<void
   const [gallery] = await db
     .select({ id: galleriesTable.id })
     .from(galleriesTable)
-    .where(eq(galleriesTable.slug, rawSlug));
+    .where(and(eq(galleriesTable.slug, rawSlug), eq(galleriesTable.published, true)));
 
   if (!gallery) {
     res.status(404).json({ error: "Gallery not found" });
