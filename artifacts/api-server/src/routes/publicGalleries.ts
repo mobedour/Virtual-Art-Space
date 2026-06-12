@@ -85,7 +85,6 @@ router.get("/public/galleries/:slug", async (req, res): Promise<void> => {
     .from(artworksTable)
     .where(eq(artworksTable.galleryId, gallery.id));
 
-  res.setHeader("Cache-Control", "public, max-age=30, stale-while-revalidate=120");
   res.json({
     id: gallery.id,
     userId: gallery.userId,
